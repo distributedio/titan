@@ -25,7 +25,7 @@ func GetSet(txn *Transaction, key []byte) (*Set, error) {
 	set := &Set{txn: txn, key: key}
 
 	mkey := MetaKey(txn.db, key)
-	meta, err := txn.txn.Get(mkey)
+	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			now := Now()
@@ -59,7 +59,7 @@ func (set *Set) updateMeta() error {
 	if err != nil {
 		return err
 	}
-	return set.txn.txn.Set(MetaKey(set.txn.db, set.key), meta)
+	return set.txn.t.Set(MetaKey(set.txn.db, set.key), meta)
 }
 
 // SAdd adds the specified members to the set stored at key
@@ -81,7 +81,7 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 		if values[i] == nil {
 			added++
 		}
-		if err := set.txn.txn.Set(ikeys[i], SetNilValue); err != nil {
+		if err := set.txn.t.Set(ikeys[i], SetNilValue); err != nil {
 			return 0, err
 		}
 	}
@@ -102,7 +102,7 @@ func (set *Set) SMembers() ([][]byte, error) {
 	count := set.meta.Len
 	members := make([][]byte, 0, count)
 
-	iter, err := set.txn.txn.Seek(prefix)
+	iter, err := set.txn.t.Seek(prefix)
 	if err != nil {
 		return nil, err
 	}

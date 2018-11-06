@@ -14,12 +14,19 @@ import (
 )
 
 type client struct {
-	cliCtx *context.Client
+	cliCtx *context.ClientContext
 	server *Server
 	conn   net.Conn
-	cancel context.CancelFunc
 	exec   *command.Executor
 	r      *bufio.Reader
+}
+
+func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
+	return &client{
+		cliCtx: cliCtx,
+		server: s,
+		exec:   exec,
+	}
 }
 
 func (c *client) serve(conn net.Conn) error {
@@ -55,7 +62,6 @@ func (c *client) serve(conn net.Conn) error {
 		}
 		innerCtx, cancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
 		ctx.Context = innerCtx
-		c.cancel = cancel
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
 			ctx.Out = ioutil.Discard
@@ -64,6 +70,7 @@ func (c *client) serve(conn net.Conn) error {
 			}
 		}
 		c.exec.Execute(ctx)
+		cancel()
 	}
 }
 

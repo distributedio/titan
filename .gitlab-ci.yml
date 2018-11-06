@@ -1,0 +1,27 @@
+image: golang:1.10.2
+
+stages:
+  - test
+  - build
+
+before_script:
+  - mkdir -p /go/src/gitlab.meitu.com/platform /go/src/_/builds
+  - cp -r `pwd` /go/src/gitlab.meitu.com/platform/thanos
+
+unit_tests:
+  stage: test
+  script:
+    - cd /go/src/gitlab.meitu.com/platform/thanos
+    - make test
+
+coverage:
+  stage: test
+  script:
+    - cd /go/src/gitlab.meitu.com/platform/thanos
+    - make coverage
+
+build:
+  stage: build
+  script:
+    - cd /go/src/gitlab.meitu.com/platform/thanos
+    - make

@@ -19,7 +19,7 @@ func GetKv(txn *Transaction) *Kv {
 // Keys iterator all keys in db
 func (kv *Kv) Keys(onkey func(key []byte) bool) error {
 	mkey := MetaKey(kv.txn.db, nil)
-	iter, err := kv.txn.txn.Seek(mkey)
+	iter, err := kv.txn.t.Seek(mkey)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (kv *Kv) Delete(keys [][]byte) (int, error) {
 
 		switch obj.Type {
 		case ObjectString:
-			if err := kv.txn.txn.Delete(mkey); err != nil {
+			if err := kv.txn.t.Delete(mkey); err != nil {
 				return -1, err
 			}
 		case ObjectList, ObjectHash:
@@ -70,7 +70,7 @@ func (kv *Kv) Delete(keys [][]byte) (int, error) {
 // ExpireAt set a timeout on key
 func (kv *Kv) ExpireAt(key []byte, at int64) error {
 	mkey := MetaKey(kv.txn.db, key)
-	meta, err := kv.txn.txn.Get(mkey)
+	meta, err := kv.txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return ErrKeyNotFound
@@ -113,13 +113,13 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 		return err
 	}
 
-	return kv.txn.txn.Set(mkey, updated)
+	return kv.txn.t.Set(mkey, updated)
 }
 
 // FlushDB clear current db. FIXME one txn is limited for number of entries
 func (kv *Kv) FlushDB() error {
 	prefix := DBPrefix(kv.txn.db)
-	txn := kv.txn.txn
+	txn := kv.txn.t
 
 	iter, err := txn.Seek(prefix)
 	if err != nil {
@@ -139,7 +139,7 @@ func (kv *Kv) FlushDB() error {
 // FlushAll clean up all databases. FIXME one txn is limited for number of entries
 func (kv *Kv) FlushAll() error {
 	prefix := []byte(kv.txn.db.Namespace + ":")
-	txn := kv.txn.txn
+	txn := kv.txn.t
 
 	iter, err := txn.Seek(prefix)
 	if err != nil {

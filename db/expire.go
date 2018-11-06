@@ -26,11 +26,11 @@ func expireAt(txn *Transaction, key []byte, objID []byte, old int64, new int64) 
 	oldKey := expireKey(mkey, old)
 	newKey := expireKey(mkey, new)
 
-	if err := txn.txn.Delete(oldKey); err != nil {
+	if err := txn.t.Delete(oldKey); err != nil {
 		return err
 	}
 
-	if err := txn.txn.Set(newKey, objID); err != nil {
+	if err := txn.t.Set(newKey, objID); err != nil {
 		return err
 	}
 	return nil
@@ -92,7 +92,7 @@ func runExpire(s *RedisStore) {
 		if bytes.Compare(objID, rawkey) != 0 {
 			dkey := DataKey(&DB{Namespace: string(namespace), ID: toDBID(dbid)}, objID)
 			log.Println("add to gc ", string(dkey))
-			if err := gc(&Transaction{txn: txn}, dkey); err != nil {
+			if err := gc(&Transaction{t: txn}, dkey); err != nil {
 				log.Println(err)
 				txn.Rollback()
 				return

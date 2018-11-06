@@ -30,7 +30,7 @@ func GetList(txn *Transaction, key []byte) (*List, error) {
 		txn: txn,
 	}
 	mkey := MetaKey(txn.db, key)
-	meta, err := txn.txn.Get(mkey)
+	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			now := Now()
@@ -73,7 +73,7 @@ func (lst *List) LPush(data []byte) error {
 	// item key
 	ikey := listItemKey(dkey, lst.meta.Lindex)
 
-	if err := lst.txn.txn.Set(ikey, data); err != nil {
+	if err := lst.txn.t.Set(ikey, data); err != nil {
 		return nil
 	}
 	return lst.updateMeta()
@@ -98,13 +98,13 @@ func (lst *List) LPop() ([]byte, error) {
 	ikey := listItemKey(dkey, lst.meta.Lindex)
 
 	// seek this key
-	iter, err := lst.txn.txn.Seek(ikey)
+	iter, err := lst.txn.t.Seek(ikey)
 	if err != nil {
 		return nil, err
 	}
 	val := iter.Value()
 
-	if err := lst.txn.txn.Delete(ikey); err != nil {
+	if err := lst.txn.t.Delete(ikey); err != nil {
 		return nil, err
 	}
 
@@ -157,7 +157,7 @@ func (lst *List) LRange(start int, stop int) ([][]byte, error) {
 	leftKey := listItemKey(dkey, lst.meta.Lindex)
 
 	// seek to start key
-	iter, err := lst.txn.txn.Seek(leftKey)
+	iter, err := lst.txn.t.Seek(leftKey)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (lst *List) LInsert(after bool, pivot []byte, val []byte) (int, error) {
 	prev := lst.meta.Lindex
 	next := lst.meta.Lindex
 	// seek to start key
-	iter, err := lst.txn.txn.Seek(leftKey)
+	iter, err := lst.txn.t.Seek(leftKey)
 	if err != nil {
 		return -1, err
 	}
@@ -246,7 +246,7 @@ func (lst *List) LInsert(after bool, pivot []byte, val []byte) (int, error) {
 	// item key
 	ikey := listItemKey(dkey, idx)
 
-	if err := lst.txn.txn.Set(ikey, val); err != nil {
+	if err := lst.txn.t.Set(ikey, val); err != nil {
 		return -1, err
 	}
 	lst.meta.Len += 1
@@ -259,7 +259,7 @@ func (lst *List) updateMeta() error {
 	if err != nil {
 		return err
 	}
-	return lst.txn.txn.Set(MetaKey(lst.txn.db, lst.key), meta)
+	return lst.txn.t.Set(MetaKey(lst.txn.db, lst.key), meta)
 }
 
 func (lst *List) index(key []byte) float64 {

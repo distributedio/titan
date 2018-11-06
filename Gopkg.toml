@@ -31,25 +31,30 @@
 
 
 [[constraint]]
-  version="=v2.1.0-beta"
+  version="=v2.0.8"
   name = "github.com/pingcap/tidb"
 
 [[override]]
-  name = "github.com/pingcap/tipb"
-  revision = "015341a07dc30de16a7cca0fc77231ccacc4b397"
+  name = "github.com/sirupsen/logrus"
+  revision = "3bcb09397d6d88e7676a9bc8433ca11ba5304837"
+
+[[override]]
+  name = "github.com/coreos/etcd"
+  version = "=3.2.14"
 
 [[override]]
   name = "golang.org/x/sys"
   revision = "master"
 
 [[override]]
-  name = "github.com/pingcap/pd"
-  #revision = "ea6597638eb7f3d7d50248b90e60888352ac8e85"
-  version="=v2.1.0-beta"
-
-[[override]]
   name = "google.golang.org/grpc"
   source = "https://github.com/grpc/grpc-go.git"
   version = "=1.7.5"
 
+[[override]]
+  name = "github.com/pingcap/kvproto"
+  revision = "2cf2492c337c4d0281d8ead8686d47764f1df6c4"
 
+[[override]]
+  name = "github.com/pingcap/tipb"
+  revision = "2d5073e5521a10f8db2adc0eaab2c46ca0a151d9"

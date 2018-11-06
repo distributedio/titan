@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	stub "github.com/arthurkiller/rollingWriter"
 	"github.com/shafreeck/configo"
+	"github.com/sirupsen/logrus"
 
 	"gitlab.meitu.com/platform/thanos"
 	"gitlab.meitu.com/platform/thanos/conf"

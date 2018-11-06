@@ -24,7 +24,7 @@ build:
 	go build -ldflags '$(LDFLAGS)' -o thanos ./bin/thanos/
 
 clean:
-	rm -f ./bin/thanos
+	rm -f ./thanos
 
 cleanvendor:
 	find vendor \( -type f -or -type l \)  -not -name "*.go" -not -name "LICENSE" -not -name "*.s" -not -name "PATENTS" | xargs -I {} rm {}

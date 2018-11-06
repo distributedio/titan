@@ -115,7 +115,7 @@ func (txn *Transaction) Object(key []byte) (*Object, error) {
 	obj := &Object{}
 	mkey := MetaKey(txn.db, key)
 
-	meta, err := txn.txn.Get(mkey)
+	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, ErrKeyNotFound
@@ -135,7 +135,7 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	mkey := MetaKey(txn.db, key)
 	dkey := DataKey(txn.db, obj.ID)
 
-	if err := txn.txn.Delete(mkey); err != nil {
+	if err := txn.t.Delete(mkey); err != nil {
 		return err
 	}
 	if obj.Type != ObjectString {

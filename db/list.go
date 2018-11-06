@@ -161,6 +161,7 @@ func (l *LListMeta) Unmarshal(obj *Object, b []byte) (err error) {
 	return nil
 }
 
+<<<<<<< HEAD
 // Length return list length
 func (l *LList) Length() int64 { return l.LListMeta.Len }
 
@@ -178,6 +179,10 @@ func (l *LList) LPush(data ...[]byte) (err error) {
 		if l.Len == 1 {
 			l.Rindex = l.Lindex
 		}
+=======
+	if err := lst.txn.t.Set(ikey, data); err != nil {
+		return nil
+>>>>>>> dev
 	}
 	return l.txn.Set(l.rawMetaKey, l.LListMeta.Marshal())
 }
@@ -275,8 +280,13 @@ func (l *LList) LPop() (data []byte, err error) {
 	}
 	leftKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...)
 
+<<<<<<< HEAD
 	// find the left object
 	iter, err := l.txn.Seek(leftKey)
+=======
+	// seek this key
+	iter, err := lst.txn.t.Seek(ikey)
+>>>>>>> dev
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +295,11 @@ func (l *LList) LPop() (data []byte, err error) {
 	}
 	val := iter.Value()
 
+<<<<<<< HEAD
 	if err = l.txn.Delete(iter.Key()); err != nil {
+=======
+	if err := lst.txn.t.Delete(ikey); err != nil {
+>>>>>>> dev
 		return nil, err
 	}
 
@@ -382,6 +396,7 @@ func (l *LList) LTrim(start int64, stop int64) error {
 		return l.Destory()
 	}
 
+<<<<<<< HEAD
 	lIndex := l.Lindex
 	rIndex := l.Rindex
 	var err error
@@ -391,6 +406,15 @@ func (l *LList) LTrim(start int64, stop int64) error {
 		if err != nil {
 			return err
 		}
+=======
+	dkey := DataKey(lst.txn.db, lst.meta.ID)
+	leftKey := listItemKey(dkey, lst.meta.Lindex)
+
+	// seek to start key
+	iter, err := lst.txn.t.Seek(leftKey)
+	if err != nil {
+		return nil, err
+>>>>>>> dev
 	}
 	if stop+1 < l.Len {
 		rIndex, _, err = l.index(stop) // stop is included to reserve
@@ -438,10 +462,17 @@ func (l *LList) seekIndex(index int64) (Iterator, error) {
 	return iter, nil
 }
 
+<<<<<<< HEAD
 // remove n elements from start, return next index after delete
 func (l *LList) remove(start float64, n int64) (float64, error) {
 	startKey := append(l.rawDataKeyPrefix, EncodeFloat64(start)...)
 	iter, err := l.txn.Seek(startKey)
+=======
+	prev := lst.meta.Lindex
+	next := lst.meta.Lindex
+	// seek to start key
+	iter, err := lst.txn.t.Seek(leftKey)
+>>>>>>> dev
 	if err != nil {
 		return 0, err
 	}
@@ -565,6 +596,7 @@ func (l *LList) indexValueN(v []byte, n int64) (realidxs []float64, err error) {
 		n = l.Len
 	}
 
+<<<<<<< HEAD
 	// for loop iterate all objects and check if valid until reach pivot value
 	for count := int64(0); count < n && err == nil && iter.Valid() && iter.Key().HasPrefix(l.rawDataKeyPrefix); err = iter.Next() {
 		// reset the rindex/lindex here
@@ -572,6 +604,10 @@ func (l *LList) indexValueN(v []byte, n int64) (realidxs []float64, err error) {
 			realidxs = append(realidxs, DecodeFloat64(iter.Key()[len(l.rawDataKeyPrefix):]))
 			count++
 		}
+=======
+	if err := lst.txn.t.Set(ikey, val); err != nil {
+		return -1, err
+>>>>>>> dev
 	}
 	return realidxs, err
 }
@@ -616,7 +652,11 @@ func (l *LList) indexValue(v []byte) (realidxs []float64, err error) {
 	if flag {
 		return realidxs, nil
 	}
+<<<<<<< HEAD
 	return nil, ErrNotExist
+=======
+	return lst.txn.t.Set(MetaKey(lst.txn.db, lst.key), meta)
+>>>>>>> dev
 }
 
 // scan return objects between [left, right) range

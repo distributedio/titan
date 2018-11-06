@@ -21,7 +21,7 @@ func gcKey(key []byte) []byte {
 }
 
 func gc(txn *Transaction, dataKey []byte) error {
-	return txn.txn.Set(gcKey(dataKey), []byte{0})
+	return txn.t.Set(gcKey(dataKey), []byte{0})
 }
 
 func StartGC(s *RedisStore) error {

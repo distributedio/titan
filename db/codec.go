@@ -6,6 +6,32 @@ import (
 	"math"
 )
 
+func EncodeObject(obj *Object) []byte {
+	b := make([]byte, 42, 42)
+	copy(b, obj.ID[:16])
+	binary.BigEndian.PutUint64(b[16:], uint64(obj.CreatedAt))
+	binary.BigEndian.PutUint64(b[24:], uint64(obj.UpdatedAt))
+	binary.BigEndian.PutUint64(b[32:], uint64(obj.ExpireAt))
+	b[40], b[41] = byte(obj.Type), byte(obj.Encoding)
+	return b
+}
+
+func DecodeObject(b []byte) (obj *Object, err error) {
+	if len(b) < ObjectEncodingLength {
+		return nil, ErrInvalidLength
+	}
+	obj = &Object{
+		ID:        make([]byte, 16, 16),
+		CreatedAt: int64(binary.BigEndian.Uint64(b[16:])),
+		UpdatedAt: int64(binary.BigEndian.Uint64(b[24:])),
+		ExpireAt:  int64(binary.BigEndian.Uint64(b[32:])), // 40 bit fields
+		Type:      ObjectType(b[40]),                      // 41 bit
+		Encoding:  ObjectEncoding(b[41]),                  // 42 bit
+	}
+	copy(obj.ID, b[0:16])
+	return obj, nil
+}
+
 func EncodeInt64(v int64) []byte {
 	var buf bytes.Buffer
 

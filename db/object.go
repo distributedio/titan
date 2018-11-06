@@ -8,6 +8,8 @@ import (
 const (
 	// Separator of the key segment
 	Separator = ":"
+	// ObjectEncodingLength indecate current object marshaled length
+	ObjectEncodingLength = 42
 )
 
 // ObjectEncoding is the encoding type of an object

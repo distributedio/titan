@@ -14,6 +14,7 @@ import (
 	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
 func main() {
@@ -57,12 +58,19 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	msvr := metrics.NewServer(&config.Status)
 	serv := thanos.New(&context.Server{
 		RequirePass: config.Server.Auth,
 		Store:       store,
 	})
 
+	// cont := continuous.New(continuous.UseLogger(debug), continuous.PidFile(config.PIDFileName))
+
 	if err := serv.ListenAndServe(config.Server.Listen); err != nil {
+		log.Fatalln(err)
+	}
+
+	if err := msvr.ListenAndServe(config.Status.Listen); err != nil {
 		log.Fatalln(err)
 	}
 }

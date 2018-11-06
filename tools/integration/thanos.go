@@ -38,7 +38,7 @@ func Start() {
 	}
 
 	svr = thanos.New(&context.Server{
-		RequirePass: cfg.Listen,
+		RequirePass: cfg.Auth,
 		Store:       store,
 	})
 	err = svr.ListenAndServe(cfg.Listen)

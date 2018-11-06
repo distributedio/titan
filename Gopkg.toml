@@ -29,13 +29,23 @@
   go-tests = true
   unused-packages = true
 
+
 [[constraint]]
-  version="=v2.0.3"
+  version="=v2.1.0-beta"
   name = "github.com/pingcap/tidb"
 
 [[override]]
   name = "github.com/pingcap/tipb"
-  revision = "2d5073e5521a10f8db2adc0eaab2c46ca0a151d9"
+  revision = "015341a07dc30de16a7cca0fc77231ccacc4b397"
+
+[[override]]
+  name = "golang.org/x/sys"
+  revision = "master"
+
+[[override]]
+  name = "github.com/pingcap/pd"
+  #revision = "ea6597638eb7f3d7d50248b90e60888352ac8e85"
+  version="=v2.1.0-beta"
 
 [[override]]
   name = "google.golang.org/grpc"
@@ -43,10 +53,3 @@
   version = "=1.7.5"
 
 
-
-
-
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/shafreeck/retry"

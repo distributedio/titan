@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/thanos/db/store"
 )
 
@@ -56,8 +57,8 @@ type RedisStore struct {
 	store.Storage
 }
 
-func Open(addr string) (*RedisStore, error) {
-	s, err := store.Open(addr)
+func Open(conf *conf.Tikv) (*RedisStore, error) {
+	s, err := store.Open(conf.PdAddrs)
 	if err != nil {
 		return nil, err
 	}

@@ -327,6 +327,8 @@ type SessionVars struct {
 	EnableStreaming bool
 
 	writeStmtBufs WriteStmtBufs
+
+	DisableTxnAutoRetry bool
 }
 
 // NewSessionVars creates a session vars object.
@@ -353,7 +355,7 @@ func NewSessionVars() *SessionVars {
 		DistSQLScanConcurrency:     DefDistSQLScanConcurrency,
 		MaxChunkSize:               DefMaxChunkSize,
 		DMLBatchSize:               DefDMLBatchSize,
-		MemQuotaQuery:              DefTiDBMemQuotaQuery,
+		MemQuotaQuery:              config.GetGlobalConfig().MemQuotaQuery,
 		MemQuotaHashJoin:           DefTiDBMemQuotaHashJoin,
 		MemQuotaMergeJoin:          DefTiDBMemQuotaMergeJoin,
 		MemQuotaSort:               DefTiDBMemQuotaSort,
@@ -362,6 +364,7 @@ func NewSessionVars() *SessionVars {
 		MemQuotaIndexLookupJoin:    DefTiDBMemQuotaIndexLookupJoin,
 		MemQuotaNestedLoopApply:    DefTiDBMemQuotaNestedLoopApply,
 		OptimizerSelectivityLevel:  DefTiDBOptimizerSelectivityLevel,
+		DisableTxnAutoRetry:        DefTiDBDisableTxnAutoRetry,
 	}
 	var enableStreaming string
 	if config.GetGlobalConfig().EnableStreaming {
@@ -541,7 +544,7 @@ func (s *SessionVars) SetSystemVar(name string, val string) error {
 	case TiDBMaxChunkSize:
 		s.MaxChunkSize = tidbOptPositiveInt32(val, DefMaxChunkSize)
 	case TIDBMemQuotaQuery:
-		s.MemQuotaQuery = tidbOptInt64(val, DefTiDBMemQuotaQuery)
+		s.MemQuotaQuery = tidbOptInt64(val, config.GetGlobalConfig().MemQuotaQuery)
 	case TIDBMemQuotaHashJoin:
 		s.MemQuotaHashJoin = tidbOptInt64(val, DefTiDBMemQuotaHashJoin)
 	case TIDBMemQuotaMergeJoin:
@@ -562,6 +565,11 @@ func (s *SessionVars) SetSystemVar(name string, val string) error {
 		s.EnableStreaming = TiDBOptOn(val)
 	case TiDBOptimizerSelectivityLevel:
 		s.OptimizerSelectivityLevel = tidbOptPositiveInt32(val, DefTiDBOptimizerSelectivityLevel)
+	case TiDBDisableTxnAutoRetry:
+		s.DisableTxnAutoRetry = TiDBOptOn(val)
+	case TiDBDDLReorgWorkerCount:
+		workerCnt := tidbOptPositiveInt32(val, DefTiDBDDLReorgWorkerCount)
+		SetDDLReorgWorkerCounter(int32(workerCnt))
 	}
 	s.systems[name] = val
 	return nil

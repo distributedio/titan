@@ -22,7 +22,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	serv := thanos.New(&context.Server{
+	serv := thanos.New(&context.ServerContext{
 		RequirePass: "",
 		Store:       store,
 	})

@@ -21,7 +21,7 @@ coverage:
 	go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
 
 build:
-	go build -ldflags '$(LDFLAGS)' -o ./bin/thanos
+	go build -ldflags '$(LDFLAGS)' -o thanos ./bin/thanos/
 
 clean:
 	rm -f ./bin/thanos

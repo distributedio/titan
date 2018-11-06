@@ -29,32 +29,49 @@
   go-tests = true
   unused-packages = true
 
-
-[[constraint]]
-  version="=v2.0.8"
-  name = "github.com/pingcap/tidb"
-
-[[override]]
-  name = "github.com/sirupsen/logrus"
-  revision = "3bcb09397d6d88e7676a9bc8433ca11ba5304837"
-
-[[override]]
-  name = "github.com/coreos/etcd"
-  version = "=3.2.14"
-
-[[override]]
-  name = "golang.org/x/sys"
-  revision = "master"
-
+# overrite according to tidb, this resolves conflicts between tidb and go-grpc-middleware
 [[override]]
   name = "google.golang.org/grpc"
   source = "https://github.com/grpc/grpc-go.git"
   version = "=1.7.5"
 
+# overrite according to tidb, this should have been constraint by tidb
 [[override]]
   name = "github.com/pingcap/kvproto"
   revision = "2cf2492c337c4d0281d8ead8686d47764f1df6c4"
 
+# overrite according to tidb, this should have been constraint by tidb
 [[override]]
   name = "github.com/pingcap/tipb"
   revision = "2d5073e5521a10f8db2adc0eaab2c46ca0a151d9"
+
+[[constraint]]
+  version="=v2.0.8"
+  name = "github.com/pingcap/tidb"
+
+# logrus is imported by multiple packages, we should override to a work version
+# The 'sirupsen' should not be 'Sirupsen' in all importing packages 
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  revision = "3bcb09397d6d88e7676a9bc8433ca11ba5304837"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/gomodule/redigo"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/arthurkiller/rollingWriter"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shafreeck/configo"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shafreeck/retry"
+
+# imported by autotest
+[[constraint]]
+  branch = "master"
+  name = "github.com/stretchr/testify"

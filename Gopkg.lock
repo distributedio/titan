@@ -10,12 +10,12 @@
   revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
 
 [[projects]]
-  digest = "1:e8322110f5aecdc7d07b082e63af14e4103620cf58c078d2a1c7f5286a687160"
+  branch = "master"
+  digest = "1:9b954f4198ee2bbf72ca4a7ca88de7c671144ce81b6ba5ca576b8ae728106211"
   name = "github.com/arthurkiller/rollingWriter"
   packages = ["."]
   pruneopts = "UT"
-  revision = "969c1c31a88d64e88195f2c6bda9ba54c8028a55"
-  version = "v1.0.0"
+  revision = "e7449b1b067c688765230649996e78374d95cdc3"
 
 [[projects]]
   branch = "master"
@@ -95,15 +95,12 @@
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
-  digest = "1:38ec74012390146c45af1f92d46e5382b50531247929ff3a685d2b2be65155ac"
+  branch = "master"
+  digest = "1:ef3cead820d3cea3e6f5109c4a69a9459c68514b07b0088182a19bd45a8d3400"
   name = "github.com/gomodule/redigo"
-  packages = [
-    "internal",
-    "redis",
-  ]
+  packages = ["redis"]
   pruneopts = "UT"
-  revision = "9c11da706d9b7902c6da69c592f75637793fe121"
-  version = "v2.0.0"
+  revision = "e8fc0692a7e26a05b06517348ed466349062eb47"
 
 [[projects]]
   branch = "master"
@@ -423,12 +420,12 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:18752d0b95816a1b777505a97f71c7467a8445b8ffb55631a7bf779f6ba4fa83"
+  branch = "master"
+  digest = "1:73b1ad32a3a4f137684d3b16eb2ef86f6348d60903c3893bfff88b46ff9a0bdc"
   name = "github.com/stretchr/testify"
   packages = ["assert"]
   pruneopts = "UT"
-  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
-  version = "v1.2.2"
+  revision = "04af85275a5c7ac09d16bb3b9b2e751ed45154e5"
 
 [[projects]]
   digest = "1:8f41bbca0d6435bb54d7c090336f7693942cda30f9126eaf3959b8df48721ac3"
@@ -489,11 +486,12 @@
   revision = "10aee181995363b41f712a55844a0dd52ea04646"
 
 [[projects]]
-  digest = "1:4b487c782bc804d994e91adbd3d2a8a77a482671efd87b2fde0805adb01a39c0"
+  branch = "master"
+  digest = "1:e2503f590982f6c0cc06abd7b94b17ded6804bada8eb79af753b5fb676dfdecc"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "master"
+  revision = "3a76605856fddce5718553cbb8bd50ca492a7274"
 
 [[projects]]
   digest = "1:2ec697e99933960cd1fe26bb527ff691e627fe04d72f697c1abb5f815ee90463"

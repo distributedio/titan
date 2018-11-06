@@ -1,12 +1,7 @@
-# Thanos borns from the Titan
+# Thanos [![build status](https://gitlab.meitu.com/platform/thanos/badges/dev/build.svg)](https://gitlab.meitu.com/platform/thanos/commits/dev) [![coverage report](https://gitlab.meitu.com/platform/thanos/badges/dev/coverage.svg)](https://gitlab.meitu.com/platform/thanos/commits/dev)
+An distributed implementation of Redis compatible layer over TiKV
 
-This is an experiment project to verify my design ideas.
-
-## Features
-
-* distributed transactions
-* expire on arbitrary keys
-* delete complex data structure with gc
+Visit [Thanos](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=29745824) for more informations.
 
 ## Commands
 
@@ -50,15 +45,15 @@ This is an experiment project to verify my design ideas.
 - [x] exists
 - [x] expire
 - [x] expireat
-- [ ] object 
-- [ ] pexpire
-- [ ] pexpireat
-- [ ] ttl
-- [ ] pttl
-- [ ] randomkey
+- [x] object 
+- [x] pexpire
+- [x] pexpireat
+- [x] ttl
+- [x] pttl
+- [x] randomkey
 - [ ] touch 
-- [ ] keys
-- [ ] scan
+- [x] keys
+- [x] scan
 - [ ] unlink
 
 ### Strings
@@ -72,7 +67,7 @@ This is an experiment project to verify my design ideas.
 - [ ] incrby
 - [ ] decr
 - [ ] decrby
-- [ ] append
+- [x] append
 - [ ] bitcount
 - [ ] bitfield
 - [ ] bitop
@@ -88,53 +83,53 @@ This is an experiment project to verify my design ideas.
 - [ ] setnx
 - [ ] setrange
 
-### Lists
+### List
 
-- [x] lpush
-- [x] lpop
 - [x] lrange
 - [x] linsert
-- [ ] blpop
-- [ ] brpop
-- [ ] brpoplpush
-- [ ] lindex
-- [ ] llen
-- [ ] lpushhx
-- [ ] lrem
-- [ ] lset
-- [ ] ltrim
+- [x] lindex
+- [x] llen
+- [x] lrem
+- [x] lset
+- [x] ltrim
+- [x] lpush
+- [x] lpop
+- [x] lpushhx
 - [ ] rpop
 - [ ] rpoplpush
 - [ ] rpush
 - [ ] rpushhx
+- [ ] blpop
+- [ ] brpop
+- [ ] brpoplpush
 
 ### Hashes
-- [x] hset
-- [x] hget
-- [x] hgetall
-- [x] hdel
-- [x] hexists
-- [x] hincrby
-- [x] hincrbyfloat
-- [x] hkeys
-- [x] hlen
-- [x] hmget
-- [x] hmset
+- [ ] hset
+- [ ] hget
+- [ ] hgetall
+- [ ] hdel
+- [ ] hexists
+- [ ] hincrby
+- [ ] hincrbyfloat
+- [ ] hkeys
+- [ ] hlen
+- [ ] hmget
+- [ ] hmset
 - [ ] hscan
-- [x] hsetnx
-- [x] hstrlen
-- [x] hvals
+- [ ] hsetnx
+- [ ] hstrlen
+- [ ] hvals
 
 ### Sets
 
-- [x] sadd
+- [ ] sadd
 - [ ] scard
 - [ ] sdiff
 - [ ] sdiffstore
 - [ ] sinter
 - [ ] sinterstore
 - [ ] sismember
-- [x] smembers
+- [ ] smembers
 - [ ] smove
 - [ ] spop
 - [ ] srandmember

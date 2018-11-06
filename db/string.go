@@ -19,7 +19,7 @@ func GetString(txn *Transaction, key []byte) (*String, error) {
 	str := &String{txn: txn, key: key}
 
 	mkey := MetaKey(txn.db, key)
-	meta, err := txn.txn.Get(mkey)
+	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			now := Now()
@@ -70,5 +70,5 @@ func (s *String) updateMeta() error {
 	if err != nil {
 		return err
 	}
-	return s.txn.txn.Set(MetaKey(s.txn.db, s.key), meta)
+	return s.txn.t.Set(MetaKey(s.txn.db, s.key), meta)
 }

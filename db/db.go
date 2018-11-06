@@ -10,6 +10,11 @@ import (
 )
 
 var (
+	// IsErrNotFound returns true if the key is not found, otherwise return false
+	IsErrNotFound = store.IsErrNotFound
+	// IsRetryableError returns true if the error is temporary and can be retried
+	IsRetryableError = store.IsRetryableError
+
 	// ErrTxnAlreadyBegin indicates that db is in a transaction now, you should not begin again
 	ErrTxnAlreadyBegin = errors.New("transaction has already been begun")
 	// ErrTxnNotBegin indicates that db is not in a transaction, and can not be commited or rollbacked
@@ -20,15 +25,15 @@ var (
 	ErrKeyNotFound = errors.New("key not found")
 	// ErrPrecision list index reach precision limitatin
 	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
+
+	ErrTxnNil           = errors.New("txn is nil")
+	ErrOutOfRange       = errors.New("error index/offset out of range")
+	ErrInvalidLength    = errors.New("error data length is invalid for unmarshaler")
+	ErrEncodingMismatch = errors.New("error object encoding type")
+	ErrInternal         = errors.New("error tikv internal")
 )
 
 type Iterator store.Iterator
-
-// IsErrNotFound returns true if the key is not found, otherwise return false
-var IsErrNotFound = store.IsErrNotFound
-
-// IsRetryableError returns true if the error is temporary and can be retried
-var IsRetryableError = store.IsRetryableError
 
 // BatchGetValues issue batch requests to get values
 func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {

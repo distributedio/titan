@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb/kv"
-	pb "gitlab.meitu.com/platform/titan/db/zlistproto"
 	"gitlab.meitu.com/platform/titan/monitor"
 )
 
@@ -15,66 +14,32 @@ const (
 	initIndex = 0x0
 )
 
-type List interface {
-	Index(n int64) (data []byte, err error)
-	Insert(pivot, v []byte, before bool) error
-	LPop() (data []byte, err error)
-	LPush(data ...[]byte) (err error)
-	RPop() (data []byte, err error)
-	RPush(data ...[]byte) (err error)
-	Range(left, right int64) (value [][]byte, err error)
-	LRem(v []byte, n int64) (int, error)
-	Set(n int64, data []byte) error
-	LTrim(start int64, stop int64) error
-	Length() int64
-	Destory() error
-}
-
-// NewList generate List objectm with auto reation, if zip is true, zipped list will be choose
-func NewList(txn Transaction, metaKey, dataKeyPrefix []byte, create, zip bool) (List, error) {
-	ts := CurrentTimestamp()
-	val, err := txn.Get(metaKey)
+// GetLList generate List objectm with auto reation, if zip is true, zipped list will be choose
+func GetLList(txn Transaction, key []byte) (*LList, error) {
+	ts := Now()
+	val, err := txn.t.Get(metaKey)
 	if err != nil {
-		if IsNotFound(err) && create { // error NotFound
+		if IsErrNotFound(err) && create { // error NotFound
 			obj := Object{
 				ExpireAt:  0,
 				CreatedAt: ts,
 				UpdatedAt: ts,
 				Type:      ObjectList,
-				ID:        GenerateObjectID(),
+				ID:        UUID(),
 				Encoding:  ObjectEncodingLinkedlist,
 			}
-			if zip {
-				obj.Encoding = ObjectEncodingZiplist
-				l := &ZList{
-					Object:     obj,
-					value:      pb.Zlistvalue{},
-					rawMetaKey: metaKey,
-					txn:        txn,
-				}
-
-				if b, err := l.Marshal(); err != nil {
-					return nil, err
-				} else {
-					if err := txn.Set(metaKey, b); err != nil {
-						return nil, err
-					}
-					return l, PutZList(txn, metaKey)
-				}
-			} else {
-				l := &LList{
-					LListMeta: LListMeta{
-						Object: obj,
-						Len:    0,
-						Lindex: initIndex,
-						Rindex: initIndex,
-					},
-					txn:        txn,
-					rawMetaKey: metaKey,
-				}
-				l.rawDataKeyPrefix = append(append(dataKeyPrefix, l.Object.ID...), ':')
-				return l, txn.Set(metaKey, l.Marshal())
+			l := &LList{
+				LListMeta: LListMeta{
+					Object: obj,
+					Len:    0,
+					Lindex: initIndex,
+					Rindex: initIndex,
+				},
+				txn:        txn,
+				rawMetaKey: metaKey,
 			}
+			l.rawDataKeyPrefix = append(append(dataKeyPrefix, l.Object.ID...), ':')
+			return l, txn.t.Set(metaKey, l.Marshal())
 		}
 		return nil, err
 	}
@@ -85,22 +50,12 @@ func NewList(txn Transaction, metaKey, dataKeyPrefix []byte, create, zip bool) (
 		return nil, err
 	}
 	if obj.Type != ObjectList {
-		return nil, ObjectTypeError
+		return nil, ErrObjectType
 	}
 	if obj.ExpireAt != 0 && obj.ExpireAt < ts && !create {
 		return nil, ErrNotExist
 	}
-	if obj.Encoding == ObjectEncodingZiplist {
-		// found last zlist object
-		l := &ZList{
-			rawMetaKey: metaKey,
-			txn:        txn,
-		}
-		if err = l.Unmarshal(obj, val); err != nil {
-			return nil, err
-		}
-		return l, nil
-	} else if obj.Encoding == ObjectEncodingLinkedlist {
+	if obj.Encoding == ObjectEncodingLinkedlist {
 		// found last list object
 		l := &LList{
 			txn:        txn,

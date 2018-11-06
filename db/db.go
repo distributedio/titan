@@ -10,11 +10,6 @@ import (
 )
 
 var (
-	// IsErrNotFound returns true if the key is not found, otherwise return false
-	IsErrNotFound = store.IsErrNotFound
-	// IsRetryableError returns true if the error is temporary and can be retried
-	IsRetryableError = store.IsRetryableError
-
 	// ErrTxnAlreadyBegin indicates that db is in a transaction now, you should not begin again
 	ErrTxnAlreadyBegin = errors.New("transaction has already been begun")
 	// ErrTxnNotBegin indicates that db is not in a transaction, and can not be commited or rollbacked
@@ -31,9 +26,20 @@ var (
 	ErrInvalidLength    = errors.New("error data length is invalid for unmarshaler")
 	ErrEncodingMismatch = errors.New("error object encoding type")
 	ErrInternal         = errors.New("error tikv internal")
+
+	// IsErrNotFound returns true if the key is not found, otherwise return false
+	IsErrNotFound = store.IsErrNotFound
+	// IsRetryableError returns true if the error is temporary and can be retried
+	IsRetryableError = store.IsRetryableError
 )
 
 type Iterator store.Iterator
+
+// IsOutOfRange return if error is ErrOutOfRange
+func IsOutOfRange(err error) bool { return err == ErrOutOfRange }
+
+// IsErrObjectType returns true if the key is type error , otherwise return false
+func IsErrObjectType(err error) bool { return err == ErrTypeMismatch }
 
 // BatchGetValues issue batch requests to get values
 func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
@@ -110,8 +116,13 @@ func (txn *Transaction) Rollback() error {
 }
 
 // List return a list object, a new list is created if the key dose not exist.
-func (txn *Transaction) List(key []byte) (*List, error) {
-	return GetList(txn, key)
+func (txn *Transaction) List(key []byte) (*LList, error) {
+	return GetLList(txn, key)
+}
+
+// List return a list object, a new list is created if the key dose not exist.
+func (txn *Transaction) ZList(key []byte) (ZList, error) {
+	return GetZList(txn, key)
 }
 
 // String return a string object

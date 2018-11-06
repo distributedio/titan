@@ -21,6 +21,14 @@ type client struct {
 	r      *bufio.Reader
 }
 
+func newClient(cliCtx *context.Client, s *Server, exec *command.Executor) *client {
+	return &client{
+		cliCtx: cliCtx,
+		server: s,
+		exec:   exec,
+	}
+}
+
 func (c *client) serve(conn net.Conn) error {
 	log.Println("serve conn")
 	c.conn = conn

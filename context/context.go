@@ -2,10 +2,15 @@ package context
 
 import (
 	"context"
+	"net"
 	"sync"
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
+)
+
+const (
+	DefaultNamespace = "default"
 )
 
 // Command releated context
@@ -35,6 +40,22 @@ type Client struct {
 	Commands []*Command
 
 	Done chan struct{}
+}
+
+func NewClient(id int64, conn net.Conn) *Client {
+	now := time.Now()
+	cli := &Client{
+		ID:            id,
+		Created:       now,
+		Updated:       now,
+		Namespace:     DefaultNamespace,
+		RemoteAddr:    conn.RemoteAddr().String(),
+		Authenticated: false,
+		Multi:         false,
+		Done:          make(chan struct{}),
+		Close:         conn.Close,
+	}
+	return cli
 }
 
 // Server is the runtime context of the server

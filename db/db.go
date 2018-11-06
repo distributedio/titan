@@ -29,7 +29,7 @@ var IsRetryableError = store.IsRetryableError
 
 // BatchGetValues issue batch requests to get values
 func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
-	return store.BatchGetValues(txn.txn, keys)
+	return store.BatchGetValues(txn.t, keys)
 }
 
 type DBID byte
@@ -78,8 +78,8 @@ func (rds *RedisStore) Close() error {
 
 // Transaction is the interface of store tranaction
 type Transaction struct {
-	txn store.Transaction
-	db  *DB
+	t  store.Transaction
+	db *DB
 }
 
 // Begin a transaction
@@ -88,17 +88,17 @@ func (db *DB) Begin() (*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Transaction{txn: txn, db: db}, nil
+	return &Transaction{t: txn, db: db}, nil
 }
 
 // Commit a transaction
 func (txn *Transaction) Commit(ctx context.Context) error {
-	return txn.txn.Commit(ctx)
+	return txn.t.Commit(ctx)
 }
 
 // Rollback a transaction
 func (txn *Transaction) Rollback() error {
-	return txn.txn.Rollback()
+	return txn.t.Rollback()
 }
 
 // List return a list object, a new list is created if the key dose not exist.
@@ -126,7 +126,7 @@ func (txn *Transaction) Set(key []byte) (*Set, error) {
 
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
-	return store.LockKeys(txn.txn, keys)
+	return store.LockKeys(txn.t, keys)
 }
 
 func MetaKey(db *DB, key []byte) []byte {

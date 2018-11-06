@@ -13,15 +13,18 @@ var (
 	// ErrTxnAlreadyBegin indicates that db is in a transaction now, you should not begin again
 	ErrTxnAlreadyBegin = errors.New("transaction has already been begun")
 	// ErrTxnNotBegin indicates that db is not in a transaction, and can not be commited or rollbacked
-	ErrTxnNotBegin  = errors.New("transaction dose not begin")
+	ErrTxnNotBegin = errors.New("transaction dose not begin")
+	// ErrTypeMismatch indicates object type of key is not as expect
 	ErrTypeMismatch = errors.New("type mismatch")
-	ErrKeyNotFound  = errors.New("key not found")
-	ErrFullSlot     = errors.New("list slot if full")
+	// ErrKeyNotFound key not exist
+	ErrKeyNotFound = errors.New("key not found")
+	// ErrPrecision list index reach precision limitatin
+	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
 )
 
 type Iterator store.Iterator
 
-//IsErrNotFound returns true if the key is not found, otherwise return false
+// IsErrNotFound returns true if the key is not found, otherwise return false
 var IsErrNotFound = store.IsErrNotFound
 
 // IsRetryableError returns true if the error is temporary and can be retried

@@ -1,7 +1,7 @@
-# Titan [![build status](https://gitlab.meitu.com/platform/thanos/badges/dev/build.svg)](https://gitlab.meitu.com/platform/thanos/commits/dev) [![coverage report](https://gitlab.meitu.com/platform/thanos/badges/dev/coverage.svg)](https://gitlab.meitu.com/platform/thanos/commits/dev)
+# Thanos [![build status](https://gitlab.meitu.com/platform/thanos/badges/dev/build.svg)](https://gitlab.meitu.com/platform/thanos/commits/dev) [![coverage report](https://gitlab.meitu.com/platform/thanos/badges/dev/coverage.svg)](https://gitlab.meitu.com/platform/thanos/commits/dev)
 An distributed implementation of Redis compatible layer over TiKV
 
-Visit [Titan](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=29745824) for more informations.
+Visit [Thanos](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=29745824) for more informations.
 
 ## Commands
 

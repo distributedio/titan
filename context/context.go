@@ -19,8 +19,8 @@ type Command struct {
 	Args []string
 }
 
-// Client is the runtime context of a client
-type Client struct {
+// ClientContext is the runtime context of a client
+type ClientContext struct {
 	DB            *db.DB
 	Authenticated bool   // Client has be authenticated
 	Namespace     string // Namespace of database
@@ -42,9 +42,9 @@ type Client struct {
 	Done chan struct{}
 }
 
-func NewClient(id int64, conn net.Conn) *Client {
+func NewClientContext(id int64, conn net.Conn) *ClientContext {
 	now := time.Now()
-	cli := &Client{
+	cli := &ClientContext{
 		ID:            id,
 		Created:       now,
 		Updated:       now,
@@ -58,8 +58,8 @@ func NewClient(id int64, conn net.Conn) *Client {
 	return cli
 }
 
-// Server is the runtime context of the server
-type Server struct {
+// ServerContext is the runtime context of the server
+type ServerContext struct {
 	RequirePass string
 	Store       *db.RedisStore
 	Monitors    sync.Map
@@ -70,12 +70,12 @@ type Server struct {
 // Context combines the client and server context
 type Context struct {
 	context.Context
-	Client *Client
-	Server *Server
+	Client *ClientContext
+	Server *ServerContext
 }
 
 // New a context
-func New(c *Client, s *Server) *Context {
+func New(c *ClientContext, s *ServerContext) *Context {
 	return &Context{Context: context.Background(), Client: c, Server: s}
 }
 

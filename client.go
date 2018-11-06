@@ -14,14 +14,14 @@ import (
 )
 
 type client struct {
-	cliCtx *context.Client
+	cliCtx *context.ClientContext
 	server *Server
 	conn   net.Conn
 	exec   *command.Executor
 	r      *bufio.Reader
 }
 
-func newClient(cliCtx *context.Client, s *Server, exec *command.Executor) *client {
+func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
 	return &client{
 		cliCtx: cliCtx,
 		server: s,

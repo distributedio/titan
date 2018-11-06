@@ -26,7 +26,7 @@ func Client(ctx *Context) {
 		var lines []string
 		clients := &ctx.Server.Clients
 		clients.Range(func(k, v interface{}) bool {
-			client := v.(*context.Client)
+			client := v.(*context.ClientContext)
 			age := now.Sub(client.Created) / time.Second
 			idle := now.Sub(client.Updated) / time.Second
 			flags := "N"
@@ -135,7 +135,7 @@ func Client(ctx *Context) {
 		killed := 0
 		closeSelf := false
 		ctx.Server.Clients.Range(func(k, v interface{}) bool {
-			cli := v.(*context.Client)
+			cli := v.(*context.ClientContext)
 			if id != 0 && cli.ID != id {
 				return true
 			}

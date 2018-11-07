@@ -23,7 +23,7 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	hash := &Hash{txn: txn, key: key}
 
 	mkey := MetaKey(txn.db, key)
-	meta, err := txn.txn.Get(mkey)
+	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			now := Now()
@@ -67,7 +67,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 		if val == nil {
 			continue
 		}
-		if err := hash.txn.txn.Delete(keys[i]); err != nil {
+		if err := hash.txn.t.Delete(keys[i]); err != nil {
 			return 0, err
 		}
 		num++
@@ -91,7 +91,7 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 	ikey := hashItemKey(dkey, field)
 	exist := true
 
-	_, err := hash.txn.txn.Get(ikey)
+	_, err := hash.txn.t.Get(ikey)
 	if err != nil {
 		if !IsErrNotFound(err) {
 			return 0, err
@@ -99,7 +99,7 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 		exist = false
 	}
 
-	if err := hash.txn.txn.Set(ikey, value); err != nil {
+	if err := hash.txn.t.Set(ikey, value); err != nil {
 		return 0, err
 	}
 
@@ -118,14 +118,14 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 
-	_, err := hash.txn.txn.Get(ikey)
+	_, err := hash.txn.t.Get(ikey)
 	if err != nil {
 		if !IsErrNotFound(err) {
 			return 0, err
 		}
 		return 0, nil
 	}
-	if err := hash.txn.txn.Set(ikey, value); err != nil {
+	if err := hash.txn.t.Set(ikey, value); err != nil {
 		return 0, err
 	}
 
@@ -140,7 +140,7 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 func (hash *Hash) HGet(field []byte) ([]byte, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	val, err := hash.txn.txn.Get(ikey)
+	val, err := hash.txn.t.Get(ikey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil
@@ -154,7 +154,7 @@ func (hash *Hash) HGet(field []byte) ([]byte, error) {
 func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := append(dkey, ':')
-	iter, err := hash.txn.txn.Seek(prefix)
+	iter, err := hash.txn.t.Seek(prefix)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,7 +177,7 @@ func (hash *Hash) updateMeta() error {
 	if err != nil {
 		return err
 	}
-	return hash.txn.txn.Set(MetaKey(hash.txn.db, hash.key), meta)
+	return hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
 }
 
 // Destory the hash store
@@ -189,7 +189,7 @@ func (hash *Hash) Destory() error {
 func (hash *Hash) HExists(field []byte) (bool, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	if _, err := hash.txn.txn.Get(ikey); err != nil {
+	if _, err := hash.txn.t.Get(ikey); err != nil {
 		if IsErrNotFound(err) {
 			return false, nil
 		}
@@ -205,7 +205,7 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	val, err := hash.txn.txn.Get(ikey)
+	val, err := hash.txn.t.Get(ikey)
 	if err != nil && !IsErrNotFound(err) {
 		return 0, err
 	}
@@ -219,7 +219,7 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 	n += v
 
 	val = []byte(strconv.FormatInt(n, 10))
-	if err := hash.txn.txn.Set(ikey, val); err != nil {
+	if err := hash.txn.t.Set(ikey, val); err != nil {
 		return 0, err
 	}
 
@@ -240,7 +240,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	val, err := hash.txn.txn.Get(ikey)
+	val, err := hash.txn.t.Get(ikey)
 	if err != nil && !IsErrNotFound(err) {
 		return 0, err
 	}
@@ -254,7 +254,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	n += v
 
 	val = []byte(strconv.FormatFloat(n, 'f', -1, 64))
-	if err := hash.txn.txn.Set(ikey, val); err != nil {
+	if err := hash.txn.t.Set(ikey, val); err != nil {
 		return 0, err
 	}
 
@@ -294,7 +294,7 @@ func (hash *Hash) HMSet(fields [][]byte, values [][]byte) error {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for i := range fields {
 		ikey := hashItemKey(dkey, fields[i])
-		if err := hash.txn.txn.Set(ikey, values[i]); err != nil {
+		if err := hash.txn.t.Set(ikey, values[i]); err != nil {
 			return err
 		}
 		if oldValues[i] == nil {

@@ -29,7 +29,7 @@ package variable
 // TiDB system variable names that only in session scope.
 const (
 	// tidb_snapshot is used for reading history data, the default value is empty string.
-	// When the value is set to a datetime string like '2017-11-11 20:20:20', the session reads history data of that time.
+	// The value can be a datetime string like '2017-11-11 20:20:20' or a tso string. When this variable is set, the session reads history data of that time.
 	TiDBSnapshot = "tidb_snapshot"
 
 	// tidb_import_data is used for loading data from a dump file, to speed up the loading process.
@@ -150,6 +150,12 @@ const (
 	// tidb_hash_join_concurrency is used for hash join executor.
 	// The hash join outer executor starts multiple concurrent join workers to probe the hash table.
 	TiDBHashJoinConcurrency = "tidb_hash_join_concurrency"
+
+	// tidb_disable_txn_auto_retry disables transaction auto retry.
+	TiDBDisableTxnAutoRetry = "tidb_disable_txn_auto_retry"
+
+	// tidb_ddl_reorg_worker_cnt defines the count of ddl reorg workers.
+	TiDBDDLReorgWorkerCount = "tidb_ddl_reorg_worker_cnt"
 )
 
 // Default TiDB system variable values.
@@ -171,7 +177,6 @@ const (
 	DefCurretTS                      = 0
 	DefMaxChunkSize                  = 1024
 	DefDMLBatchSize                  = 20000
-	DefTiDBMemQuotaQuery             = 32 << 30 // 32GB.
 	DefTiDBMemQuotaHashJoin          = 32 << 30 // 32GB.
 	DefTiDBMemQuotaMergeJoin         = 32 << 30 // 32GB.
 	DefTiDBMemQuotaSort              = 32 << 30 // 32GB.
@@ -182,9 +187,15 @@ const (
 	DefTiDBGeneralLog                = 0
 	DefTiDBHashJoinConcurrency       = 5
 	DefTiDBOptimizerSelectivityLevel = 0
+	DefTiDBDisableTxnAutoRetry       = false
+	DefTiDBDDLReorgWorkerCount       = 16
 )
 
 // Process global variables.
 var (
 	ProcessGeneralLog uint32
+	// DDLSlowOprThreshold is the threshold for ddl slow operations, uint is millisecond.
+	DDLSlowOprThreshold    uint32 = 300
+	ddlReorgWorkerCounter  int32  = DefTiDBDDLReorgWorkerCount
+	maxDDLReorgWorkerCount int32  = 128
 )

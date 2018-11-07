@@ -1,6 +1,8 @@
 package store
 
 import (
+	"strings"
+
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
 )
@@ -10,6 +12,9 @@ type Transaction kv.Transaction
 type Iterator kv.Iterator
 
 func Open(addrs string) (r Storage, e error) {
+	if strings.Contains(addrs, MockAddr) {
+		return MockOpen(addrs)
+	}
 	return tikv.Driver{}.Open(addrs)
 }
 

@@ -25,13 +25,11 @@ func main() {
 	var confPath string
 
 	flag.BoolVar(&showVersion, "v", false, "Show Version")
-	//TODO  conf path
-	flag.StringVar(&confPath, "c", "../../conf/thanos.toml", "conf file path")
+	flag.StringVar(&confPath, "c", "conf/thanos.toml", "conf file path")
 	flag.Parse()
 
 	if showVersion {
-		//TODO
-		// server.PrintVersionInfo()
+		thanos.PrintVersionInfo()
 		return
 	}
 

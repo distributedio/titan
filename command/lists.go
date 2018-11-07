@@ -120,7 +120,7 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	err = lst.Insert(pivot, value, after)
 	if err != nil {
 		if err == db.ErrPrecision {
-			return nil, errors.New("list slot is full")
+			return nil, err
 		}
 		return nil, errors.New("ERR syntax error")
 	}

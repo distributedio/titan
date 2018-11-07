@@ -205,22 +205,6 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 	if iter.Valid() && iter.Key().HasPrefix(prefix) {
 		return iter.Key()[len(prefix):], nil
 	}
-
-	/* SeekReverse is not implemented by tikv 2.0.6
-	But it is in master branch now
-	// Seek <= mkey
-	iter, err = db.txn.SeekReverse(mkey)
-	if err != nil {
-		return nil, err
-	}
-
-	if iter.Valid() && iter.Key().HasPrefix(prefix) {
-		return iter.Key()[len(prefix):], nil
-	}
-	*/
-
-	// Return the first key if Seek got nothing until SeekReverse is implemented
-
 	first := make([]byte, len(prefix)+1)
 	copy(first, prefix)
 	iter, err = kv.txn.t.Seek(first)

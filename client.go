@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/command"
@@ -20,7 +19,6 @@ type client struct {
 	conn   net.Conn
 	exec   *command.Executor
 	r      *bufio.Reader
-	cancel context.CancelFunc
 }
 
 func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
@@ -36,6 +34,8 @@ func (c *client) serve(conn net.Conn) error {
 	c.conn = conn
 	c.r = bufio.NewReader(conn)
 
+	rootCtx, rootCancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
+
 	// Use a separate goroutine to keep reading commands
 	// then we can detect a closed connection as soon as possible.
 	// It only works when the cmd channel is not blocked
@@ -47,10 +47,7 @@ func (c *client) serve(conn net.Conn) error {
 			cmd, err := c.readCommand()
 			if err != nil {
 				errc <- err
-				cancel := c.cancel
-				if cancel != nil {
-					cancel()
-				}
+				rootCancel()
 				return
 			}
 			cmdc <- cmd
@@ -83,14 +80,9 @@ func (c *client) serve(conn net.Conn) error {
 			In:   c.r,
 			Out:  c.conn,
 		}
-		innerCtx, cancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
+		innerCtx, cancel := context.WithCancel(rootCtx)
 		ctx.Context = innerCtx
 
-		// Make sure only cancel once
-		once := sync.Once{}
-		c.cancel = func() {
-			once.Do(cancel)
-		}
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
 			ctx.Out = ioutil.Discard
@@ -99,7 +91,7 @@ func (c *client) serve(conn net.Conn) error {
 			}
 		}
 		c.exec.Execute(ctx)
-		c.cancel()
+		cancel()
 	}
 }
 

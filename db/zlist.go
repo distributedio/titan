@@ -8,11 +8,11 @@ import (
 )
 
 // GetZList generate List objectm with auto reation, if zip is true, zipped list will be choose
-func GetZList(txn Transaction, metaKey []byte) (*ZList, error) {
+func GetZList(txn *Transaction, metaKey []byte) (*ZList, error) {
 	ts := Now()
 	val, err := txn.t.Get(metaKey)
 	if err != nil {
-		if IsErrNotFound(err) && create { // error NotFound
+		if IsErrNotFound(err) { // error NotFound
 			obj := Object{
 				ExpireAt:  0,
 				CreatedAt: ts,
@@ -35,7 +35,8 @@ func GetZList(txn Transaction, metaKey []byte) (*ZList, error) {
 				if err := txn.t.Set(metaKey, b); err != nil {
 					return nil, err
 				}
-				return l, PutZList(txn, metaKey)
+				//PutZList(txn, metaKey)
+				return l, nil
 			}
 		}
 		return nil, err
@@ -47,10 +48,10 @@ func GetZList(txn Transaction, metaKey []byte) (*ZList, error) {
 		return nil, err
 	}
 	if obj.Type != ObjectList {
-		return nil, ErrObjectType
+		return nil, ErrTypeMismatch
 	}
-	if obj.ExpireAt != 0 && obj.ExpireAt < ts && !create {
-		return nil, ErrNotExist
+	if IsExpired(obj, ts) {
+		return nil, ErrKeyNotFound
 	}
 	if obj.Encoding == ObjectEncodingZiplist {
 		// found last zlist object
@@ -63,7 +64,7 @@ func GetZList(txn Transaction, metaKey []byte) (*ZList, error) {
 		}
 		return l, nil
 	} else {
-		return nil, ObjectEncodingError
+		return nil, ErrEncodingMismatch
 	}
 }
 
@@ -72,7 +73,7 @@ type ZList struct {
 	Object
 	value      pb.Zlistvalue //[][]byte
 	rawMetaKey []byte
-	txn        Transaction
+	txn        *Transaction
 }
 
 // Marshal encode zlist into byte slice
@@ -90,7 +91,7 @@ func (l *ZList) zlistCommit() error {
 	if b, err := l.Marshal(); err != nil {
 		return err
 	} else {
-		return l.txn.Set(l.rawMetaKey, b)
+		return l.txn.t.Set(l.rawMetaKey, b)
 	}
 }
 
@@ -148,7 +149,7 @@ func (l *ZList) Insert(pivot, v []byte, before bool) error {
 	}
 	// if pivot not exist, index will reach len(l.valus.V)
 	if index == len(l.value.V) {
-		return ErrNotExist
+		return ErrKeyNotFound
 	}
 
 	if !before {
@@ -284,7 +285,7 @@ func (l *ZList) LRem(v []byte, n int64) (int, error) {
 // Destory the zlist
 func (l *ZList) Destory() error {
 	// delete the meta data
-	return l.txn.Delete(l.rawMetaKey)
+	return l.txn.t.Delete(l.rawMetaKey)
 }
 
 // TransferToLList create an llist and put values into llist from zlist, LList will inheritance

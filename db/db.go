@@ -121,7 +121,7 @@ func (txn *Transaction) List(key []byte) (*LList, error) {
 }
 
 // List return a list object, a new list is created if the key dose not exist.
-func (txn *Transaction) ZList(key []byte) (ZList, error) {
+func (txn *Transaction) ZList(key []byte) (*ZList, error) {
 	return GetZList(txn, key)
 }
 

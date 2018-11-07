@@ -127,7 +127,7 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 	if err != nil {
 		return count, err
 	}
-	for i, data := range dataBytes {
+	for _, data := range dataBytes {
 		if data != nil {
 			obj, err := DecodeObject(data)
 			if err != nil {

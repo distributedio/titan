@@ -7,6 +7,7 @@ import (
 	"gitlab.meitu.com/platform/thanos/tools/autotest/cmd"
 )
 
+//Abnormal check error message
 type Abnormal struct {
 	es   *cmd.ExampleString
 	el   *cmd.ExampleList
@@ -16,6 +17,7 @@ type Abnormal struct {
 	conn redis.Conn
 }
 
+//NewAbnormal create object
 func NewAbnormal() *Abnormal {
 	return &Abnormal{}
 }
@@ -43,6 +45,7 @@ func (an *Abnormal) Close() {
 	an.conn.Close()
 }
 
+//StringCase check string case
 func (an *Abnormal) StringCase(t *testing.T) {
 	an.el.LpushEqual(t, "lpush", "key")
 	//set
@@ -72,6 +75,7 @@ func (an *Abnormal) StringCase(t *testing.T) {
 	an.el.LpopEqual(t, "lpush")
 }
 
+//ListCase check list case
 func (an *Abnormal) ListCase(t *testing.T) {
 
 	an.es.SetEqual(t, "set", "v")
@@ -110,6 +114,7 @@ func (an *Abnormal) ListCase(t *testing.T) {
 	an.ek.DelEqual(t, 1, "set")
 }
 
+//KeyCase check key case
 func (an *Abnormal) KeyCase(t *testing.T) {
 	an.ek.DelEqualErr(t, "ERR wrong number of arguments for 'DEL' command")
 
@@ -127,10 +132,12 @@ func (an *Abnormal) KeyCase(t *testing.T) {
 	an.ek.TTLEqualErr(t, "ERR wrong number of arguments for 'TTL' command", "heng", "heng")
 }
 
+//SystemCase check system case
 func (an *Abnormal) SystemCase(t *testing.T) {
 	an.ess.PingEqualErr(t, "ERR wrong number of arguments for 'PING' command", "ping", "hello", "fuck")
 }
 
+//MultiCase check multi case
 func (an *Abnormal) MultiCase(t *testing.T) {
 
 	an.em.MultiEqualErr(t, "ERR wrong number of arguments for 'MULTI' command", "he", "he")

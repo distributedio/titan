@@ -8,11 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//ExampleString verify the string command
 type ExampleString struct {
 	values map[string]string
 	conn   redis.Conn
 }
 
+//NewExampleString create new string object
 func NewExampleString(conn redis.Conn) *ExampleString {
 	return &ExampleString{
 		values: make(map[string]string),
@@ -20,6 +22,7 @@ func NewExampleString(conn redis.Conn) *ExampleString {
 	}
 }
 
+//SetEqual verify that the return value of the set operation is correct
 func (es *ExampleString) SetEqual(t *testing.T, key string, value string) {
 	es.values[key] = value
 	reply, err := redis.String(es.conn.Do("SET", key, value))
@@ -30,22 +33,26 @@ func (es *ExampleString) SetEqual(t *testing.T, key string, value string) {
 	assert.NoError(t, err)
 }
 
+//GetEqual verify that the return value of the get operation is correct
 func (es *ExampleString) GetEqual(t *testing.T, key string) {
 	data, err := redis.Bytes(es.conn.Do("GET", key))
 	assert.Equal(t, es.values[key], string(data))
 	assert.NoError(t, err)
 }
 
+//SetEqualErr verify that the return value of the set operation is correct
 func (es *ExampleString) SetEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("set", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//GetEqualErr verify that the return value of the set operation is correct
 func (es *ExampleString) GetEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("get", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//AppendEqual verify that the return value of the append operation is correct
 func (es *ExampleString) AppendEqual(t *testing.T, key string, value string) {
 	if v, ok := es.values[key]; ok {
 		es.values[key] = v + value
@@ -60,12 +67,13 @@ func (es *ExampleString) AppendEqual(t *testing.T, key string, value string) {
 	assert.NoError(t, err)
 }
 
-//TODO
+//AppendEqualErr TODO
 func (es *ExampleString) AppendEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("append", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//IncrEqual verify that the return value of the incr operation is correct
 func (es *ExampleString) IncrEqual(t *testing.T, key string) {
 	var vi int
 	if v, ok := es.values[key]; ok {
@@ -81,11 +89,13 @@ func (es *ExampleString) IncrEqual(t *testing.T, key string) {
 	assert.NoError(t, err)
 }
 
+//IncrEqualErr verify that the return value of the incr operation is correct
 func (es *ExampleString) IncrEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("incr", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//StrlenEqual verify that the return value of the strlen operation is correct
 func (es *ExampleString) StrlenEqual(t *testing.T, key string) {
 	var vi int
 	if v, ok := es.values[key]; ok {
@@ -98,11 +108,13 @@ func (es *ExampleString) StrlenEqual(t *testing.T, key string) {
 	assert.NoError(t, err)
 }
 
+//StrlenEqualErr verify that the return value of the strlen operation is correct
 func (es *ExampleString) StrlenEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("strlen", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//MGetEqual verify that the return value of the mget operation is correct
 func (es *ExampleString) MGetEqual(t *testing.T, args ...string) {
 	as := make([]interface{}, len(args))
 	for i, a := range args {
@@ -118,11 +130,14 @@ func (es *ExampleString) MGetEqual(t *testing.T, args ...string) {
 		}
 	}
 }
+
+//MGetEqualErr verify that the return value of the mget operation is correct
 func (es *ExampleString) MGetEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("Mget", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//MSetEqual verify that the return value of the mset operation is correct
 func (es *ExampleString) MSetEqual(t *testing.T, args ...string) {
 	as := make([]interface{}, len(args))
 	for i := 0; i < len(args); i = i + 2 {
@@ -139,6 +154,7 @@ func (es *ExampleString) MSetEqual(t *testing.T, args ...string) {
 	}
 }
 
+//MSetEqualErr verify that the return value of the mset operation is correct
 func (es *ExampleString) MSetEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := es.conn.Do("Mset", args)
 	assert.EqualError(t, err, errValue)

@@ -9,6 +9,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+//AutoClient check redis comman
 type AutoClient struct {
 	es *cmd.ExampleString
 	el *cmd.ExampleList
@@ -20,10 +21,12 @@ type AutoClient struct {
 	conn redis.Conn
 }
 
+//NewAutoClient creat auto client
 func NewAutoClient() *AutoClient {
 	return &AutoClient{}
 }
 
+//Start run client
 func (ac *AutoClient) Start(addr string) {
 	// ac.pool = newPool(addr)
 	conn, err := redis.Dial("tcp", addr)
@@ -42,11 +45,13 @@ func (ac *AutoClient) Start(addr string) {
 	ac.em = cmd.NewExampleMulti(conn)
 }
 
+//Close shut client
 func (ac *AutoClient) Close() {
 	// ac.pool.Close()
 	ac.conn.Close()
 }
 
+//StringCase check string case
 //TODO
 func (ac *AutoClient) StringCase(t *testing.T) {
 	ac.es.SetEqual(t, "key-set", "value")
@@ -60,6 +65,7 @@ func (ac *AutoClient) StringCase(t *testing.T) {
 	ac.es.StrlenEqual(t, "heng")
 }
 
+//ListCase check list case
 //TODO
 func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LpushEqual(t, "key-list", "v1", "v2", "v3", "v4")
@@ -72,15 +78,16 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LpopEqual(t, "key-list-l")
 }
 
+//KeyCase check key case
 //TODO
 func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.TTLEqual(t, "key-set", -1)
-	ac.ek.RandomKeyqual(t)
+	ac.ek.RandomKeyEqual(t)
 	ac.ek.ScanEqual(t, "", 3)
 	ac.ek.ExistsEqual(t, 3, "key-set", "incr", "foo", "append")
 	ac.ek.DelEqual(t, 3, "key-set", "incr", "foo", "append")
 	ac.ek.TTLEqual(t, "key-set", -2)
-	ac.ek.RandomKeyqual(t)
+	ac.ek.RandomKeyEqual(t)
 	ac.ek.ScanEqual(t, "", 0)
 
 	ac.es.SetEqual(t, "key-set", "value")
@@ -91,6 +98,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ExpireEqual(t, "key-set", 0, 0)
 }
 
+//SystemCase check system case
 func (ac *AutoClient) SystemCase(t *testing.T) {
 	//auth
 	ac.AuthEqual(t, "test-1541501672-1-98d9882bb7a8ba2c16974e")
@@ -98,7 +106,7 @@ func (ac *AutoClient) SystemCase(t *testing.T) {
 	ac.PingEqual(t)
 }
 
-//bug mutil exec repley msg is error
+//MultiCase bug mutil exec repley msg is error
 func (ac *AutoClient) MultiCase(t *testing.T) {
 	//multi
 	ac.em.MultiEqual(t)

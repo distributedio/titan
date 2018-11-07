@@ -7,11 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//ExampleList the key command
+//mapList record the key and value of the operation
 type ExampleList struct {
 	mapList map[string][]string
 	conn    redis.Conn
 }
 
+//NewExampleList create list object
 func NewExampleList(conn redis.Conn) *ExampleList {
 	return &ExampleList{
 		conn:    conn,
@@ -19,6 +22,7 @@ func NewExampleList(conn redis.Conn) *ExampleList {
 	}
 }
 
+//LsetEqual verify that the return value of the lset key operation is correct
 func (el *ExampleList) LsetEqual(t *testing.T, key string, index int, value string) {
 	if _, ok := el.mapList[key]; !ok {
 		el.mapList[key] = make([]string, 0, 10)
@@ -36,11 +40,13 @@ func (el *ExampleList) LsetEqual(t *testing.T, key string, index int, value stri
 	assert.Nil(t, err)
 }
 
+//LsetEqualErr verify that the return err value of the Lset key operation is correct
 func (el *ExampleList) LsetEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("lset", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//LpushEqual verify that the return err value of the lpush key operation is correct
 func (el *ExampleList) LpushEqual(t *testing.T, key string, values ...string) {
 	req := make([]interface{}, 0, len(values))
 	tmp := make([]string, 0, len(values))
@@ -62,11 +68,13 @@ func (el *ExampleList) LpushEqual(t *testing.T, key string, values ...string) {
 	assert.Nil(t, err)
 }
 
+//LpushEqualErr verify that the return err value of the Lpush key operation is correct
 func (el *ExampleList) LpushEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("lpush", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//LpopEqual verify that the return err value of the Lpop key operation is correct
 func (el *ExampleList) LpopEqual(t *testing.T, key string) {
 	if vs, ok := el.mapList[key]; ok {
 		v := vs[0]
@@ -81,11 +89,13 @@ func (el *ExampleList) LpopEqual(t *testing.T, key string) {
 	}
 }
 
+//LpopEqualErr verify that the return err value of the Lpop key operation is correct
 func (el *ExampleList) LpopEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("lpop", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//LindexEqual verify that the return err value of the Lindex key operation is correct
 func (el *ExampleList) LindexEqual(t *testing.T, key string, index int) {
 	if index <= 0 {
 		index = -index
@@ -103,11 +113,13 @@ func (el *ExampleList) LindexEqual(t *testing.T, key string, index int) {
 	}
 }
 
+//LindexEqualErr verify that the return err value of the Lindex key operation is correct
 func (el *ExampleList) LindexEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("lindex", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//LrangeEqual verify that the return value of the Lrange key operation is correct
 func (el *ExampleList) LrangeEqual(t *testing.T, key string, start, end int) {
 	if start > len(el.mapList[key]) {
 		reply, err := redis.Strings(el.conn.Do("lrange", key, start, end))
@@ -136,11 +148,13 @@ func (el *ExampleList) LrangeEqual(t *testing.T, key string, start, end int) {
 	assert.Nil(t, err)
 }
 
+//LrangeEqualErr verify that the return err value of the lrange key operation is correct
 func (el *ExampleList) LrangeEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("lrange", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//RpushEqual verify that the return value of the Rpush key operation is correct
 func (el *ExampleList) RpushEqual(t *testing.T, key string, values []string) {
 	req := make([]interface{}, 0, len(values))
 	req = append(req, key)
@@ -156,11 +170,13 @@ func (el *ExampleList) RpushEqual(t *testing.T, key string, values []string) {
 	assert.Nil(t, err)
 }
 
+//RpushEqualErr verify that the return err value of the Rpush key operation is correct
 func (el *ExampleList) RpushEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("Rpush", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//RpopEqual verify that the return value of the rpop key operation is correct
 func (el *ExampleList) RpopEqual(t *testing.T, key string) {
 	v := el.mapList[key][len(el.mapList[key])-1]
 	el.mapList[key] = el.mapList[key][:len(el.mapList[key])]
@@ -169,17 +185,20 @@ func (el *ExampleList) RpopEqual(t *testing.T, key string) {
 	assert.Nil(t, err)
 }
 
+//RpopEqualErr verify that the return err value of the rpop key operation is correct
 func (el *ExampleList) RpopEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("Rpop", args...)
 	assert.EqualError(t, err, errValue)
 }
 
+//LlenEqual verify that the return value of the Llen key operation is correct
 func (el *ExampleList) LlenEqual(t *testing.T, key string) {
 	reply, err := redis.Int(el.conn.Do("llen", key))
 	assert.Equal(t, len(el.mapList[key]), reply)
 	assert.Nil(t, err)
 }
 
+//LlenEqualErr verify that the return err value of the Llen key operation is correct
 func (el *ExampleList) LlenEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := el.conn.Do("Llen", args...)
 	assert.EqualError(t, err, errValue)

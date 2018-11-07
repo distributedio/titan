@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	log "gitlab.meitu.com/gocommons/logbunny"
+	"go.uber.org/zap"
 )
 
 // Version information.
@@ -19,13 +19,13 @@ var (
 )
 
 func logVersionInfo() {
-	log.Info("Welcome to Titan.")
-	log.Info("Server info", log.String("Release Version", ReleaseVersion))
-	log.Info("Server info", log.String("Git Commit Hash", GitHash))
-	log.Info("Server info", log.String("Git Commit Log", GitLog))
-	log.Info("Server info", log.String("Git Branch", GitBranch))
-	log.Info("Server info", log.String("UTC Build Time", BuildTS))
-	log.Info("Server info", log.String("Golang compiler Version", GolangVersion))
+	zap.L().Info("Welcome to Titan.")
+	zap.L().Info("Server info", zap.String("Release Version", ReleaseVersion))
+	zap.L().Info("Server info", zap.String("Git Commit Hash", GitHash))
+	zap.L().Info("Server info", zap.String("Git Commit Log", GitLog))
+	zap.L().Info("Server info", zap.String("Git Branch", GitBranch))
+	zap.L().Info("Server info", zap.String("UTC Build Time", BuildTS))
+	zap.L().Info("Server info", zap.String("Golang compiler Version", GolangVersion))
 }
 
 // PrintVersionInfo print the server version info

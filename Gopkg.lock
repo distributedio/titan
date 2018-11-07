@@ -395,6 +395,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:5fff901b91fbfb7b6b0e3009af9de7d4957210d717711ce252b9f7f6e2254083"
+  name = "github.com/shafreeck/continuous"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "119a324e6bc5ef4f244e02bae8e86037ef733be1"
+
+[[projects]]
+  branch = "master"
   digest = "1:8e37bfd39f2739e7aa9cdfa808a70bdf8706e1d2afed849b6289c9b84f1f2715"
   name = "github.com/shafreeck/retry"
   packages = ["."]
@@ -476,22 +484,6 @@
   pruneopts = "UT"
   revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
   version = "v1.5.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:391e4bf8659b91c34963e0286d3c95917013717f7e9dd1299b9fb54a5839e180"
-  name = "gitlab.meitu.com/gocommon-incubator/continuous"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "39db4ce0871cb456367a5a50979783a7bcf0bd70"
-
-[[projects]]
-  digest = "1:221b9c6a0a9203cf4e5dfd8c899d436da580c205786f6e1a56766c6ca1db914e"
-  name = "gitlab.meitu.com/gocommons/logbunny"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "d31c1ae96eeb39754e7a573af11e8d2258735888"
-  version = "v2.0.1"
 
 [[projects]]
   digest = "1:3c1a69cdae3501bf75e76d0d86dc6f2b0a7421bc205c0cb7b96b19eed464a34d"
@@ -641,11 +633,12 @@
     "github.com/prometheus/client_golang/prometheus",
     "github.com/satori/go.uuid",
     "github.com/shafreeck/configo",
+    "github.com/shafreeck/continuous",
     "github.com/shafreeck/retry",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
-    "gitlab.meitu.com/gocommon-incubator/continuous",
-    "gitlab.meitu.com/gocommons/logbunny",
+    "go.uber.org/zap",
+    "go.uber.org/zap/zapcore",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

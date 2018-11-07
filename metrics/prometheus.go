@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"go.uber.org/zap/zapcore"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -20,6 +22,7 @@ const (
 	TransactionRollbackType
 	TransactionConflictType
 	TransactionFailureType
+	LogMetricsType
 )
 
 //MetricsTypeValue export metric msg
@@ -33,6 +36,7 @@ var MetricsTypeValue = map[metricsType]string{
 	TransactionRollbackType: "TransactionRollbackGaugeVec",
 	TransactionConflictType: "TransactionConflictGauageVec",
 	TransactionFailureType:  "TransactionFailureGaugeVec",
+	LogMetricsType:          "LogMetrics",
 }
 
 const (
@@ -40,10 +44,11 @@ const (
 	namespace = "titan"
 
 	//promethues default label key
-	command = "command"
-	biz     = "biz"
-	leader  = "leader"
-	ztinfo  = "ztinfo"
+	command   = "command"
+	biz       = "biz"
+	leader    = "leader"
+	ztinfo    = "ztinfo"
+	labelName = "level"
 )
 
 var (
@@ -74,6 +79,9 @@ type Metrics struct {
 	TransactionRollbackGaugeVec   *prometheus.GaugeVec
 	TransactionConflictGauageVec  *prometheus.GaugeVec
 	TransactionFailureGaugeVec    *prometheus.GaugeVec
+
+	//logger
+	LogMetricsCounterVec *prometheus.CounterVec
 }
 
 //init create global object
@@ -155,6 +163,15 @@ func init() {
 		}, leaderLabel)
 	prometheus.MustRegister(gm.IsLeaderGaugeVec)
 
+	gm.LogMetricsCounterVec = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "logs_total",
+			Help:      "Number of logs of certain level",
+		},
+		[]string{labelName},
+	)
+
 	http.Handle("/titan/gm", prometheus.Handler())
 }
 
@@ -169,4 +186,11 @@ func (mt *Metrics) String() string {
 		return string(msg)
 	}
 	return ""
+}
+
+//Measure logger level rate
+func Measure(e zapcore.Entry) error {
+	label := e.LoggerName + "_" + e.Level.String()
+	gm.LogMetricsCounterVec.WithLabelValues(label).Inc()
+	return nil
 }

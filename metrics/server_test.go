@@ -11,7 +11,7 @@ import (
 
 var (
 	cstatus = &conf.Status{
-		Listen: ":12345",
+		Listen: ":32345",
 	}
 )
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/twinj/uuid"
+
 	log "gitlab.meitu.com/gocommons/logbunny"
 )
 
@@ -39,9 +41,11 @@ func PrintVersionInfo() {
 	fmt.Println("Golang compiler Version: ", GolangVersion)
 }
 
-func GetClientID() uint64 {
-	var id uint64 = 1
-	return func() uint64 {
-		return atomic.AddUint64(&id, 1)
-	}()
+func GetClientID() func() int64 {
+	var id int64 = 1
+	return func() int64 {
+		return atomic.AddInt64(&id, 1)
+	}
 }
+
+func GenerateTraceID() string { return uuid.NewV4().String() }

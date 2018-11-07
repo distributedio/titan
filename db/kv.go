@@ -50,8 +50,8 @@ func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
 }
 
 // Delete specific keys, ignore if non exist
-func (kv *Kv) Delete(keys [][]byte) (int, error) {
-	count := 0
+func (kv *Kv) Delete(keys [][]byte) (int64, error) {
+	var count int64
 	now := Now()
 	metaKeys := make([][]byte, len(keys))
 	for i, key := range keys {
@@ -115,11 +115,8 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 
 //Exists check if the given keys exist
 func (kv *Kv) Exists(keys [][]byte) (int64, error) {
-	var (
-		now   int64 = Now()
-		count int64
-	)
-
+	var count int64
+	now := Now()
 	mkeys := make([][]byte, len(keys))
 	for i, key := range keys {
 		mkeys[i] = MetaKey(kv.txn.db, key)

@@ -37,7 +37,7 @@ func Start() {
 		log.Fatalln(err)
 	}
 
-	svr = thanos.New(&context.Server{
+	svr = thanos.New(&context.ServerContext{
 		RequirePass: cfg.Auth,
 		Store:       store,
 	})

@@ -3,17 +3,20 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"net/http"
 	"os"
 
 	stub "github.com/arthurkiller/rollingWriter"
 	"github.com/shafreeck/configo"
 	"github.com/sirupsen/logrus"
+	"gitlab.meitu.com/gocommon-incubator/continuous"
+	log "gitlab.meitu.com/gocommons/logbunny"
 
 	"gitlab.meitu.com/platform/thanos"
 	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
 func main() {
@@ -37,13 +40,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	/*
-		debug, err := Logger(&config.DebugLog)
-		if err != nil {
-			fmt.Printf("create logger failed, %s\n", err)
-			os.Exit(1)
-		}
-	*/
+	debug, err := Logger(&config.Logger)
+	if err != nil {
+		fmt.Printf("create logger failed, %s\n", err)
+		os.Exit(1)
+	}
 
 	tlog := config.TikvLog
 	if err := CreateLogrus(tlog.LogPath, tlog.LogLevel, tlog.LogTimeRotate, tlog.LogCompress); err != nil {
@@ -54,63 +55,94 @@ func main() {
 	// silent the tikv log message
 	store, err := db.Open(&config.Server.Tikv)
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
+	svr := metrics.NewServer(&config.Status)
+
 	serv := thanos.New(&context.ServerContext{
-		RequirePass: "",
+		RequirePass: config.Server.Auth,
 		Store:       store,
 	})
 
-	if err := serv.ListenAndServe(config.Server.Listen); err != nil {
-		log.Fatalln(err)
+	cont := continuous.New(continuous.UseLogger(debug), continuous.PidFile(config.PIDFileName))
+	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}); err != nil {
+		fmt.Printf("Add server failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}); err != nil {
+		fmt.Printf("Add server failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := cont.Serve(); err != nil {
+		fmt.Printf("run server failed: %v\n", err)
+		os.Exit(1)
 	}
 }
 
-/*
+func Logger(config *conf.Logger) (log.Logger, error) {
+	debug, err := CreateLogger(config.LogPath,
+		config.LogLevel,
+		config.LogTimeRotate,
+		config.LogName,
+		config.LogCompress)
+	if err != nil {
+		fmt.Printf("create debug logger failed, %s\n", err)
+		return nil, err
+	}
+
+	debugHandler := log.NewHTTPHandler(debug)
+	http.Handle("/titan/set-log-level", debugHandler)
+
+	log.SetGlobalLogger(debug)
+	return debug, nil
+}
+
 //TODO zap logger
 func CreateLogger(path, level, pattern, name string, compress bool) (log.Logger, error) {
 
-		// create custom log handler for connd
-		var wopts []stub.Option
-		wopts = append(wopts, stub.WithTimePattern(pattern))
-		if compress {
-			wopts = append(wopts, stub.WithCompress())
-		}
+	// create custom log handler for connd
+	var wopts []stub.Option
+	wopts = append(wopts, stub.WithRollingTimePattern(pattern))
+	if compress {
+		wopts = append(wopts, stub.WithCompress())
+	}
+	wopts = append(wopts, stub.WithLogPath(path))
 
-		writer, err := stub.NewIOWriter(path, stub.TimeRotate, wopts...)
-		if err != nil {
-			return nil, fmt.Errorf("create IOWriter failed, %s", err)
-		}
+	writer, err := stub.NewWriter(wopts...)
 
-		var options []log.Option
-		switch level {
-		case "debug":
-			options = append(options, log.WithDebugLevel())
-		case "info":
-			options = append(options, log.WithInfoLevel())
-		case "warn":
-			options = append(options, log.WithWarnLevel())
-		case "error":
-			options = append(options, log.WithErrorLevel())
-		case "panic":
-			options = append(options, log.WithPanicLevel())
-		case "fatal":
-			options = append(options, log.WithFatalLevel())
-		default:
-			return nil, fmt.Errorf("unknown log level(%s)\n", level)
-		}
-		options = append(options, log.WithOutput(writer), log.WithCaller(), log.WithMetrics(), log.WithName(name))
+	if err != nil {
+		return nil, fmt.Errorf("create IOWriter failed, %s", err)
+	}
 
-		logger, err := log.New(options...)
-		if err != nil {
-			return nil, fmt.Errorf("init log failed, %s", err)
-		}
-		return logger.With(log.Int("PID", os.Getpid())), nil
+	var options []log.Option
+	switch level {
+	case "debug":
+		options = append(options, log.WithDebugLevel())
+	case "info":
+		options = append(options, log.WithInfoLevel())
+	case "warn":
+		options = append(options, log.WithWarnLevel())
+	case "error":
+		options = append(options, log.WithErrorLevel())
+	case "panic":
+		options = append(options, log.WithPanicLevel())
+	case "fatal":
+		options = append(options, log.WithFatalLevel())
+	default:
+		return nil, fmt.Errorf("unknown log level(%s)\n", level)
+	}
+	options = append(options, log.WithOutput(writer), log.WithCaller(), log.WithMetrics(), log.WithName(name))
 
-	return nil, nil
+	logger, err := log.New(options...)
+	if err != nil {
+		return nil, fmt.Errorf("init log failed, %s", err)
+	}
+	return logger.With(log.Int("PID", os.Getpid())), nil
 }
-*/
 
 func CreateLogrus(path, level, pattern string, compress bool) error {
 	var wopts []stub.Option

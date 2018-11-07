@@ -62,9 +62,9 @@ func (kv *Kv) Delete(keys [][]byte) (int, error) {
 	if err != nil {
 		return count, err
 	}
-	for i, data := range values {
-		if data != nil {
-			obj, err := DecodeObject(data)
+	for i, val := range values {
+		if val != nil {
+			obj, err := DecodeObject(val)
 			if err != nil {
 				return count, err
 			}
@@ -129,9 +129,9 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 	if err != nil {
 		return count, err
 	}
-	for _, data := range values {
-		if data != nil {
-			obj, err := DecodeObject(data)
+	for _, val := range values {
+		if val != nil {
+			obj, err := DecodeObject(val)
 			if err != nil {
 				return count, err
 			}

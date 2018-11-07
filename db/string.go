@@ -72,3 +72,9 @@ func (s *String) updateMeta() error {
 	}
 	return s.txn.txn.Set(MetaKey(s.txn.db, s.key), meta)
 }
+func (s *String) Exist() bool {
+	if s.meta.Value == nil {
+		return false
+	}
+	return true
+}

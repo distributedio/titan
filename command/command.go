@@ -22,6 +22,14 @@ type Context struct {
 	*context.Context
 }
 
+const (
+	BitMaxOffset = 232
+	BitValueZero = 0
+	BitValueOne  = 1
+
+	MaxRangeInteger = 2<<29 - 1
+)
+
 // Command is a redis command implementation
 type Command func(ctx *Context)
 

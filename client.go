@@ -34,18 +34,38 @@ func (c *client) serve(conn net.Conn) error {
 	c.conn = conn
 	c.r = bufio.NewReader(conn)
 
+	rootCtx, rootCancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
+
+	// Use a separate goroutine to keep reading commands
+	// then we can detect a closed connection as soon as possible.
+	// It only works when the cmd channel is not blocked
+	cmdc := make(chan []string, 128)
+	errc := make(chan error)
+	go func() {
+		for {
+			log.Println("read command")
+			cmd, err := c.readCommand()
+			if err != nil {
+				errc <- err
+				rootCancel()
+				return
+			}
+			cmdc <- cmd
+		}
+	}()
+
+	var cmd []string
+	var err error
 	for {
 		select {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
-		default:
-		}
-
-		log.Println("read command")
-		cmd, err := c.readCommand()
-		if err != nil {
+		case cmd = <-cmdc:
+		case err = <-errc:
+			c.conn.Close()
 			return err
 		}
+
 		if c.server.servCtx.Pause > 0 {
 			time.Sleep(c.server.servCtx.Pause)
 			c.server.servCtx.Pause = 0
@@ -60,8 +80,9 @@ func (c *client) serve(conn net.Conn) error {
 			In:   c.r,
 			Out:  c.conn,
 		}
-		innerCtx, cancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
+		innerCtx, cancel := context.WithCancel(rootCtx)
 		ctx.Context = innerCtx
+
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
 			ctx.Out = ioutil.Discard

@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
+
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/conf"
 )
 
+//Server status server
+//export go pprof ane promtheus monitor
 type Server struct {
 	statusServer *http.Server
 	addr         string
 }
 
+//NewServer creat status server
 func NewServer(config *conf.Status) *Server {
 	s := &Server{
 		addr:         config.Listen,
@@ -24,10 +27,12 @@ func NewServer(config *conf.Status) *Server {
 	return s
 }
 
+// Serve accepts incoming connections on the Listener l
 func (s *Server) Serve(lis net.Listener) error {
 	return s.statusServer.Serve(lis)
 }
 
+//Stop Close serve fd
 func (s *Server) Stop() error {
 	if s.statusServer != nil {
 		if err := s.statusServer.Close(); err != nil {
@@ -38,6 +43,7 @@ func (s *Server) Stop() error {
 	return nil
 }
 
+//GracefulStop serve graceful stop
 func (s *Server) GracefulStop() error {
 	if s.statusServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -50,6 +56,7 @@ func (s *Server) GracefulStop() error {
 	return nil
 }
 
+//ListenAndServe start the service by address
 func (s *Server) ListenAndServe(addr string) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {

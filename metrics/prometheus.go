@@ -8,10 +8,10 @@ import (
 )
 
 //MetricsType object type
-type MetricsType int
+type metricsType int
 
 const (
-	ConnectionOnlineType MetricsType = iota
+	ConnectionOnlineType metricsType = iota
 	ZTInfoType
 	IsLeaderType
 	LRangeSeekType
@@ -23,7 +23,7 @@ const (
 )
 
 //MetricsTypeValue export metric msg
-var MetricsTypeValue = map[MetricsType]string{
+var MetricsTypeValue = map[metricsType]string{
 	ConnectionOnlineType:    "ConnectionOnlineGaugeVec",
 	ZTInfoType:              "ZTInfoCounterVec",
 	IsLeaderType:            "IsLeaderGaugeVec",
@@ -58,7 +58,7 @@ var (
 	gm *Metrics
 )
 
-//Metrics
+//Metrics prometheus statistics
 type Metrics struct {
 	//biz
 	ConnectionOnlineGaugeVec *prometheus.GaugeVec
@@ -158,6 +158,7 @@ func init() {
 	http.Handle("/titan/gm", prometheus.Handler())
 }
 
+//GetMetrics return metrics object
 func GetMetrics() *Metrics {
 	return gm
 }

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	stub "github.com/arthurkiller/rollingWriter"
@@ -83,6 +84,7 @@ func main() {
 	}
 }
 
+//Logger create logger object set http exporting
 func Logger(config *conf.Logger) (log.Logger, error) {
 	debug, err := CreateLogger(config.LogPath,
 		config.LogLevel,
@@ -101,7 +103,7 @@ func Logger(config *conf.Logger) (log.Logger, error) {
 	return debug, nil
 }
 
-//TODO zap logger
+//CreateLogger zap logger
 func CreateLogger(path, level, pattern, name string, compress bool) (log.Logger, error) {
 
 	// create custom log handler for connd
@@ -144,6 +146,7 @@ func CreateLogger(path, level, pattern, name string, compress bool) (log.Logger,
 	return logger.With(log.Int("PID", os.Getpid())), nil
 }
 
+//CreateLogrus deal tikv log
 func CreateLogrus(path, level, pattern string, compress bool) error {
 	var wopts []stub.Option
 	wopts = append(wopts, stub.WithRollingTimePattern(pattern))

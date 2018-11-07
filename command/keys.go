@@ -44,7 +44,7 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	pattern := ctx.Args[0]
 	kv := txn.Kv()
 	var outputs [][]byte
-	kv.Keys(func(key []byte) bool {
+	kv.Keys([]byte(pattern), func(key []byte) bool {
 		if globMatch(string(key), pattern) {
 			outputs = append(outputs, key)
 		}

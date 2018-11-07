@@ -1,13 +1,14 @@
 package db
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
 const (
 	// Separator of the key segment
 	Separator = ":"
+	// ObjectEncodingLength indecate current object marshaled length
+	ObjectEncodingLength = 42
 )
 
 // ObjectEncoding is the encoding type of an object
@@ -120,8 +121,8 @@ func (txn *Transaction) Object(key []byte) (*Object, error) {
 		}
 		return nil, err
 	}
-
-	if err := json.Unmarshal(meta, obj); err != nil {
+	obj, err = DecodeObject(meta)
+	if err != nil {
 		return nil, err
 	}
 

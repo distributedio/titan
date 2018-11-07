@@ -1,43 +1,6 @@
 package command
 
-import (
-	"testing"
-
-	 "gitlab.meitu.com/platform/thanos/db"
-)
-
-
-
-func TestGet(t *testing.T){
-
-}
-
-func TestSet(t * testing.T){
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
-//TODO
 func EqualGet(t *testing.T, key []byte, value []byte, e error) {
 	cmdctx.Db.Begin()
 	r, err := GetHandler([][]byte{key}, cmdctx)
@@ -474,14 +437,14 @@ func TestStringIncrBy(t *testing.T) {
 	assert.NoError(t, err)
 
 	//TODO bug
-	
+
 		args[1] = []byte("02")
 		cmdctx.Db.Begin()
 		r, err = IncrByHandler(cmdctx, args)
 		cmdctx.Db.Commit()
 		assert.Equal(t, RedisIntegerResp, r)
 		assert.NotNil(t, err)
-	
+
 }
 
 //bug
@@ -552,12 +515,12 @@ func TestStringDecrBy(t *testing.T) {
 	assert.NoError(t, err)
 
 	//bug
-	
+
 		args[1] = []byte("02")
 		r, err = DecrByHandler(cmdctx, args)
 		assert.Equal(t, RedisIntegerResp, r)
 		assert.NotNil(t, err)
-	
+
 }
 
 func TestStringMset(t *testing.T) {
@@ -596,4 +559,4 @@ func TestStringAppend(t *testing.T) {
 	assert.Equal(t, rr, r)
 	assert.NoError(t, err)
 }
-
+*/

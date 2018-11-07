@@ -1,8 +1,6 @@
 package db
 
 import (
-	"context"
-
 	"github.com/pingcap/tidb/store/mockstore"
 )
 
@@ -15,12 +13,8 @@ func MockDB() *DB {
 	if err != nil {
 		panic(err)
 	}
-	return &DB{
-		kv:  store,
-		ns:  []byte("ns"),
-		id:  1,
-		Ctx: context.TODO(),
-	}
+	redis := &RedisStore{store}
+	return &DB{Namespace: "ns", ID: DBID(1), kv: redis}
 }
 
 func GlobalDB() *DB {

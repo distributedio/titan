@@ -1,5 +1,17 @@
 package command
 
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSet(t *testing.T) {
+	ctx := ContextTest("set", "key", "value")
+	Call(ctx)
+	assert.Equal(t, "+OK\r\n", ctxString(ctx.Out))
+}
+
 /*
 func EqualGet(t *testing.T, key []byte, value []byte, e error) {
 	cmdctx.Db.Begin()

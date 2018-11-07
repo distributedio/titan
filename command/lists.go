@@ -51,7 +51,7 @@ func LPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	val, err := lst.LPop()
 	if err != nil {
-		if err == db.ErrListEmpty {
+		if err == db.ErrKeyNotFound {
 			return NullBulkString(ctx.Out), nil
 		}
 		return nil, errors.New("ERR " + err.Error())
@@ -85,7 +85,7 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, nil
 	}
 
-	items, err := lst.LRange(start, stop)
+	items, err := lst.Range(int64(start), int64(stop))
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -117,12 +117,13 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR syntax error")
 	}
 
-	length, err := lst.LInsert(after, pivot, value)
+	err = lst.Insert(pivot, value, after)
 	if err != nil {
-		if err == db.ErrFullSlot {
-			return nil, errors.New("list slot is full")
+		if err == db.ErrPrecision {
+			return nil, err
 		}
 		return nil, errors.New("ERR syntax error")
 	}
+	length := lst.Length()
 	return Integer(ctx.Out, int64(length)), nil
 }

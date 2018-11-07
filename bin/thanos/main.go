@@ -3,15 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
+	"io"
 	_ "net/http/pprof"
 	"os"
+	"time"
 
 	stub "github.com/arthurkiller/rollingWriter"
 	"github.com/shafreeck/configo"
+	"github.com/shafreeck/continuous"
 	"github.com/sirupsen/logrus"
-	"gitlab.meitu.com/gocommon-incubator/continuous"
-	log "gitlab.meitu.com/gocommons/logbunny"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"gitlab.meitu.com/platform/thanos"
 	"gitlab.meitu.com/platform/thanos/conf"
@@ -39,19 +41,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	debug, err := Logger(&config.Logger)
+	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)
 	if err != nil {
+		fmt.Printf("create logger write failed, %s\n", err)
+		os.Exit(1)
+	}
+
+	if err := GlobalLogger(config.Logger.Level, config.Logger.Name, writer); err != nil {
 		fmt.Printf("create logger failed, %s\n", err)
 		os.Exit(1)
 	}
 
 	tlog := config.TikvLog
-	if err := CreateLogrus(tlog.LogPath, tlog.LogLevel, tlog.LogTimeRotate, tlog.LogCompress); err != nil {
+	if err := TikvLogrus(tlog.Path, tlog.Level, tlog.TimeRotate, tlog.Compress); err != nil {
 		fmt.Printf("create tikv logger failed, %s\n", err)
 		os.Exit(1)
 	}
 
-	// silent the tikv log message
 	store, err := db.Open(&config.Server.Tikv)
 	if err != nil {
 		fmt.Println(err)
@@ -65,7 +71,7 @@ func main() {
 		Store:       store,
 	})
 
-	cont := continuous.New(continuous.UseLogger(debug), continuous.PidFile(config.PIDFileName))
+	cont := continuous.New(continuous.LoggerOutput(writer), continuous.PidFile(config.PIDFileName))
 	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}); err != nil {
 		fmt.Printf("Add server failed: %v\n", err)
 		os.Exit(1)
@@ -82,80 +88,64 @@ func main() {
 	}
 }
 
-//Logger create logger object set http exporting
-func Logger(config *conf.Logger) (log.Logger, error) {
-	debug, err := CreateLogger(config.LogPath,
-		config.LogLevel,
-		config.LogTimeRotate,
-		config.LogName,
-		config.LogCompress)
-	if err != nil {
-		fmt.Printf("create debug logger failed, %s\n", err)
-		return nil, err
-	}
-
-	debugHandler := log.NewHTTPHandler(debug)
-	http.Handle("/titan/set-log-level", debugHandler)
-
-	log.SetGlobalLogger(debug)
-	return debug, nil
-}
-
-//CreateLogger zap logger
-func CreateLogger(path, level, pattern, name string, compress bool) (log.Logger, error) {
-
-	// create custom log handler for connd
-	var wopts []stub.Option
-	wopts = append(wopts, stub.WithRollingTimePattern(pattern))
-	if compress {
-		wopts = append(wopts, stub.WithCompress())
-	}
-	wopts = append(wopts, stub.WithLogPath(path))
-
-	writer, err := stub.NewWriter(wopts...)
-
-	if err != nil {
-		return nil, fmt.Errorf("create IOWriter failed, %s", err)
-	}
-
-	var options []log.Option
+//Logger zap logger
+//TODO http set level
+// loggerHandler := log.NewHTTPHandler(logger)
+// http.Handle("/titan/set-log-level", loggerHandler)
+func GlobalLogger(level, name string, write io.Writer) error {
+	var lv = zap.NewAtomicLevel()
 	switch level {
 	case "debug":
-		options = append(options, log.WithDebugLevel())
+		lv.SetLevel(zap.DebugLevel)
 	case "info":
-		options = append(options, log.WithInfoLevel())
+		lv.SetLevel(zap.InfoLevel)
 	case "warn":
-		options = append(options, log.WithWarnLevel())
+		lv.SetLevel(zap.WarnLevel)
 	case "error":
-		options = append(options, log.WithErrorLevel())
+		lv.SetLevel(zap.ErrorLevel)
 	case "panic":
-		options = append(options, log.WithPanicLevel())
+		lv.SetLevel(zap.PanicLevel)
 	case "fatal":
-		options = append(options, log.WithFatalLevel())
+		lv.SetLevel(zap.FatalLevel)
 	default:
-		return nil, fmt.Errorf("unknown log level(%s)\n", level)
+		return fmt.Errorf("unknown log level(%s)\n", level)
 	}
-	options = append(options, log.WithOutput(writer), log.WithCaller(), log.WithMetrics(), log.WithName(name))
 
-	logger, err := log.New(options...)
-	if err != nil {
-		return nil, fmt.Errorf("init log failed, %s", err)
+	timeEncoder := func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Local().Format("2006-01-02 15:04:05.999999999"))
 	}
-	return logger.With(log.Int("PID", os.Getpid())), nil
+
+	encoderCfg := zapcore.EncoderConfig{
+		NameKey:        "Name",
+		StacktraceKey:  "Stack",
+		MessageKey:     "Message",
+		LevelKey:       "Level",
+		TimeKey:        "TimeStamp",
+		CallerKey:      "Caller",
+		EncodeTime:     timeEncoder,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+
+	output := zapcore.AddSync(write)
+	var zapOpts []zap.Option
+	zapOpts = append(zapOpts, zap.AddCaller())
+	zapOpts = append(zapOpts, zap.Hooks(measure))
+
+	logger := zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), output, lv), zapOpts...)
+	logger.Named(name)
+	log := logger.With(zap.Int("PID", os.Getpid()))
+	zap.ReplaceGlobals(log)
+
+	return nil
 }
 
-//CreateLogrus deal tikv log
-func CreateLogrus(path, level, pattern string, compress bool) error {
-	var wopts []stub.Option
-	wopts = append(wopts, stub.WithRollingTimePattern(pattern))
-	if compress {
-		wopts = append(wopts, stub.WithCompress())
-	}
-	wopts = append(wopts, stub.WithLogPath(path))
-
-	writer, err := stub.NewWriter(wopts...)
+//TikvLogrus deal tikv log
+func TikvLogrus(path, level, pattern string, compress bool) error {
+	writer, err := Writer(path, pattern, compress)
 	if err != nil {
-		return fmt.Errorf("create IOWriter failed, %s", err)
+		return err
 	}
 	logrus.SetOutput(writer)
 	switch level {
@@ -174,5 +164,26 @@ func CreateLogrus(path, level, pattern string, compress bool) error {
 	default:
 		return fmt.Errorf("unknown log level(%s)\n", level)
 	}
+	return nil
+}
+
+//Writer generate the rollingWriter
+func Writer(path, pattern string, compress bool) (io.Writer, error) {
+	var opts []stub.Option
+	opts = append(opts, stub.WithRollingTimePattern(pattern))
+	if compress {
+		opts = append(opts, stub.WithCompress())
+	}
+	opts = append(opts, stub.WithLogPath(path))
+	writer, err := stub.NewWriter(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("create IOWriter failed, %s", err)
+	}
+	return writer, nil
+}
+
+func measure(e zapcore.Entry) error {
+	// label := e.LoggerName + "_" + e.Level.String()
+	// logMetrics.WithLabelValues(label).Inc()
 	return nil
 }

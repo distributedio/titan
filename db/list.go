@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
-	"time"
 
 	"github.com/pingcap/tidb/kv"
-	"gitlab.meitu.com/platform/titan/monitor"
 )
 
 const (
@@ -587,7 +585,7 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 	values = make([][]byte, 0, right-left)
 
 	// seek start indecate the seek first key start time.
-	start := time.Now()
+	//start := time.Now()
 	iter, err := l.txn.t.Seek(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...))
 
 	var idx int64
@@ -604,7 +602,7 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 	}
 
 	//monitor the seek first key cost
-	monitor.WithLabelHistogram(monitor.LRangeSeekType).Observe(time.Since(start).Seconds())
+	//	monitor.WithLabelHistogram(monitor.LRangeSeekType).Observe(time.Since(start).Seconds())
 
 	// for loop iterate all objects to get objects and check if valid
 	for ; idx < right && err == nil && iter.Valid() && iter.Key().HasPrefix(l.rawDataKeyPrefix); err = iter.Next() {

@@ -1,4 +1,4 @@
-package protocol
+package command
 
 import (
 	"errors"
@@ -84,14 +84,14 @@ var (
 
 	// ErrMultiNested indicates a nested multi command which is not allowed
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
-
+)
 
 //ErrUnKnownCommand return RedisError of the cmd
-func ErrUnKnownCommand(cmd string) RedisError {
+func ErrUnKnownCommand(cmd string) error {
 	return fmt.Errorf(UnKnownCommandStr, cmd)
 }
 
 // ErrWrongArgs return RedisError of the cmd
-func ErrWrongArgs(cmd string) RedisError {
+func ErrWrongArgs(cmd string) error {
 	return fmt.Errorf(WrongArgs, cmd)
 }

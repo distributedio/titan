@@ -145,7 +145,7 @@ func TestRandomKey(t *testing.T) {
 
 		tmp1, err := kv.RandomKey()
 		assert.NoError(t, err)
-		mapkey[string(tmp1)] += 1
+		mapkey[string(tmp1)]++
 		txn.Commit(context.Background())
 
 	}

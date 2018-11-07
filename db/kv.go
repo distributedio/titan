@@ -2,8 +2,8 @@ package db
 
 import (
 	"bytes"
-	"crypto/rand"
 	"log"
+	"math/rand"
 
 	"gitlab.meitu.com/platform/thanos/db/store"
 )
@@ -19,9 +19,9 @@ func GetKv(txn *Transaction) *Kv {
 }
 
 // Keys iterator all keys in db
-func (kv *Kv) Keys(start []byte, filter func(key []byte) bool) error {
+func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
 	mkey := MetaKey(kv.txn.db, start)
-	prefixKey := MetaKey(kv.txn.db, nil)
+	prefix := MetaKey(kv.txn.db, nil)
 	iter, err := kv.txn.t.Seek(mkey)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func (kv *Kv) Keys(start []byte, filter func(key []byte) bool) error {
 	now := Now()
 	for iter.Valid() {
 		key := iter.Key()
-		if !bytes.HasPrefix(key, prefixKey) {
+		if !bytes.HasPrefix(key, prefix) {
 			break
 		}
 
@@ -39,7 +39,7 @@ func (kv *Kv) Keys(start []byte, filter func(key []byte) bool) error {
 		if err != nil {
 			return err
 		}
-		if !IsExpired(obj, now) && !filter(key[len(prefixKey):]) {
+		if !IsExpired(obj, now) && !f(key[len(prefix):]) {
 			break
 		}
 		if err := iter.Next(); err != nil {
@@ -58,11 +58,11 @@ func (kv *Kv) Delete(keys [][]byte) (int, error) {
 		metaKeys[i] = MetaKey(kv.txn.db, key)
 	}
 
-	dataBytes, err := store.BatchGetValues(kv.txn.t, metaKeys)
+	values, err := store.BatchGetValues(kv.txn.t, metaKeys)
 	if err != nil {
 		return count, err
 	}
-	for i, data := range dataBytes {
+	for i, data := range values {
 		if data != nil {
 			obj, err := DecodeObject(data)
 			if err != nil {
@@ -113,22 +113,23 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 	return kv.txn.t.Set(mkey, updated)
 }
 
-//Exists
+//Exists check if the given keys exist
 func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 	var (
-		now   int64    = Now()
-		count int64    = 0
-		mkeys [][]byte = make([][]byte, len(keys))
+		now   int64 = Now()
+		count int64
 	)
+
+	mkeys := make([][]byte, len(keys))
 	for i, key := range keys {
 		mkeys[i] = MetaKey(kv.txn.db, key)
 	}
 
-	dataBytes, err := store.BatchGetValues(kv.txn.t, mkeys)
+	values, err := store.BatchGetValues(kv.txn.t, mkeys)
 	if err != nil {
 		return count, err
 	}
-	for _, data := range dataBytes {
+	for _, data := range values {
 		if data != nil {
 			obj, err := DecodeObject(data)
 			if err != nil {
@@ -185,7 +186,7 @@ func (kv *Kv) FlushAll() error {
 
 }
 
-// RandomeKey return a key from current db randomly
+// RandomKey return a key from current db randomly
 // Now we use an static length(64) to generate the key spaces, it means it is random for keys
 // that len(key) <= 64, it is enough for most cases
 func (kv *Kv) RandomKey() ([]byte, error) {

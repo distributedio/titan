@@ -9,18 +9,19 @@ import (
 // Auth verify the client
 func Auth(ctx *Context) {
 	args := ctx.Args
-
-	if ctx.Server.RequirePass == "" {
+	serverauth := []byte(ctx.Server.RequirePass)
+	if len(serverauth) == 0 {
 		resp.ReplyError(ctx.Out, "ERR Client sent AUTH, but no password is set")
 		return
 	}
 
-	passwd := args[0]
-	if passwd != ctx.Server.RequirePass {
+	token := []byte(args[0])
+	namespace, err := Verify(token, serverauth)
+	if err != nil {
 		resp.ReplyError(ctx.Out, "ERR invalid password")
-		return
 	}
-
+	ctx.Client.Authenticated = true
+	ctx.Client.Namespace = string(namespace)
 	ctx.Client.Authenticated = true
 	resp.ReplySimpleString(ctx.Out, "OK")
 }

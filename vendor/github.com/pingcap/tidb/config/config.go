@@ -50,6 +50,7 @@ type Config struct {
 	SplitTable      bool   `toml:"split-table" json:"split-table"`
 	TokenLimit      uint   `toml:"token-limit" json:"token-limit"`
 	OOMAction       string `toml:"oom-action" json:"oom-action"`
+	MemQuotaQuery   int64  `toml:"mem-quota-query" json:"mem-quota-query"`
 	EnableStreaming bool   `toml:"enable-streaming" json:"enable-streaming"`
 	// Set sys variable lower-case-table-names, ref: https://dev.mysql.com/doc/refman/5.7/en/identifier-case-sensitivity.html.
 	// TODO: We actually only support mode 2, which keeps the original case, but the comparison is case-insensitive.
@@ -216,6 +217,12 @@ type TiKVClient struct {
 	// GrpcConnectionCount is the max gRPC connections that will be established
 	// with each tikv-server.
 	GrpcConnectionCount uint `toml:"grpc-connection-count" json:"grpc-connection-count"`
+	// After a duration of this time in seconds if the client doesn't see any activity it pings
+	// the server to see if the transport is still alive.
+	GrpcKeepAliveTime uint `toml:"grpc-keepalive-time" json:"grpc-keepalive-time"`
+	// After having pinged for keepalive check, the client waits for a duration of Timeout in seconds
+	// and if no activity is seen even after that the connection is closed.
+	GrpcKeepAliveTimeout uint `toml:"grpc-keepalive-timeout" json:"grpc-keepalive-timeout"`
 	// CommitTimeout is the max time which command 'commit' will wait.
 	CommitTimeout string `toml:"commit-timeout" json:"commit-timeout"`
 }
@@ -239,6 +246,7 @@ var defaultConf = Config{
 	Lease:               "45s",
 	TokenLimit:          1000,
 	OOMAction:           "log",
+	MemQuotaQuery:       32 << 30,
 	EnableStreaming:     false,
 	LowerCaseTableNames: 2,
 	Log: Log{
@@ -294,8 +302,10 @@ var defaultConf = Config{
 		Reporter: OpenTracingReporter{},
 	},
 	TiKVClient: TiKVClient{
-		GrpcConnectionCount: 16,
-		CommitTimeout:       "41s",
+		GrpcConnectionCount:  16,
+		GrpcKeepAliveTime:    10,
+		GrpcKeepAliveTimeout: 3,
+		CommitTimeout:        "41s",
 	},
 	Binlog: Binlog{
 		WriteTimeout: "15s",

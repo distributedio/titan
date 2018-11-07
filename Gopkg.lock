@@ -72,6 +72,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:433763f10d88dba9b533a7ea2fe9f5ee11e57e00306eb97a1f6090fd978e8fa1"
+  name = "github.com/facebookgo/grace"
+  packages = ["gracenet"]
+  pruneopts = "UT"
+  revision = "75cf19382434e82df4dd84953f566b8ad23d6e9e"
+
+[[projects]]
   digest = "1:5d1b5a25486fc7d4e133646d834f6fca7ba1cef9903d40e7aa786c41b89e9e91"
   name = "github.com/golang/protobuf"
   packages = [
@@ -471,6 +479,53 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:391e4bf8659b91c34963e0286d3c95917013717f7e9dd1299b9fb54a5839e180"
+  name = "gitlab.meitu.com/gocommon-incubator/continuous"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "39db4ce0871cb456367a5a50979783a7bcf0bd70"
+
+[[projects]]
+  digest = "1:221b9c6a0a9203cf4e5dfd8c899d436da580c205786f6e1a56766c6ca1db914e"
+  name = "gitlab.meitu.com/gocommons/logbunny"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d31c1ae96eeb39754e7a573af11e8d2258735888"
+  version = "v2.0.1"
+
+[[projects]]
+  digest = "1:3c1a69cdae3501bf75e76d0d86dc6f2b0a7421bc205c0cb7b96b19eed464a34d"
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  digest = "1:60bf2a5e347af463c42ed31a493d817f8a72f102543060ed992754e689805d1a"
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:c52caf7bd44f92e54627a31b85baf06a68333a196b3d8d241480a774733dcf8b"
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore",
+  ]
+  pruneopts = "UT"
+  revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
+  version = "v1.9.1"
+
+[[projects]]
+  branch = "master"
   digest = "1:edb6e15d08296b91f0cd5b8b24d3778e122258e38493cb576094aa4764f3c826"
   name = "golang.org/x/net"
   packages = [
@@ -583,11 +638,14 @@
     "github.com/pingcap/tidb/kv",
     "github.com/pingcap/tidb/store/mockstore",
     "github.com/pingcap/tidb/store/tikv",
+    "github.com/prometheus/client_golang/prometheus",
     "github.com/satori/go.uuid",
     "github.com/shafreeck/configo",
     "github.com/shafreeck/retry",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
+    "gitlab.meitu.com/gocommon-incubator/continuous",
+    "gitlab.meitu.com/gocommons/logbunny",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

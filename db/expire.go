@@ -12,6 +12,14 @@ const expireTick = time.Duration(time.Second)
 
 var expireKeyPrefix = []byte("$sys:at:")
 
+func IsExpired(obj *Object, now int64) bool {
+	if obj.ExpireAt == 0 || obj.ExpireAt > now {
+		return false
+	}
+	return true
+
+}
+
 func expireKey(key []byte, ts int64) []byte {
 	var buf []byte
 	buf = append(buf, expireKeyPrefix...)
@@ -19,6 +27,15 @@ func expireKey(key []byte, ts int64) []byte {
 	buf = append(buf, ':')
 	buf = append(buf, key...)
 	return buf
+}
+
+func unExpireAt(txn *Transaction, key []byte, old int64) error {
+	mkey := MetaKey(txn.db, key)
+	oldKey := expireKey(mkey, old)
+	if err := txn.t.Delete(oldKey); err != nil {
+		return err
+	}
+	return nil
 }
 
 func expireAt(txn *Transaction, key []byte, objID []byte, old int64, new int64) error {

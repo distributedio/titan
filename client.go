@@ -6,8 +6,8 @@ import (
 	"net"
 	"strings"
 	"time"
+	"go.uber.org/zap"
 
-	log "gitlab.meitu.com/gocommons/logbunny"
 	"gitlab.meitu.com/platform/thanos/command"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/resp"
@@ -33,16 +33,36 @@ func (c *client) serve(conn net.Conn) error {
 	c.conn = conn
 	c.r = bufio.NewReader(conn)
 
+	rootCtx, rootCancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
+
+	// Use a separate goroutine to keep reading commands
+	// then we can detect a closed connection as soon as possible.
+	// It only works when the cmd channel is not blocked
+	cmdc := make(chan []string, 128)
+	errc := make(chan error)
+	go func() {
+		for {
+			cmd, err := c.readCommand()
+			if err != nil {
+				errc <- err
+				rootCancel()
+				return
+			}
+			cmdc <- cmd
+		}
+	}()
+
+	var cmd []string
+	var err error
 	for {
 		select {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
-		default:
-		}
-		cmd, err := c.readCommand()
-		if err != nil {
-			log.Error("read command failed", log.String("addr", c.cliCtx.RemoteAddr),
-				log.Int64("clientid", c.cliCtx.ID), log.Err(err))
+		case cmd = <-cmdc:
+		case err = <-errc:
+			zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+			c.conn.Close()
 			return err
 		}
 
@@ -61,8 +81,9 @@ func (c *client) serve(conn net.Conn) error {
 			Out:     c.conn,
 			TraceID: GenerateTraceID(),
 		}
-		innerCtx, cancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
+		innerCtx, cancel := context.WithCancel(rootCtx)
 		ctx.Context = innerCtx
+
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
 			ctx.Out = ioutil.Discard
@@ -70,11 +91,11 @@ func (c *client) serve(conn net.Conn) error {
 				c.cliCtx.SkipN--
 			}
 		}
-		if env := log.Check(log.DebugLevel, "recv client command"); env != nil {
-			env.Write(log.String("addr", c.cliCtx.RemoteAddr),
-				log.Int64("clientid", c.cliCtx.ID),
-				log.String("traceid", ctx.TraceID),
-				log.String("command", ctx.Name))
+		if env := zap.L().Check(zap.DebugLevel, "recv client command"); env != nil {
+			env.Write(zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID),
+				zap.String("traceid", ctx.TraceID),
+				zap.String("command", ctx.Name))
 		}
 		c.exec.Execute(ctx)
 		cancel()

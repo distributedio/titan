@@ -3,7 +3,7 @@ package thanos
 import (
 	"net"
 
-	log "gitlab.meitu.com/gocommons/logbunny"
+	"go.uber.org/zap"
 	"gitlab.meitu.com/platform/thanos/command"
 	"gitlab.meitu.com/platform/thanos/context"
 )
@@ -20,11 +20,11 @@ func New(ctx *context.ServerContext) *Server {
 }
 
 func (s *Server) Serve(lis net.Listener) error {
-	log.Info("thanos server start", log.String("addr", lis.Addr().String()))
+	zap.L().Info("thanos server start", zap.String("addr", lis.Addr().String()))
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			log.Error("server accept failed", log.String("addr", lis.Addr().String()), log.Err(err))
+			zap.L().Error("server accept failed", zap.String("addr", lis.Addr().String()), zap.Error(err))
 			return err
 		}
 
@@ -34,13 +34,13 @@ func (s *Server) Serve(lis net.Listener) error {
 
 		cli := newClient(cliCtx, s, command.NewExecutor())
 
-		log.Info("recv connection", log.String("addr", cliCtx.RemoteAddr),
-			log.Int64("clientid", cliCtx.ID), log.String("namespace", cliCtx.Namespace))
+		zap.L().Info("recv connection", zap.String("addr", cliCtx.RemoteAddr),
+			zap.Int64("clientid", cliCtx.ID), zap.String("namespace", cliCtx.Namespace))
 
 		go func(cli *client, conn net.Conn) {
 			if err := cli.serve(conn); err != nil {
-				log.Error("serve conn failed", log.String("addr", cli.cliCtx.RemoteAddr),
-					log.Int64("clientid", cliCtx.ID), log.Err(err))
+				zap.L().Error("serve conn failed", zap.String("addr", cli.cliCtx.RemoteAddr),
+					zap.Int64("clientid", cliCtx.ID), zap.Error(err))
 			}
 			s.servCtx.Clients.Delete(cli.cliCtx.ID)
 		}(cli, conn)
@@ -58,12 +58,12 @@ func (s *Server) ListenAndServe(addr string) error {
 }
 
 func (s *Server) Stop() error {
-	log.Info("titan serve stop", log.String("addr", s.lis.Addr().String()))
+	zap.L().Info("titan serve stop", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }
 
 func (s *Server) GracefulStop() error {
 	//TODO close client connections gracefully
-	log.Info("titan serve graceful", log.String("addr", s.lis.Addr().String()))
+	zap.L().Info("titan serve graceful", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }

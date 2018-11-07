@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"go.uber.org/zap"
 
 	"time"
 
-	log "gitlab.meitu.com/gocommons/logbunny"
 	"gitlab.meitu.com/platform/thanos/conf"
 )
 
@@ -30,26 +30,26 @@ func NewServer(config *conf.Status) *Server {
 
 // Serve accepts incoming connections on the Listener l
 func (s *Server) Serve(lis net.Listener) error {
-	log.Info("status server start", log.String("addr", s.addr))
+	zap.L().Info("status server start", zap.String("addr", s.addr))
 	return s.statusServer.Serve(lis)
 }
 
 //Stop Close serve fd
 func (s *Server) Stop() error {
-	log.Info("status server stop")
+	zap.L().Info("status server stop")
 	if s.statusServer != nil {
 		if err := s.statusServer.Close(); err != nil {
 			fmt.Printf("status Server stop failed err:%s \n", err)
 			return err
 		}
 	}
-	log.Info("status server stop sucess", log.String("addr", s.addr))
+	zap.L().Info("status server stop sucess", zap.String("addr", s.addr))
 	return nil
 }
 
 //GracefulStop serve graceful stop
 func (s *Server) GracefulStop() error {
-	log.Info("status serve graceful stop")
+	zap.L().Info("status serve graceful stop")
 	if s.statusServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -58,7 +58,7 @@ func (s *Server) GracefulStop() error {
 			return err
 		}
 	}
-	log.Info("status serve graceful sucess", log.String("addr", s.addr))
+	zap.L().Info("status serve graceful sucess", zap.String("addr", s.addr))
 	return nil
 }
 
@@ -69,6 +69,6 @@ func (s *Server) ListenAndServe(addr string) error {
 		fmt.Printf("status  server failed err:%s\n", err)
 		return err
 	}
-	log.Info("status server start", log.String("addr", s.addr))
+	zap.L().Info("status server start", zap.String("addr", s.addr))
 	return s.statusServer.Serve(lis)
 }

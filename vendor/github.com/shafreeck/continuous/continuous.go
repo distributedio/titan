@@ -3,6 +3,7 @@ package continuous
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -11,7 +12,8 @@ import (
 	"syscall"
 
 	gnet "github.com/facebookgo/grace/gracenet"
-	"gitlab.meitu.com/gocommons/logbunny"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Continuous is the interface of a basic server
@@ -29,7 +31,7 @@ type Cont struct {
 	child    int
 	pidfile  string
 	cwd      string
-	logger   logbunny.Logger
+	logger   *zap.Logger
 	servers  []*ContServer
 	state    ContState
 	wg       sync.WaitGroup
@@ -89,10 +91,15 @@ func WorkDir(path string) Option {
 	}
 }
 
-// UseLogger set an external logbunny.Logger
-func UseLogger(logger logbunny.Logger) Option {
+// LoggerOutput sets a io.Writer to output log
+func LoggerOutput(out io.Writer) Option {
 	return func(cont *Cont) {
-		cont.logger = logger
+		core := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+			zapcore.AddSync(out), zap.NewAtomicLevelAt(zapcore.InfoLevel))
+		replace := func(c zapcore.Core) zapcore.Core {
+			return core
+		}
+		cont.logger.WithOptions(zap.WrapCore(replace))
 	}
 }
 
@@ -107,6 +114,13 @@ func PidFile(filename string) Option {
 func New(opts ...Option) *Cont {
 	dir, _ := os.Getwd()
 	cont := &Cont{name: os.Args[0], cwd: dir, pid: os.Getpid()}
+	logger, err := zap.NewProduction(zap.AddCaller())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+
+	cont.logger = logger.With(zap.Int("pid", os.Getpid()))
 
 	for _, o := range opts {
 		o(cont)
@@ -114,16 +128,6 @@ func New(opts ...Option) *Cont {
 
 	if cont.pidfile == "" {
 		cont.pidfile = cont.cwd + "/" + cont.name + ".pid"
-	}
-
-	if cont.logger == nil {
-		logger, err := logbunny.New(logbunny.WithDebugLevel(), logbunny.WithCaller())
-
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		cont.logger = logger.With(logbunny.Int("PID", os.Getpid()))
 	}
 
 	return cont
@@ -183,7 +187,7 @@ func (cont *Cont) Serve() error {
 
 	for {
 		sig := <-c
-		cont.logger.Info("got signal", logbunny.Stringer("value", sig))
+		cont.logger.Info("got signal", zap.Stringer("value", sig))
 		switch sig {
 		case syscall.SIGTERM:
 			cont.Stop()
@@ -199,11 +203,11 @@ func (cont *Cont) Serve() error {
 				cont.wg.Wait() //wait server goroutines to exit
 				//listen and serve again
 				if err := cont.openListeners(); err != nil {
-					cont.logger.Error("open listeners failed", logbunny.Err(err))
+					cont.logger.Error("open listeners failed", zap.Error(err))
 					continue
 				}
 				if err := cont.serve(); err != nil {
-					cont.logger.Error("start serve failed", logbunny.Err(err))
+					cont.logger.Error("start serve failed", zap.Error(err))
 					continue
 				}
 				cont.state = Running
@@ -211,39 +215,39 @@ func (cont *Cont) Serve() error {
 
 		case syscall.SIGUSR2:
 			if err := cont.upgrade(); err != nil {
-				cont.logger.Error("upgrade binary failed", logbunny.Err(err))
+				cont.logger.Error("upgrade binary failed", zap.Error(err))
 			}
 
 		case syscall.SIGHUP:
 			if err := cont.upgrade(); err != nil {
-				cont.logger.Error("upgrade binary failed", logbunny.Err(err))
+				cont.logger.Error("upgrade binary failed", zap.Error(err))
 				continue
 			}
 			if err := cont.GracefulStop(); err != nil {
-				cont.logger.Error("upgrade binary failed", logbunny.Err(err))
+				cont.logger.Error("upgrade binary failed", zap.Error(err))
 				continue
 			}
 			return nil
 		case syscall.SIGCHLD:
 			p, err := os.FindProcess(cont.child)
 			if err != nil {
-				cont.logger.Error("find process failed", logbunny.Err(err))
+				cont.logger.Error("find process failed", zap.Error(err))
 			}
 			// wait child process to exit to avoid zombie process
 			status, err := p.Wait()
 			if err != nil {
-				cont.logger.Error("wait child process to exit failed", logbunny.Err(err))
+				cont.logger.Error("wait child process to exit failed", zap.Error(err))
 			} else {
 				if status.Success() {
-					cont.logger.Info("child exited", logbunny.Stringer("status", status))
+					cont.logger.Info("child exited", zap.Stringer("status", status))
 				} else {
-					cont.logger.Error("child exited failed", logbunny.Stringer("status", status))
+					cont.logger.Error("child exited failed", zap.Stringer("status", status))
 				}
 			}
 
 			// recover pidfile.old to pidfile
 			if err := os.Rename(cont.pidfile+".old", cont.pidfile); err != nil {
-				cont.logger.Error("recover pid file failed", logbunny.Err(err))
+				cont.logger.Error("recover pid file failed", zap.Error(err))
 			}
 		}
 	}
@@ -282,14 +286,14 @@ func (cont *Cont) GracefulStop() error {
 func (cont *Cont) upgrade() error {
 	// rename pidfile to pidfile.old
 	if err := os.Rename(cont.pidfile, cont.pidfile+".old"); err != nil {
-		cont.logger.Warn("rename pid file failed", logbunny.Err(err))
+		cont.logger.Warn("rename pid file failed", zap.Error(err))
 	}
 
 	pid, err := cont.net.StartProcess()
 	if err != nil {
 		return err
 	}
-	cont.logger.Info("new process started", logbunny.Int("child", pid))
+	cont.logger.Info("new process started", zap.Int("child", pid))
 	cont.child = pid
 	return nil
 }
@@ -303,7 +307,7 @@ func (cont *Cont) closeListeners() {
 
 	for _, server := range cont.servers {
 		if err := server.lis.Close(); err != nil {
-			cont.logger.Error("close listener failed", logbunny.Err(err), logbunny.String("listenon", server.listenOn.Address))
+			cont.logger.Error("close listener failed", zap.Error(err), zap.String("listenon", server.listenOn.Address))
 		}
 	}
 	// gracenet internal stores all the active listeners. When we close listeners here, we can not notify gracenet about this
@@ -342,7 +346,7 @@ func (cont *Cont) serve() error {
 				default:
 				}
 				if !done {
-					cont.logger.Error("serve failed", logbunny.Err(err), logbunny.String("listen", server.listenOn.Address))
+					cont.logger.Error("serve failed", zap.Error(err), zap.String("listen", server.listenOn.Address))
 				}
 			}
 			cont.wg.Done()

@@ -1,0 +1,4 @@
+language: go
+go:
+  - 1.11
+script: go get github.com/shafreeck/continuous

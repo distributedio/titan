@@ -13,6 +13,17 @@ const (
 	DefaultNamespace = "default"
 )
 
+// Version information.
+var (
+	ReleaseVersion = "None"
+	BuildTS        = "None"
+	GitHash        = "None"
+	GitBranch      = "None"
+	GitLog         = "None"
+	GolangVersion  = "None"
+	ConfigFile     = "None"
+)
+
 // Command releated context
 type Command struct {
 	Name string

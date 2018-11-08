@@ -15,10 +15,11 @@ import (
 
 // Context is the runtime context of a command
 type Context struct {
-	Name string
-	Args []string
-	In   io.Reader
-	Out  io.Writer
+	Name    string
+	Args    []string
+	In      io.Reader
+	Out     io.Writer
+	TraceID string
 	*context.Context
 }
 

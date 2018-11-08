@@ -94,7 +94,7 @@ func init() {
 		// strings
 		"get":    CommandInfo{Proc: AutoCommit(Get), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"set":    CommandInfo{Proc: AutoCommit(Set), Cons: Constraint{-3, flags("wm"), 1, 1, 1}},
-		"mget":   CommandInfo{Proc: AutoCommit(MGet), Cons: Constraint{-3, flags("rF"), 1, -1, 1}},
+		"mget":   CommandInfo{Proc: AutoCommit(MGet), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
 		"mset":   CommandInfo{Proc: AutoCommit(MSet), Cons: Constraint{-3, flags("wm"), 1, -1, 2}},
 		"strlen": CommandInfo{Proc: AutoCommit(Strlen), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"append": CommandInfo{Proc: AutoCommit(Append), Cons: Constraint{3, flags("wm"), 1, 1, 1}},

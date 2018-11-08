@@ -131,12 +131,15 @@ func (txn *Transaction) String(key []byte) (*String, error) {
 // BatchGetValues issue batch requests to get values
 func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	sobjs := make([]*String, len(keys))
-	mdata, err := store.BatchGetValues(txn.t, keys)
+	tkeys := make([][]byte, len(keys))
+	for i, key := range keys {
+		tkeys[i] = MetaKey(txn.db, key)
+	}
+	mdata, err := store.BatchGetValues(txn.t, tkeys)
 	if err != nil {
 		return nil, err
 	}
-	for i, key := range keys {
-		fmt.Println(string(key))
+	for i, key := range tkeys {
 		obj := txn.NewString(key)
 		if data, ok := mdata[string(key)]; ok {
 			if err := obj.decode(data); err != nil {

@@ -25,10 +25,13 @@ func EqualStrlen(t *testing.T, key string, ll int) {
 }
 
 //bug,bug
-func EqualMGet(t *testing.T, keys []string, value []string, e error) {
+func EqualMGet(t *testing.T, keys []string, values []string, e error) {
 	ctx := ContextTest("mget", keys...)
 	Call(ctx)
-	assert.Contains(t, ctxString(ctx.Out), value)
+	for _, v := range values {
+		assert.Contains(t, ctxString(ctx.Out), v)
+	}
+
 	// assert.Len(t, ctxString(ctx.Out), len(value))
 }
 
@@ -258,8 +261,7 @@ func TestStringSet(t *testing.T) {
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), "OK")
 	EqualGet(t, key, "value", nil)
-
-	EqualMGet(t, []string{key, key}, []string{"value", "value"}, nil)
+	EqualMGet(t, []string{key}, []string{"value"}, nil)
 }
 
 /*

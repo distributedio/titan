@@ -1,12 +1,6 @@
 package db
 
-import (
-	"context"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 func EqualGet(t *testing.T, db *DB, key []byte, value []byte) {
 	txn, _ := db.Begin()
 	obj, err := GetString(txn, key)
@@ -28,10 +22,9 @@ func EqualNotFound(t *testing.T, db *DB, key []byte) {
 	txn.Commit(context.TODO())
 }
 
-/*
 func TestStringSet(t *testing.T) {
 	value := []byte("value")
-	key := []byte("string-key")
+	key := []byte("key")
 
 	db := MockDB()
 	txn, _ := db.Begin()
@@ -43,7 +36,6 @@ func TestStringSet(t *testing.T) {
 	EqualGet(t, db, key, value)
 }
 
-/*
 //过期校验
 func TestStringSetPx(t *testing.T) {
 	value := []byte("value-px")
@@ -61,7 +53,6 @@ func TestStringSetPx(t *testing.T) {
 	time.Sleep(time.Second)
 	EqualNotFound(t, db, key)
 }
-
 
 //过期校验
 func TestStringSetExpire(t *testing.T) {

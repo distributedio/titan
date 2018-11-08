@@ -73,7 +73,7 @@ func (s *String) Get() ([]byte, error) {
 
 func (s *String) Set(val []byte, expire ...int64) error {
 	timestamp := Now()
-	if len(expire) != 0 {
+	if len(expire) != 0 && expire[0] > 0 {
 		old := s.meta.ExpireAt
 		s.meta.ExpireAt = timestamp + expire[0]
 		if err := expireAt(s.txn, s.key, s.key, old, s.meta.ExpireAt); err != nil {

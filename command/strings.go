@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/resp"
 )
 
 // Get the value of key
@@ -73,6 +74,9 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err != nil {
 			return nil, ErrInteger
 		}
+		if ui == 0 {
+			return nil, ErrExpire
+		}
 		unit = ui * unit
 	}
 
@@ -86,7 +90,6 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if !s.Exist() {
 			return NullBulkString(ctx.Out), nil
 		}
-		s.Set(value)
 	}
 
 	//nx
@@ -100,22 +103,29 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err := s.Set(value, unit); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	s.Set([]byte(value))
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
 // MGet returns the values of all specified key  TODO use BatchGetRequest to gain performance
 func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	count := len(ctx.Args)
+	values := make([][]byte, count)
 
 	keys := make([][]byte, count)
 	for i := range ctx.Args {
 		keys[i] = []byte(ctx.Args[i])
 	}
 
-	values, err := db.BatchGetValues(txn, keys)
+	strs, err := txn.Strings(keys)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
+	}
+	for i, str := range strs {
+		if str == nil || !str.Exist() {
+			resp.ReplyNullBulkString(ctx.Out)
+			continue
+		}
+		values[i], _ = str.Get()
 	}
 	return BytesArray(ctx.Out, values), nil
 }
@@ -123,28 +133,32 @@ func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // MSet sets the given keys to their respective values
 func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
+	args := ctx.Args
 	if argc%2 != 0 {
 		return nil, ErrMSet
 	}
-	for i := 0; i < argc-1; i += 2 {
+	for i := 2; i <= argc; i += 2 {
+		ctx.Args = args[i-2 : i]
 		if _, err := Set(ctx, txn); err != nil {
 			return nil, err
 		}
-		ctx.Args = ctx.Args[2:]
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
 //TODO bug
+// 一个失败其他不应该提交 现在提交成功了
 func MSetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
+	args := ctx.Args
 	if argc%2 != 0 {
 		return nil, ErrMSet
 	}
-	for i := 0; i < argc-1; i += 2 {
+	for i := 2; i < argc-1; i += 2 {
 		if str, _ := txn.String([]byte(ctx.Args[0])); !str.Exist() {
+			ctx.Args = append(args[i-2:i], "nx")
 			if _, err := Set(ctx, txn); err != nil {
-				return nil, err
+				return nil, errors.New("ERR " + err.Error())
 			}
 			ctx.Args = ctx.Args[2:]
 			continue
@@ -178,6 +192,7 @@ func Strlen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 //Append
 func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
+	value := []byte(ctx.Args[1])
 	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -186,12 +201,7 @@ func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	value, err := str.Get()
-	if err != nil && err != db.ErrKeyNotFound {
-		return nil, errors.New("ERR " + err.Error())
-	}
-
-	if err == db.ErrKeyNotFound {
+	if !str.Exist() {
 		str = txn.NewString(key)
 	}
 

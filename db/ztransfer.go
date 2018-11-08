@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/conf"
-	"gitlab.meitu.com/platform/titan/monitor"
+	//	"gitlab.meitu.com/platform/titan/monitor"
 	"go.uber.org/zap"
 )
 
@@ -115,8 +115,8 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 			zap.L().Error("[ZT] error in commit transfer", zap.Error(err))
 			txn.Rollback()
 		} else {
-			monitor.WithLabelCounter(monitor.ZTInfoType, "zlist").Add(float64(batchCount))
-			monitor.WithLabelCounter(monitor.ZTInfoType, "keys").Add(float64(sum))
+			//monitor.WithLabelCounter(monitor.ZTInfoType, "zlist").Add(float64(batchCount))
+			//monitor.WithLabelCounter(monitor.ZTInfoType, "keys").Add(float64(sum))
 			zap.L().Debug("[ZT] transfer zlist succeed", zap.Int("count", batchCount), zap.Int("n", sum))
 		}
 		txnstart = false

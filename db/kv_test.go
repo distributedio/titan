@@ -13,7 +13,7 @@ func SetVal(t *testing.T, db *DB, key, val []byte) {
 	assert.NoError(t, err)
 	str, err := txn.String(key)
 	assert.NoError(t, err)
-	err = str.Set(val, 0, 1)
+	err = str.Set(val)
 	assert.NoError(t, err)
 	txn.Commit(context.Background())
 }
@@ -40,8 +40,8 @@ func EqualExpireAt(t *testing.T, db *DB, key []byte, expected int64) {
 }
 
 func TestDelete(t *testing.T) {
-	key := []byte("key-del")
-	val := []byte("val-del")
+	key := []byte("keys-key-del")
+	val := []byte("keys-val-del")
 	db := MockDB()
 	SetVal(t, db, key, val)
 	txn, err := db.Begin()

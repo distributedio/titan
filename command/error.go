@@ -44,7 +44,7 @@ var (
 	ErrInvalidDB = errors.New("ERR invalid DB index")
 
 	// ErrTikv TIKV ERROR
-	ErrTikv = errors.New("TIKV ERROR")
+	// ErrTikv = errors.New("TIKV ERROR")
 
 	// ErrInteger value is not an integer or out of range
 	ErrInteger = errors.New("ERR value is not an integer or out of range")
@@ -65,7 +65,7 @@ var (
 	ErrSyntax = errors.New("ERR syntax error")
 
 	// ErrValue value is not an integer or out of range
-	ErrValue = errors.New("ERR value is not an integer or out of range")
+	// ErrValue = errors.New("ERR value is not an integer or out of range")
 
 	// ErrType Operation against a key holding the wrong kind of value
 	ErrType = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")

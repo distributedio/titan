@@ -1,6 +1,7 @@
 package command
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,28 +10,21 @@ import (
 func TestSet(t *testing.T) {
 	ctx := ContextTest("set", "key", "value")
 	Call(ctx)
-	assert.Equal(t, "+OK\r\n", ctxString(ctx.Out))
+}
+
+func EqualGet(t *testing.T, key string, value string, e error) {
+	ctx := ContextTest("get", key)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), value)
+}
+
+func EqualStrlen(t *testing.T, key string, ll int) {
+	ctx := ContextTest("strlen", key)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(ll))
 }
 
 /*
-func EqualGet(t *testing.T, key []byte, value []byte, e error) {
-	cmdctx.Db.Begin()
-	r, err := GetHandler([][]byte{key}, cmdctx)
-	cmdctx.Db.Commit()
-	re := &protocol.ReplyData{Type: protocol.REPLYBULK, Value: value}
-	assert.Equal(t, re, r)
-	assert.Equal(t, e, err)
-}
-
-func EqualStrlen(t *testing.T, key []byte, ll int64) {
-	cmdctx.Db.Begin()
-	r, err := StrlenHandler([][]byte{key}, cmdctx)
-	cmdctx.Db.Commit()
-	re := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: ll}
-	assert.Equal(t, re, r)
-	assert.NoError(t, err)
-}
-
 func EqualMGet(t *testing.T, key [][]byte, value [][]byte, e error) {
 	cmdctx.Db.Begin()
 	r, err := MGetHandler(key, cmdctx)
@@ -44,126 +38,105 @@ func EqualMGet(t *testing.T, key [][]byte, value [][]byte, e error) {
 	assert.NoError(t, err)
 }
 
+*/
 var (
-	value = []byte("value")
+	value = "value"
 )
 
-func SetEXS(key []byte) [][]byte {
-	args := make([][]byte, 5)
+func SetEXS(key string) []string {
+	args := make([]string, 5)
 	args[0] = key
-	args[1] = []byte(value)
-	args[2] = []byte("ex")
-	args[3] = []byte("1000")
-	args[4] = []byte("nx")
+	args[1] = value
+	args[2] = "ex"
+	args[3] = "1000"
+	args[4] = "nx"
 	return args
 }
 
-func SetPXS(key []byte) [][]byte {
-	args := make([][]byte, 5)
+func SetPXS(key string) []string {
+	args := make([]string, 5)
 	args[0] = key
-	args[1] = []byte(value)
-	args[2] = []byte("px")
-	args[3] = []byte("1000")
-	args[4] = []byte("nx")
+	args[1] = value
+	args[2] = "px"
+	args[3] = "1000"
+	args[4] = "nx"
 	return args
 }
 
-func SetFour(key []byte) [][]byte {
-	args := make([][]byte, 4)
+func SetFour(key string) []string {
+	args := make([]string, 4)
 	args[0] = key
-	args[1] = []byte("value")
-	args[2] = []byte("px")
-	args[3] = []byte("1000")
+	args[1] = "value"
+	args[2] = "px"
+	args[3] = "1000"
 	return args
 }
 
 // test set ex NX|XX|未知
 func TestStringSetEXS(t *testing.T) {
 
-	key := []byte("setexs")
+	key := "setexs"
 	args := SetEXS(key)
 
-	cmdctx.Db.Begin()
-	r, err := SetHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisOkResp, r)
-	assert.NoError(t, err)
+	ctx := ContextTest("set", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "OK")
 	EqualGet(t, key, value, nil)
-	EqualStrlen(t, key, int64(len(value)))
+	EqualStrlen(t, key, len(value))
 
 	//修改key失败
 	args = SetEXS(key)
-	args[1] = []byte("v2")
-	cmdctx.Db.Begin()
-	r, err = SetHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisNilResp, r)
-	assert.NoError(t, err)
+	args[1] = "v2"
+	ctx = ContextTest("set", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "-1")
 	EqualGet(t, key, value, nil)
 
 	args = SetEXS(key)
-	args[1] = []byte("v2")
-	args[4] = []byte("xx")
-	cmdctx.Db.Begin()
-	r, err = SetHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisOkResp, r)
-	assert.NoError(t, err)
-	EqualGet(t, key, []byte("v2"), nil)
-	EqualStrlen(t, key, int64(len("v2")))
+	args[1] = "v2"
+	args[4] = "xx"
 
+	ctx = ContextTest("set", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "OK")
+	EqualGet(t, key, "v2", nil)
+	EqualStrlen(t, key, len("v2"))
 	// 测试nx
 	// 修改key 失败
 	args = SetEXS(key)
-	args[1] = []byte("value")
-	cmdctx.Db.Begin()
-	r, err = SetHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisNilResp, r)
-	assert.NoError(t, err)
-	EqualGet(t, key, []byte("v2"), nil)
-
-	//异常测试
-	cmdctx.Db.Begin()
-	r, err = SetHandler(args[:3], cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisSyntaxResp, r)
-	assert.NotNil(t, err)
+	args[1] = "value"
+	ctx = ContextTest("set", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "-1")
+	EqualGet(t, key, "v2", nil)
 
 	//乱序测试
 	args[0] = key
-	args[1] = []byte("v1")
-	args[2] = []byte("xx")
-	args[3] = []byte("ex")
-	args[4] = []byte("1000")
+	args[1] = "v1"
+	args[2] = "xx"
+	args[3] = "ex"
+	args[4] = "1000"
 
-	cmdctx.Db.Begin()
-	r, err = SetHandler(args, cmdctx)
-	cmdctx.Db.Begin()
-	assert.Equal(t, RedisOkResp, r)
-	cmdctx.Db.Commit()
-	assert.NoError(t, err)
-	EqualGet(t, key, []byte("v1"), nil)
+	ctx = ContextTest("set", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "OK")
+	EqualGet(t, key, "v1", nil)
 
 	//异常测试
 	args = SetEXS(key)
-	cmdctx.Db.Begin()
-	r, err = SetHandler(args[:3], cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisSyntaxResp, r)
-	assert.NotNil(t, err)
+	ctx = ContextTest("set", args[:3]...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrSyntax.Error())
 
 	//异常测试
 	args = SetEXS(key)
-	args[3] = []byte("bx")
-	cmdctx.Db.Begin()
-	SetHandler(args[:3], cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisSyntaxResp, r)
-	assert.NotNil(t, err)
-
+	args[3] = "bx"
+	ctx = ContextTest("set", args[:3]...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrSyntax.Error())
 }
 
+/*
 // test set px NX|XX|未知
 func TestStringSetPXS(t *testing.T) {
 

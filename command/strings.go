@@ -3,7 +3,6 @@ package command
 import (
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
@@ -12,7 +11,6 @@ import (
 // Get the value of key
 func Get(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := ctx.Args[0]
-
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -25,79 +23,88 @@ func Get(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return NullBulkString(ctx.Out), nil
 		}
-		return nil, ErrTikv
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return BulkString(ctx.Out, string(val)), nil
 }
 
 // Set key to hold the string value
 func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	val := ctx.Args[1]
+	key := []byte(ctx.Args[0])
+	value := []byte(ctx.Args[1])
+	args := ctx.Args
 
-	str, err := txn.String([]byte(key))
-	if err != nil {
-		if err == db.ErrTypeMismatch {
-			return nil, ErrTypeMismatch
+	var next bool
+	var flag int // flag int // 0 -- null 1---nx  2---xx
+	var unit int64
+	var expire string //expire = expire *unit
+	for i := 2; i < len(args); i++ {
+		if i+1 < len(args) {
+			next = true
 		}
+		if (args[i][0] == 'n' || args[i][0] == 'N') &&
+			(args[i][1] == 'x' || args[i][1] == 'X') &&
+			len(args[i]) == 2 {
+			flag = 1
+		} else if (args[i][0] == 'x' || args[i][0] == 'X') &&
+			(args[i][1] == 'x' || args[i][1] == 'X') &&
+			len(args[i]) == 2 {
+			flag = 2
+		} else if (args[i][0] == 'p' || args[i][0] == 'P') &&
+			(args[i][1] == 'x' || args[i][1] == 'X') &&
+			len(args[i]) == 2 && next {
+			expire = args[i+1]
+			i = i + 1
+			unit = int64(time.Millisecond)
+		} else if (args[i][0] == 'e' || args[i][0] == 'E') &&
+			(args[i][1] == 'x' || args[i][1] == 'X') &&
+			len(args[i]) == 2 && next {
+			expire = args[i+1]
+			i = i + 1
+			unit = int64(time.Second)
+		} else {
+			return nil, ErrSyntax
+		}
+	}
+
+	//ex|px
+	if expire != "" {
+		ui, err := strconv.ParseInt(expire, 10, 64)
+		if err != nil {
+			return nil, ErrInteger
+		}
+		unit = ui * unit
+	}
+
+	s, err := txn.String(key)
+	if err != nil && err != db.ErrKeyNotFound {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	ttl := time.Duration(-1)
-	options := ctx.Args[1:]
-	for i, opt := range options {
-		switch strings.ToLower(opt) {
-		case "ex":
-			if i+1 >= len(options) {
-				return nil, ErrSyntax
-			}
-			val := options[i+1]
-			sec, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, ErrInteger
-			}
-			ttl = time.Duration(sec) * time.Second
-		case "px":
-			if i+1 >= len(options) {
-				return nil, ErrSyntax
-			}
-			val := options[i+1]
-			msec, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, ErrInteger
-			}
-			ttl = time.Duration(msec) * time.Millisecond
-		case "nx":
-			_, err := str.Get()
-			if err != nil {
-				if err != db.ErrKeyNotFound {
-					return NullBulkString(ctx.Out), nil
-				}
-				return nil, ErrTikv
-			}
-		case "xx":
-			_, err := str.Get()
-			if err != nil {
-				if err == db.ErrKeyNotFound {
-					return NullBulkString(ctx.Out), nil
-				}
-				return nil, ErrTikv
-			}
-		}
 
-		var at []int64
-		if ttl > 0 {
-			at = append(at, time.Now().Add(ttl).UnixNano())
+	//xx
+	if flag == 2 {
+		if !s.Exist() {
+			return NullBulkString(ctx.Out), nil
 		}
-		if err := str.Set([]byte(val), at...); err != nil {
-			return nil, ErrTikv
+		s.Set(value)
+	}
+
+	//nx
+	if flag == 1 {
+		if s.Exist() {
+			return NullBulkString(ctx.Out), nil
 		}
 	}
+
+	s = txn.NewString(key)
+	if err := s.Set(value, unit); err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	s.Set([]byte(value))
 	return SimpleString(ctx.Out, "OK"), nil
-	// TODO handle other options
 }
 
 // MGet returns the values of all specified key  TODO use BatchGetRequest to gain performance
-
 func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	count := len(ctx.Args)
 
@@ -127,6 +134,8 @@ func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }
+
+//TODO bug
 func MSetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	if argc%2 != 0 {
@@ -155,62 +164,63 @@ func Strlen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
+
 	v, err := str.Len()
 	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, int64(0)), nil
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(v)), nil
 }
+
+//Append
 func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
+
 	value, err := str.Get()
+	if err != nil && err != db.ErrKeyNotFound {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if err == db.ErrKeyNotFound {
+		str = txn.NewString(key)
+	}
+
+	llen, err := str.Append(value)
 	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
-		return nil, ErrTikv
+		return nil, errors.New("ERR " + err.Error())
 	}
-	value = append(value, ctx.Args[1]...)
-	if err := str.Set(value, int64(0)); err != nil {
-		return nil, ErrTikv
-	}
-	return Integer(ctx.Out, int64(len(value))), nil
+	return Integer(ctx.Out, int64(llen)), nil
 }
 
-//TODO
-func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	return nil, nil
-}
 func GetSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	v := []byte(ctx.Args[1])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	value, err := str.Get()
+	if !str.Exist() {
+		return NullBulkString(ctx.Out), nil
+	}
+
+	value, err := str.GetSet(v)
 	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
-		return nil, ErrTikv
+		return nil, errors.New("ERR " + err.Error())
 	}
-	if err := str.Set([]byte(ctx.Args[1]), int64(0)); err != nil {
-		return nil, ErrTikv
-	}
-	if value != nil {
-		return BulkString(ctx.Out, string(value)), nil
-	}
-	return nil, nil
+	return BulkString(ctx.Out, string(value)), nil
 }
 
 func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
@@ -225,43 +235,29 @@ func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	start, err := strconv.Atoi(string(ctx.Args[1]))
 	if err != nil {
-		return nil, ErrValue
+		return nil, ErrInteger
 	}
 	end, err := strconv.Atoi(string(ctx.Args[2]))
 	if err != nil {
-		return nil, ErrValue
+		return nil, ErrInteger
 	}
-	value, err := str.Get()
 
-	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
-		return nil, ErrTikv
+	if !str.Exist() {
+		return NullBulkString(ctx.Out), nil
 	}
-	vlen := len(value)
-	if end < 0 {
-		end = vlen + end
+
+	value := str.GetRange(start, end)
+	if len(value) == 0 {
+		return NullBulkString(ctx.Out), nil
 	}
-	if start < 0 {
-		start = vlen + start
-	}
-	if start > end || start > vlen || end < 0 {
-		return nil, EmptyArray
-	}
-	if end > vlen {
-		end = vlen
-	}
-	if start < 0 {
-		start = 0
-	}
-	return BulkString(ctx.Out, string(value[start:][:end+1])), nil
+
+	return BulkString(ctx.Out, string(value)), nil
 }
 
 func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -272,8 +268,10 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if str.Exist() {
 		return Integer(ctx.Out, int64(0)), nil
 	}
-	if err := str.Set([]byte(ctx.Args[1]), int64(0)); err != nil {
-		return nil, ErrTikv
+
+	str = txn.NewString(key)
+	if err := str.Set([]byte(ctx.Args[1])); err != nil {
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(1)), nil
 }
@@ -281,31 +279,30 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 //SETEX KEY_NAME TIMEOUT VALUE
 func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	if []byte(ctx.Args[1]) != nil {
-		ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
-		if err != nil {
-			return nil, ErrInteger
-		}
-		unit := ui * uint64(time.Second)
-		if err := str.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
-			return nil, ErrTikv
-		}
-	}
-	return SimpleString(ctx.Out, "OK"), nil
 
+	ui, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
+	if err != nil {
+		return nil, ErrInteger
+	}
+	unit := ui * int64(time.Second)
+	if err := str.Set([]byte(ctx.Args[2]), unit); err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	return SimpleString(ctx.Out, "OK"), nil
 }
 
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
-	key := ctx.Args[0]
+	key := []byte(ctx.Args[0])
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -313,20 +310,21 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	if []byte(ctx.Args[1]) != nil {
-		ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
-		if err != nil {
-			return nil, ErrInteger
-		}
-		unit := ui * uint64(time.Microsecond)
-		if err := str.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
-			return nil, ErrTikv
-		}
+	ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
+	if err != nil {
+		return nil, ErrInteger
 	}
+	unit := ui * uint64(time.Microsecond)
+	if err := str.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
+/*
 //setrange key offset value
+TODO bug
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := ctx.Args[0]
 	str, err := txn.String([]byte(key))
@@ -339,20 +337,17 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	offset, err := strconv.Atoi(string(ctx.Args[1]))
 	if err != nil {
-		return nil, ErrValue
+		return nil, ErrInteger
 	}
 
 	if offset < 0 || offset > MaxRangeInteger {
 		return nil, ErrMaximum
 	}
 
-	value, err := str.Get()
-	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
-		return nil, ErrTikv
+	if !str.Exist() {
+		return NullBulkString(ctx.Out), nil
 	}
+
 	vlen := len(value)
 	if vlen < offset+len(ctx.Args[2]) {
 		value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
@@ -360,26 +355,31 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	copy(value[offset:], ctx.Args[2])
 	return Integer(ctx.Out, int64(len(value))), nil
 }
+*/
 
-//TODO
-func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	return nil, nil
-}
 func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return incr(1, str, ctx)
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+	delta, err := str.Incr(1)
+	if err != nil {
+		//TODO
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(delta)), nil
 }
 
 func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -390,11 +390,21 @@ func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-	return incr(delta, str, ctx)
+
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+
+	delta, err = str.Incr(1)
+	if err != nil {
+		//TODO
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(delta)), nil
 }
 
 func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
+	key := []byte(ctx.Args[0])
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -406,25 +416,43 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-	return incrf(delta, str, ctx)
+
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+
+	delta, err = str.Incrf(delta)
+	if err != nil {
+		//TODO
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
 }
 
 func Decr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return incr(-1, str, ctx)
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
 
+	delta, err := str.Incr(-1)
+	if err != nil {
+		//TODO
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(delta)), nil
 }
 
 func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -435,11 +463,20 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-	return incr(-delta, str, ctx)
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+
+	delta, err = str.Incr(-delta)
+	if err != nil {
+		//TODO
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(delta)), nil
 }
 
 func DecrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
+	key := []byte(ctx.Args[0])
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -451,49 +488,15 @@ func DecrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-	return incrf(-delta, str, ctx)
-}
-func incr(delta int64, str *db.String, ctx *Context) (OnCommit, error) {
-	value, err := str.Get()
-	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
-		return nil, ErrTikv
-	}
-	if value != nil {
-		v, err := strconv.ParseInt(string(value), 10, 64)
-		if err != nil {
-			return nil, ErrInteger
-		}
-		delta = v + delta
+
+	if !str.Exist() {
+		str = txn.NewString(key)
 	}
 
-	vs := strconv.FormatInt(delta, 10)
-	if err := str.Set([]byte(vs), int64(0)); err != nil {
-		return nil, ErrTikv
-	}
-	return Integer(ctx.Out, int64(delta)), nil
-}
-func incrf(delta float64, str *db.String, ctx *Context) (OnCommit, error) {
-	value, err := str.Get()
+	delta, err = str.Incrf(-delta)
 	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
-		return nil, ErrTikv
-	}
-	if value != nil {
-		v, err := strconv.ParseFloat(string(value), 64)
-		if err != nil {
-			return nil, ErrInteger
-		}
-		delta = v + delta
-	}
-
-	vs := strconv.FormatFloat(delta, 'e', -1, 64)
-	if err := str.Set([]byte(vs), int64(0)); err != nil {
-		return nil, ErrTikv
+		//TODO
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
 }

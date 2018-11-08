@@ -194,6 +194,7 @@ func globMatch(pattern, val []byte, nocase bool) bool {
 
 }
 
+//globMatchPrefix Glob-style patter prefix
 func globMatchPrefix(val []byte) []byte {
 	var v []byte
 	pattern := val

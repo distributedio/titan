@@ -2,15 +2,13 @@ package command
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"gitlab.meitu.com/platform/thanos/db"
 	"gitlab.meitu.com/platform/thanos/resp"
-	"gitlab.meitu.com/platform/titan/db"
-	"gitlab.meitu.com/platform/titan/protocol"
 )
 
 // scan iter max count
@@ -31,12 +29,12 @@ func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//Exists
+//Exists check if the given keys exist
 func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
 	for i := range ctx.Args {
-		keys[i] = [][]byte(ctx.Args[i])
+		keys[i] = []byte(ctx.Args[i])
 	}
 	c, err := kv.Exists(keys)
 	if err != nil {
@@ -45,30 +43,13 @@ func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//func expireAction(cmdctx *CmdCtx, key []byte, expireAt int64) error {
-//	now := time.Now().UnixNano()
-//	kv, err := cmdctx.Db.Kv()
-//	if err != nil {
-//		return err
-//	}
-//	if expireAt <= now {
-//		count, dErr := kv.Delete(key)
-//		if dErr == nil && count == 0 {
-//			return errors.New("delete not exists key")
-//		}
-//		return dErr
-//	} else {
-//		err = kv.ExpireAt(key, uint64(expireAt))
-//	}
-//	return err
-//}
-
+//Expire
 func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	key := []byte(args[0])
-	seconds, err := strconv.Atoi(args[1])
+	key := []byte(ctx.Args[0])
+	seconds, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
-		return nil, errors.New("ERR value is not an integer or out of range")
+		return nil, ErrInteger
 	}
 
 	at := time.Now().Add(time.Second * time.Duration(seconds)).UnixNano()
@@ -84,10 +65,10 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 //ExpireAt
 func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	key := []byte(args[0])
-	timestamp, err := strconv.Atoi(string(args[1]))
+	key := []byte(ctx.Args[0])
+	timestamp, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
-		return nil, err
+		return nil, ErrInteger
 	}
 
 	at := int64(time.Second * time.Duration(timestamp))
@@ -104,9 +85,10 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
+//Persist
 func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	key := []byte(args[0])
+	key := []byte(ctx.Args[0])
 	if err := kv.ExpireAt(key, 0); err != nil {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
@@ -116,14 +98,15 @@ func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
+//PExpire
 func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	key := []byte(args[0])
-	ms, err := strconv.Atoi(string(args[1]))
+	key := []byte(ctx.Args[0])
+	ms, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
-		return nil, err
+		return nil, ErrInteger
 	}
-	at := time.Now().Add(time.Millisecond * time.Duration(millsecond)).UnixNano()
+	at := time.Now().Add(time.Millisecond * time.Duration(ms)).UnixNano()
 	if err := kv.ExpireAt(key, at); err != nil {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
@@ -134,14 +117,15 @@ func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
+//PExpireAt
 func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	key := []byte(args[0])
-	ms, err := strconv.Atoi(string(args[1]))
+	key := []byte(ctx.Args[0])
+	ms, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
-		return nil, err
+		return nil, ErrInteger
 	}
-	at := int64(time.Millisecond * time.Duration(millsecond))
+	at := int64(time.Millisecond * time.Duration(ms))
 	if at <= 0 {
 		at = db.Now()
 	}
@@ -154,8 +138,9 @@ func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
+//TTL
 func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(args[0])
+	key := []byte(ctx.Args[0])
 	now := db.Now()
 	obj, err := txn.Object(key)
 	if err != nil {
@@ -174,8 +159,9 @@ func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, ttl), nil
 }
 
+//PTTL
 func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(args[0])
+	key := []byte(ctx.Args[0])
 	now := db.Now()
 	obj, err := txn.Object(key)
 	if err != nil {
@@ -195,6 +181,7 @@ func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
+//Object
 func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	subCmd := strings.ToLower(ctx.Args[0])
@@ -208,9 +195,9 @@ func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			[]byte("IDLETIME <key> -- Return the idle time of the key, that is the approximated number of seconds elapsed since the last access to the key."),
 			[]byte("REFCOUNT <key> -- Return the number of references of the value associated with the specified key."),
 		}
-		return BytesArray(len(helpInfo), helpInfo), nil
+		return BytesArray(ctx.Out, helpInfo), nil
 	} else if argc == 2 {
-		key := []byte(args[1])
+		key := []byte(ctx.Args[1])
 		obj, err := txn.Object(key)
 		if err != nil {
 			if err == db.ErrKeyNotFound {
@@ -232,8 +219,9 @@ func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return nil, cmdErr
 }
 
+//Type
 func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(args[0])
+	key := []byte(ctx.Args[0])
 	obj, err := txn.Object(key)
 	if err != nil {
 		if err == db.ErrKeyNotFound {
@@ -241,11 +229,11 @@ func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, err
 	}
-	rt.Value = obj.Type.String()
 
 	return SimpleString(ctx.Out, obj.Type.String()), nil
 }
 
+//Keys
 func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	list := make([][]byte, 0)
 	pattern := []byte(ctx.Args[0])
@@ -263,14 +251,15 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err := kv.Keys(prefix, f); err != nil {
 		return nil, err
 	}
-	return BytesArray(len(list), list), nil
+	return BytesArray(ctx.Out, list), nil
 }
 
-func ScanHandler(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+//Scan
+func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
 		start   []byte
 		end     []byte = []byte("0")
-		count   int64  = defaultScanCount
+		count   uint64 = defaultScanCount
 		pattern []byte
 		prefix  []byte
 		all     bool
@@ -281,8 +270,7 @@ func ScanHandler(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if len(ctx.Args)%2 == 0 {
-		//TODO return RedisValueResp, protocol.ErrValue
-
+		return nil, ErrInteger
 	}
 
 	for i := 1; i < len(ctx.Args); i += 2 {
@@ -291,7 +279,7 @@ func ScanHandler(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		switch arg {
 		case "count":
 			if count, err = strconv.ParseUint(next, 10, 64); err != nil {
-				return nil, protocol.ErrValue
+				return nil, ErrInteger
 			}
 			if count > ScanMaxCount {
 				count = ScanMaxCount
@@ -309,12 +297,12 @@ func ScanHandler(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		all = true
 	} else {
 		prefix = globMatchPrefix(pattern)
-		if start == nil && perfix != nil {
+		if start == nil && prefix != nil {
 			start = prefix
 		}
 	}
 
-	kv = txn.Kv()
+	kv := txn.Kv()
 	list := [][]byte{}
 	f := func(key []byte) bool {
 		if count <= 0 {
@@ -337,15 +325,15 @@ func ScanHandler(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return func() {
 		resp.ReplyArray(ctx.Out, 2)
-		resp.ReplyBulkString(ctx.Out, strint(end))
+		resp.ReplyBulkString(ctx.Out, string(end))
 		for i := range list {
-			resp.ReplyBulkString(w, string(list[i]))
+			resp.ReplyBulkString(ctx.Out, string(list[i]))
 		}
 	}, nil
 
 }
 
-// RandomKeyHandler return a random key from the currently selected database
+// RandomKey return a random key from the currently selected database
 func RandomKey(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key, err := kv.RandomKey()
@@ -353,7 +341,7 @@ func RandomKey(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, err
 	}
 	if key == nil {
-		return ReplyNullBulkString(ctx.Out), nil
+		return NullBulkString(ctx.Out), nil
 	}
-	return ReplyBulkString(ctx.Out, string(key)), nil
+	return BulkString(ctx.Out, string(key)), nil
 }

@@ -20,12 +20,20 @@ func init() {
 		"strlen": Strlen,
 
 		// keys
-		"type":     Type,
-		"exists":   Exists,
-		"keys":     Keys,
-		"delete":   Delete,
-		"expire":   Expire,
-		"expireat": ExpireAt,
+		"type":      Type,
+		"exists":    Exists,
+		"keys":      Keys,
+		"del":       Delete,
+		"expire":    Expire,
+		"expireat":  ExpireAt,
+		"pexpire":   PExpire,
+		"pexpireat": PExpireAt,
+		"persist":   Persist,
+		"ttl":       TTL,
+		"pttl":      PTTL,
+		"object":    Object,
+		"scan":      Scan,
+		"randomkey": RandomKey,
 
 		// server
 		"debug":    Debug,
@@ -83,12 +91,20 @@ func init() {
 		"strlen": CommandInfo{Proc: AutoCommit(Strlen), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 
 		// keys
-		"type":     CommandInfo{Proc: AutoCommit(Type), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
-		"exists":   CommandInfo{Proc: AutoCommit(Exists), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
-		"keys":     CommandInfo{Proc: AutoCommit(Keys), Cons: Constraint{-2, flags("rS"), 0, 0, 0}},
-		"del":      CommandInfo{Proc: AutoCommit(Delete), Cons: Constraint{-2, flags("w"), 1, -1, 1}},
-		"expire":   CommandInfo{Proc: AutoCommit(Expire), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
-		"expireat": CommandInfo{Proc: AutoCommit(ExpireAt), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
+		"type":      CommandInfo{Proc: AutoCommit(Type), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"exists":    CommandInfo{Proc: AutoCommit(Exists), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
+		"keys":      CommandInfo{Proc: AutoCommit(Keys), Cons: Constraint{-2, flags("rS"), 0, 0, 0}},
+		"del":       CommandInfo{Proc: AutoCommit(Delete), Cons: Constraint{-2, flags("w"), 1, -1, 1}},
+		"expire":    CommandInfo{Proc: AutoCommit(Expire), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
+		"expireat":  CommandInfo{Proc: AutoCommit(ExpireAt), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
+		"pexpire":   CommandInfo{Proc: AutoCommit(PExpire), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
+		"pexpireat": CommandInfo{Proc: AutoCommit(PExpireAt), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
+		"persist":   CommandInfo{Proc: AutoCommit(Persist), Cons: Constraint{2, flags("wF"), 1, 1, 1}},
+		"ttl":       CommandInfo{Proc: AutoCommit(TTL), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"pttl":      CommandInfo{Proc: AutoCommit(PTTL), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"object":    CommandInfo{Proc: AutoCommit(Object), Cons: Constraint{-2, flags("rR"), 0, 0, 0}},
+		"scan":      CommandInfo{Proc: AutoCommit(Scan), Cons: Constraint{-2, flags("rR"), 0, 0, 0}},
+		"randomkey": CommandInfo{Proc: AutoCommit(RandomKey), Cons: Constraint{1, flags("rR"), 0, 0, 0}},
 
 		// server
 		"monitor":  CommandInfo{Proc: Monitor, Cons: Constraint{1, flags("as"), 0, 0, 0}},

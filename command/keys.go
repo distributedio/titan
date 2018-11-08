@@ -72,7 +72,7 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	at := int64(time.Second * time.Duration(timestamp))
 	if at <= 0 {
-		at = db.Now()
+		at = db.Now() - 1
 	}
 
 	if err := kv.ExpireAt(key, at); err != nil {
@@ -148,9 +148,6 @@ func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return Integer(ctx.Out, -2), nil
 		}
 		return nil, err
-	}
-	if db.IsExpired(obj, now) {
-		return Integer(ctx.Out, -2), nil
 	}
 	if obj.ExpireAt == 0 {
 		return Integer(ctx.Out, -1), nil

@@ -1,402 +1,359 @@
 package command
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"gitlab.meitu.com/platform/thanos/resp"
 	"gitlab.meitu.com/platform/titan/db"
 	"gitlab.meitu.com/platform/titan/protocol"
 )
 
 // scan iter max count
-const ScanMaxCount = 1024
+const ScanMaxCount = 255
 const defaultScanCount = 10
 
+//Delete delete give keys
 func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
 	for i := range ctx.Args {
 		keys[i] = []byte(ctx.Args[i])
 	}
-	count, err := kv.Delete(keys)
+	c, err := kv.Delete(keys)
+	if err != nil {
+		return nil, err
+	}
+	return Integer(ctx.Out, c), nil
+}
+
+//Exists
+func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	keys := make([][]byte, len(ctx.Args))
+	for i := range ctx.Args {
+		keys[i] = [][]byte(ctx.Args[i])
+	}
+	c, err := kv.Exists(keys)
+	if err != nil {
+		return nil, err
+	}
+	return Integer(ctx.Out, c), nil
+}
+
+//func expireAction(cmdctx *CmdCtx, key []byte, expireAt int64) error {
+//	now := time.Now().UnixNano()
+//	kv, err := cmdctx.Db.Kv()
+//	if err != nil {
+//		return err
+//	}
+//	if expireAt <= now {
+//		count, dErr := kv.Delete(key)
+//		if dErr == nil && count == 0 {
+//			return errors.New("delete not exists key")
+//		}
+//		return dErr
+//	} else {
+//		err = kv.ExpireAt(key, uint64(expireAt))
+//	}
+//	return err
+//}
+
+func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	key := []byte(args[0])
+	seconds, err := strconv.Atoi(args[1])
+	if err != nil {
+		return nil, errors.New("ERR value is not an integer or out of range")
+	}
+
+	at := time.Now().Add(time.Second * time.Duration(seconds)).UnixNano()
+	if err := kv.ExpireAt(key, at); err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, 0), nil
+		}
+		return nil, err
+	}
+	return Integer(ctx.Out, 1), nil
+}
+
+//ExpireAt
+func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	key := []byte(args[0])
+	timestamp, err := strconv.Atoi(string(args[1]))
 	if err != nil {
 		return nil, err
 	}
 
-	return Intege(ctx.Out, int64(count))
-}
-
-func ExistsHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	kv, err := cmdctx.Db.Kv()
-	if err != nil {
-		return RedisTikvResp, err
+	at := int64(time.Second * time.Duration(timestamp))
+	if at <= 0 {
+		at = db.Now()
 	}
 
-	count, err := kv.Exists(args...)
-	if err != nil {
-		return RedisTikvResp, err
-	}
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: count,
-	}
-	return rt, nil
-}
-
-func expireAction(cmdctx *CmdCtx, key []byte, expireAt int64) error {
-	now := time.Now().UnixNano()
-	kv, err := cmdctx.Db.Kv()
-	if err != nil {
-		return err
-	}
-	if expireAt <= now {
-		count, dErr := kv.Delete(key)
-		if dErr == nil && count == 0 {
-			return errors.New("delete not exists key")
+	if err := kv.ExpireAt(key, at); err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, 0), nil
 		}
-		return dErr
-	} else {
-		err = kv.ExpireAt(key, uint64(expireAt))
+		return nil, err
 	}
-	return err
+	return Integer(ctx.Out, 1), nil
 }
 
-func ExpireHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	seconds, err := strconv.Atoi(string(args[1]))
-	if err != nil {
-		return RedisIntegerResp, err
+func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	key := []byte(args[0])
+	if err := kv.ExpireAt(key, 0); err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, 0), nil
+		}
+		return nil, err
 	}
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
-	}
-	expireAt := time.Now().Add(time.Second * time.Duration(seconds)).UnixNano()
-	err = expireAction(cmdctx, key, expireAt)
-	if err == nil {
-		rt.Value = int64(1)
-	}
-	return rt, err
+	return Integer(ctx.Out, 1), nil
 }
 
-func ExpireAtHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	timestamp, err := strconv.Atoi(string(args[1]))
+func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	key := []byte(args[0])
+	ms, err := strconv.Atoi(string(args[1]))
 	if err != nil {
-		return RedisIntegerResp, err
+		return nil, err
 	}
-
-	expireAt := int64(time.Second * time.Duration(timestamp))
-	err = expireAction(cmdctx, key, expireAt)
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
+	at := time.Now().Add(time.Millisecond * time.Duration(millsecond)).UnixNano()
+	if err := kv.ExpireAt(key, at); err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, 0), nil
+		}
+		return nil, err
 	}
-	if err == nil {
-		rt.Value = int64(1)
-	}
-	return rt, err
-}
-
-func PersistHandeler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	kv, err := cmdctx.Db.Kv()
-	if err != nil {
-		return RedisTikvResp, err
-	}
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
-	}
-	err = kv.Persist(key)
-	if err == nil {
-		rt.Value = int64(1)
-	}
-	return rt, err
-}
-
-func PExpireHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	millsecond, err := strconv.Atoi(string(args[1]))
-	if err != nil {
-		return RedisIntegerResp, err
-	}
-	expireAt := time.Now().Add(time.Millisecond * time.Duration(millsecond)).UnixNano()
-	err = expireAction(cmdctx, key, expireAt)
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
-	}
-	if err == nil {
-		rt.Value = int64(1)
-	}
-	return rt, nil
+	return Integer(ctx.Out, 1), nil
 
 }
 
-func PExpireAtHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	millsecond, err := strconv.Atoi(string(args[1]))
+func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	key := []byte(args[0])
+	ms, err := strconv.Atoi(string(args[1]))
 	if err != nil {
-		return RedisIntegerResp, err
+		return nil, err
 	}
-	expireAt := int64(time.Millisecond * time.Duration(millsecond))
-	err = expireAction(cmdctx, key, expireAt)
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
+	at := int64(time.Millisecond * time.Duration(millsecond))
+	if at <= 0 {
+		at = db.Now()
 	}
-	if err == nil {
-		rt.Value = int64(1)
+	if err := kv.ExpireAt(key, at); err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, 0), nil
+		}
+		return nil, err
 	}
-	return rt, nil
+	return Integer(ctx.Out, 1), nil
 }
 
-func TTLHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	kv, err := cmdctx.Db.Kv()
+func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(args[0])
+	now := db.Now()
+	obj, err := txn.Object(key)
 	if err != nil {
-		return RedisTikvResp, err
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, -2), nil
+		}
+		return nil, err
 	}
-
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
+	if db.IsExpired(obj, now) {
+		return Integer(ctx.Out, -2), nil
 	}
-	now := time.Now().UnixNano()
-	ttl, err := kv.TTL(key, uint64(now))
-	if err != nil {
-		return rt, err
+	if obj.ExpireAt == 0 {
+		return Integer(ctx.Out, -1), nil
 	}
-
-	if ttl <= 0 {
-		rt.Value = ttl
-	} else {
-		rt.Value = ttl / int64(time.Second)
-	}
-	return rt, nil
+	ttl := (obj.ExpireAt - now) / int64(time.Second)
+	return Integer(ctx.Out, ttl), nil
 }
 
-func PTTLHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	kv, err := cmdctx.Db.Kv()
+func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(args[0])
+	now := db.Now()
+	obj, err := txn.Object(key)
 	if err != nil {
-		return RedisTikvResp, err
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, -2), nil
+		}
+		return nil, err
 	}
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYBINT,
-		Value: int64(0),
+	if db.IsExpired(obj, now) {
+		return Integer(ctx.Out, -2), nil
 	}
-	now := time.Now().UnixNano()
+	if obj.ExpireAt == 0 {
+		return Integer(ctx.Out, -1), nil
+	}
+	ttl := (obj.ExpireAt - now) / int64(time.Millisecond)
+	return Integer(ctx.Out, ttl), nil
 
-	ttl, err := kv.TTL(key, uint64(now))
-	if err != nil {
-		return rt, err
-	}
-
-	if ttl <= 0 {
-		rt.Value = ttl
-	} else {
-		rt.Value = ttl / int64(time.Millisecond)
-	}
-	return rt, nil
 }
 
-func ObjectHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	argc := len(args)
-	subCmd := strings.ToLower(string(args[0]))
-
-	var objectErr protocol.RedisError = fmt.Errorf("ERR Unknown subcommand or wrong number of arguments for '%s'. Try OBJECT help", subCmd)
-	rt := &protocol.ReplyData{}
+func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	argc := len(ctx.Args)
+	subCmd := strings.ToLower(ctx.Args[0])
+	cmdErr := fmt.Errorf("ERR Unknown subcommand or wrong number of arguments for '%s'. Try OBJECT help", subCmd)
 	if argc == 1 && subCmd == "help" {
-		rt.Type = protocol.REPLYARRAY
-		helpInfo := []string{
-			"OBJECT <subcommand> key. Subcommands:",
-			"ENCODING <key> -- Return the kind of internal representation used in order to store the value associated with a key.",
-			"FREQ <key> -- Return the access frequency index of the key. The returned integer is proportional to the logarithm of the recent access frequency of the key.",
-			"IDLETIME <key> -- Return the idle time of the key, that is the approximated number of seconds elapsed since the last access to the key.",
-			"REFCOUNT <key> -- Return the number of references of the value associated with the specified key.",
+
+		helpInfo := [][]byte{
+			[]byte("OBJECT <subcommand> key. Subcommands:"),
+			[]byte("ENCODING <key> -- Return the kind of internal representation used in order to store the value associated with a key."),
+			[]byte("FREQ <key> -- Return the access frequency index of the key. The returned integer is proportional to the logarithm of the recent access frequency of the key."),
+			[]byte("IDLETIME <key> -- Return the idle time of the key, that is the approximated number of seconds elapsed since the last access to the key."),
+			[]byte("REFCOUNT <key> -- Return the number of references of the value associated with the specified key."),
 		}
-		val := make([]*protocol.ReplyData, 0, len(helpInfo))
-		for _, info := range helpInfo {
-			val = append(val, &protocol.ReplyData{Type: protocol.REPLYSIMPLESTRING, Value: info})
-		}
-		rt.Value = val
-		return rt, nil
+		return BytesArray(len(helpInfo), helpInfo), nil
 	} else if argc == 2 {
-		key := args[1]
-		obj, err := cmdctx.Db.Object(key)
+		key := []byte(args[1])
+		obj, err := txn.Object(key)
 		if err != nil {
-			if db.IsErrNotFound(err) {
-				return RedisNilResp, nil
+			if err == db.ErrKeyNotFound {
+				return NullBulkString(ctx.Out), nil
 			}
-			return RedisTikvResp, err
+			return nil, err
 		}
 
 		switch subCmd {
-		case "refcount":
-			rt.Type = protocol.REPLYBINT
-			rt.Value = int64(0)
+		case "refcount", "freq":
+			return Integer(ctx.Out, 0), nil
 		case "idletime":
-			sec := int64(time.Since(time.Unix(0, int64(obj.UpdatedAt))).Seconds())
-			rt.Type = protocol.REPLYBINT
-			rt.Value = sec
+			sec := int64(time.Since(time.Unix(0, obj.UpdatedAt)).Seconds())
+			return Integer(ctx.Out, sec), nil
 		case "encoding":
-			rt.Type = protocol.REPLYSIMPLESTRING
-			rt.Value = obj.Encoding.String()
-		case "freq":
-			rt.Type = protocol.REPLYBINT
-			rt.Value = int64(0)
-		default:
-			rt.Type = protocol.REPLYERROR
-			rt.Value = objectErr
-			err = objectErr
+			return SimpleString(ctx.Out, obj.Encoding.String()), nil
 		}
-		return rt, err
 	}
-	rt.Type = protocol.REPLYERROR
-	rt.Value = objectErr
-	return rt, objectErr
+	return nil, cmdErr
 }
 
-func TypeHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	key := args[0]
-	rt := &protocol.ReplyData{Type: protocol.REPLYSIMPLESTRING}
-	obj, err := cmdctx.Db.Object(key)
+func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(args[0])
+	obj, err := txn.Object(key)
 	if err != nil {
-		if db.IsErrNotFound(err) {
-			rt.Value = "none"
-			return rt, nil
+		if err == db.ErrKeyNotFound {
+			return SimpleString(ctx.Out, "none"), nil
 		}
-		return RedisTikvResp, err
+		return nil, err
 	}
 	rt.Value = obj.Type.String()
 
-	return rt, nil
+	return SimpleString(ctx.Out, obj.Type.String()), nil
 }
 
-func KeysHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
-	pattern := args[0]
-	allkey := (pattern[0] == '*' && len(pattern) == 1)
-	prefixKey := PatternStringPrefix(pattern)
-	kv, err := cmdctx.Db.Kv()
-	if err != nil {
-		return RedisTikvResp, err
-	}
+func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	list := make([][]byte, 0)
+	pattern := []byte(ctx.Args[0])
+	all := (pattern[0] == '*' && len(pattern) == 1)
+	prefix := globMatchPrefix(pattern)
 
-	keyList := make([]*protocol.ReplyData, 0)
-	callback := func(key []byte) bool {
-		if allkey || PatternMatch(pattern, key, false) {
-			keyList = append(keyList, &protocol.ReplyData{Type: protocol.REPLYSIMPLESTRING, Value: string(key)})
+	kv := txn.Kv()
+	f := func(key []byte) bool {
+		if all || globMatch(pattern, key, false) {
+			list = append(list, key)
 		}
 		return true
 	}
 
-	err = kv.Keys(prefixKey, prefixKey, callback)
-	if err != nil {
-		return RedisTikvResp, err
+	if err := kv.Keys(prefix, f); err != nil {
+		return nil, err
 	}
-
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYARRAY,
-		Value: keyList,
-	}
-	return rt, nil
+	return BytesArray(len(list), list), nil
 }
 
-func ScanHandler(args [][]byte, cmdctx *CmdCtx) (*protocol.ReplyData, error) {
+func ScanHandler(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
-		cursor   []byte = args[0]
-		count    uint64 = defaultScanCount
-		pattern  []byte
-		prefix   []byte
-		matchAll bool
+		start   []byte
+		end     []byte = []byte("0")
+		count   int64  = defaultScanCount
+		pattern []byte
+		prefix  []byte
+		all     bool
+		err     error
 	)
-	if string(cursor) == "0" {
-		cursor = nil
+	if strings.Compare(ctx.Args[0], "0") != 0 {
+		start = []byte(ctx.Args[0])
 	}
 
-	if len(args)%2 == 0 {
-		return RedisValueResp, protocol.ErrValue
+	if len(ctx.Args)%2 == 0 {
+		//TODO return RedisValueResp, protocol.ErrValue
+
 	}
 
-	var err error
-	for i := 1; i < len(args); i += 2 {
-		argv := strings.ToLower(string(args[i]))
-		nextArgv := args[i+1]
-		switch argv {
+	for i := 1; i < len(ctx.Args); i += 2 {
+		arg := strings.ToLower(ctx.Args[i])
+		next := ctx.Args[i+1]
+		switch arg {
 		case "count":
-			if count, err = strconv.ParseUint(string(nextArgv), 10, 64); err != nil {
-				return RedisIntegerResp, protocol.ErrValue
+			if count, err = strconv.ParseUint(next, 10, 64); err != nil {
+				return nil, protocol.ErrValue
 			}
 			if count > ScanMaxCount {
 				count = ScanMaxCount
-			} else if count == 0 {
+			}
+			if count == 0 {
 				count = defaultScanCount
 			}
 		case "match":
-			pattern = nextArgv
-			matchAll = string(pattern) == "*"
+			pattern = []byte(next)
+			all = (pattern[0] == '*' && len(pattern) == 1)
 		}
 	}
 
 	if len(pattern) == 0 {
-		matchAll = true
+		all = true
 	} else {
-		prefix = PatternStringPrefix(pattern)
-		if cursor == nil && prefix != nil {
-			cursor = prefix
+		prefix = globMatchPrefix(pattern)
+		if start == nil && perfix != nil {
+			start = prefix
 		}
 	}
 
-	kv, err := cmdctx.Db.Kv()
-	if err != nil {
-		return RedisTikvResp, err
-	}
-
-	keyList := make([]*protocol.ReplyData, 0)
-	lastCursor := &protocol.ReplyData{Type: protocol.REPLYBULK, Value: "0"}
-	callback := func(key []byte) bool {
-		strkey := string(key)
+	kv = txn.Kv()
+	list := [][]byte{}
+	f := func(key []byte) bool {
 		if count <= 0 {
-			lastCursor.Value = strkey
+			end = key
 			return false
 		}
-		if matchAll || PatternMatch(pattern, key, false) {
-			keyList = append(keyList, &protocol.ReplyData{Type: protocol.REPLYBULK, Value: strkey})
+		if prefix != nil && !bytes.HasPrefix(key, prefix) {
+			return false
+		}
+		if all || globMatch(pattern, key, false) {
+			list = append(list, key)
 			count--
 		}
-
 		return true
 	}
 
-	err = kv.Keys(cursor, prefix, callback)
+	err = kv.Keys(start, f)
 	if err != nil {
-		return RedisTikvResp, err
+		return nil, err
 	}
+	return func() {
+		resp.ReplyArray(ctx.Out, 2)
+		resp.ReplyBulkString(ctx.Out, strint(end))
+		for i := range list {
+			resp.ReplyBulkString(w, string(list[i]))
+		}
+	}, nil
 
-	val := make([]*protocol.ReplyData, 0, 2)
-	val = append(val, lastCursor, &protocol.ReplyData{Type: protocol.REPLYARRAY, Value: keyList})
-
-	rt := &protocol.ReplyData{
-		Type:  protocol.REPLYARRAY,
-		Value: val,
-	}
-	return rt, nil
 }
 
 // RandomKeyHandler return a random key from the currently selected database
-func RandomKeyHandler(args [][]byte, cmdCtx *CmdCtx) (*protocol.ReplyData, error) {
-	kv, _ := cmdCtx.Db.Kv()
+func RandomKey(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
 	key, err := kv.RandomKey()
 	if err != nil {
-		return &protocol.ReplyData{Type: protocol.REPLYERROR, Value: []byte(err.Error())}, nil
+		return nil, err
 	}
 	if key == nil {
-		return &protocol.ReplyData{Type: protocol.REPLYNIL, Value: nil}, nil
+		return ReplyNullBulkString(ctx.Out), nil
 	}
-	return &protocol.ReplyData{Type: protocol.REPLYBULK, Value: key}, err
+	return ReplyBulkString(ctx.Out, string(key)), nil
 }

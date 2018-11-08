@@ -622,7 +622,7 @@ func (l *LList) Destory() error {
 	// delete the meta data
 	l.txn.t.Delete(l.rawMetaKey)
 	// leaving the data to gc
-	gc(l.txn, l.rawDataKeyPrefix)
+	gc(l.txn.t, l.rawDataKeyPrefix)
 	return nil
 }
 

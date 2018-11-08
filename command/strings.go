@@ -16,13 +16,16 @@ func Get(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	val, err := str.Get()
-	if err == db.ErrKeyNotFound {
-		return NullBulkString(ctx.Out), nil
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
 	return BulkString(ctx.Out, string(val)), nil
 }
@@ -35,7 +38,7 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -45,49 +48,56 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		switch strings.ToLower(opt) {
 		case "ex":
 			if i+1 >= len(options) {
-				return nil, errors.New("ERR syntax error")
+				return nil, ErrSyntax
 			}
 			val := options[i+1]
 			sec, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
-				return nil, err
+				return nil, ErrInteger
 			}
 			ttl = time.Duration(sec) * time.Second
 		case "px":
 			if i+1 >= len(options) {
-				return nil, errors.New("ERR syntax error")
+				return nil, ErrSyntax
 			}
 			val := options[i+1]
 			msec, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
-				return nil, err
+				return nil, ErrInteger
 			}
 			ttl = time.Duration(msec) * time.Millisecond
 		case "nx":
-			if _, err := str.Get(); err != db.ErrKeyNotFound {
-				return NullBulkString(ctx.Out), nil
+			_, err := str.Get()
+			if err != nil {
+				if err != db.ErrKeyNotFound {
+					return NullBulkString(ctx.Out), nil
+				}
+				return nil, ErrTikv
 			}
 		case "xx":
-			if _, err := str.Get(); err == db.ErrKeyNotFound {
-				return NullBulkString(ctx.Out), nil
+			_, err := str.Get()
+			if err != nil {
+				if err == db.ErrKeyNotFound {
+					return NullBulkString(ctx.Out), nil
+				}
+				return nil, ErrTikv
 			}
 		}
-	}
 
-	var at []int64
-	if ttl > 0 {
-		at = append(at, time.Now().Add(ttl).UnixNano())
+		var at []int64
+		if ttl > 0 {
+			at = append(at, time.Now().Add(ttl).UnixNano())
+		}
+		if err := str.Set([]byte(val), at...); err != nil {
+			return nil, ErrTikv
+		}
 	}
-	if err := str.Set([]byte(val), at...); err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-
 	return SimpleString(ctx.Out, "OK"), nil
 	// TODO handle other options
 }
 
-// MGet returns the values of all specified keys
-// TODO use BatchGetRequest to gain performance
+// MGet returns the values of all specified key  TODO use BatchGetRequest to gain performance
+
 func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	count := len(ctx.Args)
 
@@ -107,7 +117,7 @@ func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	if argc%2 != 0 {
-		return nil, errors.New("ERR wrong number of arguments for MSET")
+		return nil, ErrMSet
 	}
 	for i := 0; i < argc-1; i += 2 {
 		if _, err := Set(ctx, txn); err != nil {
@@ -120,7 +130,7 @@ func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func MSetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	if argc%2 != 0 {
-		return nil, errors.New("ERR wrong number of arguments for MSET")
+		return nil, ErrMSet
 	}
 	for i := 0; i < argc-1; i += 2 {
 		if str, _ := txn.String([]byte(ctx.Args[0])); !str.Exist() {
@@ -141,7 +151,7 @@ func Strlen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -156,19 +166,20 @@ func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	value, err := str.Get()
-
-	if err == db.ErrKeyNotFound {
-		return NullBulkString(ctx.Out), nil
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
-
 	value = append(value, ctx.Args[1]...)
-	if err := str.Set(value); err != nil {
-		return nil, errors.New("ERR " + err.Error())
+	if err := str.Set(value, int64(0)); err != nil {
+		return nil, ErrTikv
 	}
 	return Integer(ctx.Out, int64(len(value))), nil
 }
@@ -182,17 +193,19 @@ func GetSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	value, err := str.Get()
-	if err == db.ErrKeyNotFound {
-		return NullBulkString(ctx.Out), nil
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
-
-	if err := str.Set([]byte(ctx.Args[1])); err != nil {
-		return nil, errors.New("ERR " + err.Error())
+	if err := str.Set([]byte(ctx.Args[1]), int64(0)); err != nil {
+		return nil, ErrTikv
 	}
 	if value != nil {
 		return BulkString(ctx.Out, string(value)), nil
@@ -205,25 +218,27 @@ func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
 	start, err := strconv.Atoi(string(ctx.Args[1]))
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrValue
 	}
 	end, err := strconv.Atoi(string(ctx.Args[2]))
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrValue
 	}
 	value, err := str.Get()
 
-	if err == db.ErrKeyNotFound {
-		return NullBulkString(ctx.Out), nil
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
-
 	vlen := len(value)
 	if end < 0 {
 		end = vlen + end
@@ -232,7 +247,7 @@ func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		start = vlen + start
 	}
 	if start > end || start > vlen || end < 0 {
-		return nil, errors.New("EmptyArray error")
+		return nil, EmptyArray
 	}
 	if end > vlen {
 		end = vlen
@@ -249,7 +264,7 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -257,8 +272,8 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if str.Exist() {
 		return Integer(ctx.Out, int64(0)), nil
 	}
-	if err := str.Set([]byte(ctx.Args[1])); err != nil {
-		return nil, errors.New("ERR " + err.Error())
+	if err := str.Set([]byte(ctx.Args[1]), int64(0)); err != nil {
+		return nil, ErrTikv
 	}
 	return Integer(ctx.Out, int64(1)), nil
 }
@@ -270,18 +285,18 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	if []byte(ctx.Args[1]) != nil {
 		ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
 		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, ErrInteger
 		}
 		unit := ui * uint64(time.Second)
 		if err := str.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, ErrTikv
 		}
 	}
 	return SimpleString(ctx.Out, "OK"), nil
@@ -294,18 +309,18 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	if []byte(ctx.Args[1]) != nil {
 		ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
 		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, ErrInteger
 		}
 		unit := ui * uint64(time.Microsecond)
 		if err := str.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, ErrTikv
 		}
 	}
 	return SimpleString(ctx.Out, "OK"), nil
@@ -317,25 +332,27 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
 	offset, err := strconv.Atoi(string(ctx.Args[1]))
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrValue
 	}
 
 	if offset < 0 || offset > MaxRangeInteger {
-		return nil, errors.New("ERR string exceeds maximum allowed size")
+		return nil, ErrMaximum
 	}
 
 	value, err := str.Get()
-	if err == db.ErrKeyNotFound {
-		return NullBulkString(ctx.Out), nil
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
-
 	vlen := len(value)
 	if vlen < offset+len(ctx.Args[2]) {
 		value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
@@ -353,7 +370,7 @@ func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -365,13 +382,13 @@ func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	delta, err := strconv.ParseInt(string(ctx.Args[1]), 10, 0)
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrInteger
 	}
 	return incr(delta, str, ctx)
 }
@@ -381,13 +398,13 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	delta, err := strconv.ParseFloat(string(ctx.Args[1]), 64)
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrInteger
 	}
 	return incrf(delta, str, ctx)
 }
@@ -397,7 +414,7 @@ func Decr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -410,13 +427,13 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	delta, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrInteger
 	}
 	return incr(-delta, str, ctx)
 }
@@ -426,53 +443,57 @@ func DecrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String([]byte(key))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	delta, err := strconv.ParseFloat(string(ctx.Args[1]), 64)
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrInteger
 	}
 	return incrf(-delta, str, ctx)
 }
 func incr(delta int64, str *db.String, ctx *Context) (OnCommit, error) {
 	value, err := str.Get()
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
-
 	if value != nil {
 		v, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, ErrInteger
 		}
 		delta = v + delta
 	}
 
 	vs := strconv.FormatInt(delta, 10)
-	if err := str.Set([]byte(vs)); err != nil {
-		return nil, errors.New("ERR " + err.Error())
+	if err := str.Set([]byte(vs), int64(0)); err != nil {
+		return nil, ErrTikv
 	}
 	return Integer(ctx.Out, int64(delta)), nil
 }
 func incrf(delta float64, str *db.String, ctx *Context) (OnCommit, error) {
 	value, err := str.Get()
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		if err == db.ErrKeyNotFound {
+			return NullBulkString(ctx.Out), nil
+		}
+		return nil, ErrTikv
 	}
-
 	if value != nil {
 		v, err := strconv.ParseFloat(string(value), 64)
 		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, ErrInteger
 		}
 		delta = v + delta
 	}
 
 	vs := strconv.FormatFloat(delta, 'e', -1, 64)
-	if err := str.Set([]byte(vs)); err != nil {
-		return nil, errors.New("ERR " + err.Error())
+	if err := str.Set([]byte(vs), int64(0)); err != nil {
+		return nil, ErrTikv
 	}
 	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
 }

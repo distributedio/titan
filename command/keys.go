@@ -15,7 +15,6 @@ import (
 const ScanMaxCount = 255
 const defaultScanCount = 10
 
-//Delete delete give keys
 func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
@@ -82,6 +81,7 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, err
 	}
+
 	return Integer(ctx.Out, 1), nil
 }
 

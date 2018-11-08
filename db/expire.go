@@ -8,16 +8,20 @@ import (
 	"go.uber.org/zap"
 )
 
-const expireBatchLimit = 256
-const expireTick = time.Duration(time.Second)
+const (
+	expireBatchLimit = 256
+	expireTick       = time.Duration(time.Second)
+)
 
-var expireKeyPrefix = []byte("$sys:0:at:")
-var sysExpireLeader = []byte("$sys:0:EXL:EXLeader")
-var sysExpireLeaderFlushInterval = 10
+var (
+	expireKeyPrefix              = []byte("$sys:0:at:")
+	sysExpireLeader              = []byte("$sys:0:EXL:EXLeader")
+	sysExpireLeaderFlushInterval = 10
 
-// $sys:0:at:{ts}:{metaKey}
-var expireTimestampOffset = len(expireKeyPrefix)
-var expireMetakeyOffset = expireTimestampOffset + 8 /*sizeof(int64)*/ + len(":")
+	// $sys:0:at:{ts}:{metaKey}
+	expireTimestampOffset = len(expireKeyPrefix)
+	expireMetakeyOffset   = expireTimestampOffset + 8 /*sizeof(int64)*/ + len(":")
+)
 
 func IsExpired(obj *Object, now int64) bool {
 	if obj.ExpireAt == 0 || obj.ExpireAt > now {
@@ -61,11 +65,11 @@ func unExpireAt(txn *Transaction, mkey []byte, expireAt int64) error {
 	return nil
 }
 
-func StartExpire(s *RedisStore) error {
+func StartExpire(db *DB) error {
 	ticker := time.NewTicker(expireTick)
 	defer ticker.Stop()
 	for _ = range ticker.C {
-		isLeader, err := isLeader(s, sysExpireLeader, time.Duration(sysExpireLeaderFlushInterval))
+		isLeader, err := isLeader(db, sysExpireLeader, time.Duration(sysExpireLeaderFlushInterval))
 		if err != nil {
 			zap.L().Error("check expire leader failed", zap.Error(err))
 			continue
@@ -74,7 +78,7 @@ func StartExpire(s *RedisStore) error {
 			zap.L().Debug("not expire leader")
 			continue
 		}
-		runExpire(s)
+		runExpire(db)
 	}
 	return nil
 }
@@ -96,13 +100,13 @@ func toTikvDataKey(namespace []byte, id byte, key []byte) []byte {
 	return b
 }
 
-func runExpire(s *RedisStore) {
-	txn, err := s.Begin()
+func runExpire(db *DB) {
+	txn, err := db.Begin()
 	if err != nil {
-		zap.L().Error("begin transaction failed", zap.Error(err))
+		zap.L().Error("transection begin failed", zap.Error(err))
 		return
 	}
-	iter, err := txn.Seek(expireKeyPrefix)
+	iter, err := txn.t.Seek(expireKeyPrefix)
 	if err != nil {
 		zap.L().Error("seek failed", zap.Error(err))
 		txn.Rollback()
@@ -123,23 +127,21 @@ func runExpire(s *RedisStore) {
 
 		zap.L().Debug("expire", zap.String("key", string(rawkey)))
 		// Delete object meta
-		if err := txn.Delete(mkey); err != nil {
+		if err := txn.t.Delete(mkey); err != nil {
 			zap.L().Error("delete failed", zap.Error(err))
 			txn.Rollback()
 			return
 		}
 		// Gc it if it is a complext data structure, the value of string is: []byte{'0'}
 		if len(objID) > 1 {
-			dkey := toTikvDataKey(namespace, dbid, objID)
-			zap.L().Debug("add to gc", zap.ByteString("prefix", dkey))
-			if err := gc(txn, dkey); err != nil {
+			if err := gc(txn.t, toTikvDataKey(namespace, dbid, objID)); err != nil {
 				zap.L().Error("gc failed", zap.Error(err))
 				txn.Rollback()
 				return
 			}
 		}
 		// Remove from expire list
-		if err := txn.Delete(iter.Key()); err != nil {
+		if err := txn.t.Delete(iter.Key()); err != nil {
 			zap.L().Error("delete failed", zap.Error(err))
 			txn.Rollback()
 			return

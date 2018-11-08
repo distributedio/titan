@@ -132,7 +132,7 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	log := logger.With(zap.Int("PID", os.Getpid()))
 	zap.ReplaceGlobals(log)
 	//http change log level
-	http.Handle("/thanos/set/level", lv)
+	http.Handle("/thanos/log/level", lv)
 
 	return nil
 }

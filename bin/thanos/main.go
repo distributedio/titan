@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
@@ -87,9 +88,6 @@ func main() {
 }
 
 //Logger zap logger
-//TODO http set level
-// loggerHandler := log.NewHTTPHandler(logger)
-// http.Handle("/titan/set-log-level", loggerHandler)
 func GlobalLogger(level, name string, write io.Writer) error {
 	var lv = zap.NewAtomicLevel()
 	switch level {
@@ -108,7 +106,6 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	default:
 		return fmt.Errorf("unknown log level(%s)\n", level)
 	}
-
 	timeEncoder := func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Local().Format("2006-01-02 15:04:05.999999999"))
 	}
@@ -135,6 +132,8 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	logger.Named(name)
 	log := logger.With(zap.Int("PID", os.Getpid()))
 	zap.ReplaceGlobals(log)
+	//http change log level
+	http.Handle("/thanos/set-log-level", lv)
 
 	return nil
 }

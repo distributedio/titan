@@ -28,4 +28,5 @@ func TestMetrics(t *testing.T) {
 	gm.CommandCallHistogramVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
 
 	gm.LRangeSeekHistogram.Desc()
+	gm.LogMetricsCounterVec.WithLabelValues("INFO").Inc()
 }

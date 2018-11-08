@@ -131,7 +131,7 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	output := zapcore.AddSync(write)
 	var zapOpts []zap.Option
 	zapOpts = append(zapOpts, zap.AddCaller())
-	zapOpts = append(zapOpts, zap.Hooks(measure))
+	zapOpts = append(zapOpts, zap.Hooks(metrics.Measure))
 
 	logger := zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), output, lv), zapOpts...)
 	logger.Named(name)
@@ -180,10 +180,4 @@ func Writer(path, pattern string, compress bool) (io.Writer, error) {
 		return nil, fmt.Errorf("create IOWriter failed, %s", err)
 	}
 	return writer, nil
-}
-
-func measure(e zapcore.Entry) error {
-	// label := e.LoggerName + "_" + e.Level.String()
-	// logMetrics.WithLabelValues(label).Inc()
-	return nil
 }

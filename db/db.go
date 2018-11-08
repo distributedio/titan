@@ -115,8 +115,14 @@ func (txn *Transaction) ZList(key []byte) (*ZList, error) {
 }
 
 // String return a string object
+//TODO 获得一个string 对象 ，但是可能是不安全 ，string 可能过期了
 func (txn *Transaction) String(key []byte) (*String, error) {
 	return GetString(txn, key)
+}
+
+// String return a string object
+func (txn *Transaction) NewString(key []byte) *String {
+	return NewString(txn, key)
 }
 
 func (txn *Transaction) Kv() *Kv {

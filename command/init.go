@@ -13,11 +13,27 @@ func init() {
 		"linsert": LInsert,
 
 		// strings
-		"get":    Get,
-		"set":    Set,
-		"mget":   MGet,
-		"mset":   MSet,
-		"strlen": Strlen,
+		"get":      Get,
+		"set":      Set,
+		"mget":     MGet,
+		"mset":     MSet,
+		"strlen":   Strlen,
+		"append":   Append,
+		"getset":   GetSet,
+		"getrange": GetRange,
+		"msetnx":   MSetNx,
+		"setnx":    SetNx,
+		"setex":    SetEx,
+		"psetex":   PSetEx,
+		// "setrange":    SetRange,
+		// "setbit":      SetBit,
+		"incr":        Incr,
+		"incrby":      IncrBy,
+		"incrbyFloat": IncrByFloat,
+		"decr":        Decr,
+		"decrby":      DecrBy,
+		"decrbyfloat": DecrByFloat,
+		"incrbyfloat": IncrByFloat,
 
 		// keys
 		"type":      Type,
@@ -89,7 +105,8 @@ func init() {
 		"mget":   CommandInfo{Proc: AutoCommit(MGet), Cons: Constraint{-3, flags("rF"), 1, -1, 1}},
 		"mset":   CommandInfo{Proc: AutoCommit(MSet), Cons: Constraint{-3, flags("wm"), 1, -1, 2}},
 		"strlen": CommandInfo{Proc: AutoCommit(Strlen), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
-
+		"append": CommandInfo{Proc: AutoCommit(Append), Cons: Constraint{3, flags("wm"), 1, 1, 1}},
+		"incr":   CommandInfo{Proc: AutoCommit(Incr), Cons: Constraint{2, flags("wmF"), 1, 1, 1}},
 		// keys
 		"type":      CommandInfo{Proc: AutoCommit(Type), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"exists":    CommandInfo{Proc: AutoCommit(Exists), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},

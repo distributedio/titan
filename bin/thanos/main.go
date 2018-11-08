@@ -58,9 +58,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	//init log create sucess , log replace fmt
 	store, err := db.Open(&config.Server.Tikv)
 	if err != nil {
-		fmt.Println(err)
+		zap.L().Fatal("open db failed", zap.Error(err))
 		os.Exit(1)
 	}
 
@@ -73,18 +74,15 @@ func main() {
 
 	cont := continuous.New(continuous.LoggerOutput(writer), continuous.PidFile(config.PIDFileName))
 	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}); err != nil {
-		fmt.Printf("Add server failed: %v\n", err)
-		os.Exit(1)
+		zap.L().Fatal("add thanos server failed:", zap.Error(err))
 	}
 
 	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}); err != nil {
-		fmt.Printf("Add server failed: %v\n", err)
-		os.Exit(1)
+		zap.L().Fatal("add statues server failed:", zap.Error(err))
 	}
 
 	if err := cont.Serve(); err != nil {
-		fmt.Printf("run server failed: %v\n", err)
-		os.Exit(1)
+		zap.L().Fatal("run server failed:", zap.Error(err))
 	}
 }
 

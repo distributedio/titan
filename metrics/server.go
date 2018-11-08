@@ -2,9 +2,9 @@ package metrics
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
+
 	"go.uber.org/zap"
 
 	"time"
@@ -36,10 +36,10 @@ func (s *Server) Serve(lis net.Listener) error {
 
 //Stop Close serve fd
 func (s *Server) Stop() error {
-	zap.L().Info("status server stop")
+	zap.L().Info("status server stop", zap.String("addr", s.addr))
 	if s.statusServer != nil {
 		if err := s.statusServer.Close(); err != nil {
-			fmt.Printf("status Server stop failed err:%s \n", err)
+			zap.L().Error("status server stop failed", zap.String("addr", s.addr), zap.Error(err))
 			return err
 		}
 	}
@@ -49,12 +49,12 @@ func (s *Server) Stop() error {
 
 //GracefulStop serve graceful stop
 func (s *Server) GracefulStop() error {
-	zap.L().Info("status serve graceful stop")
+	zap.L().Info("status serve graceful stop", zap.String("addr", s.addr))
 	if s.statusServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if err := s.statusServer.Shutdown(ctx); err != nil {
-			fmt.Printf("status server stop failed err:%s\n", err)
+			zap.L().Error("status server gracestop failed", zap.String("addr", s.addr), zap.Error(err))
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func (s *Server) GracefulStop() error {
 func (s *Server) ListenAndServe(addr string) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		fmt.Printf("status  server failed err:%s\n", err)
+		zap.L().Error("status server liseten failed", zap.String("addr", s.addr), zap.Error(err))
 		return err
 	}
 	zap.L().Info("status server start", zap.String("addr", s.addr))

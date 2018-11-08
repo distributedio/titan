@@ -3,9 +3,9 @@ package thanos
 import (
 	"net"
 
-	"go.uber.org/zap"
 	"gitlab.meitu.com/platform/thanos/command"
 	"gitlab.meitu.com/platform/thanos/context"
+	"go.uber.org/zap"
 )
 
 type Server struct {
@@ -19,8 +19,10 @@ func New(ctx *context.ServerContext) *Server {
 	return &Server{servCtx: ctx, idgen: GetClientID()}
 }
 
+//Serve lisen fd , recv client connection ,leave connection to a separate goroutine
 func (s *Server) Serve(lis net.Listener) error {
 	zap.L().Info("thanos server start", zap.String("addr", lis.Addr().String()))
+	s.lis = lis
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
@@ -53,7 +55,6 @@ func (s *Server) ListenAndServe(addr string) error {
 	if err != nil {
 		return err
 	}
-	s.lis = lis
 	return s.Serve(lis)
 }
 
@@ -62,8 +63,8 @@ func (s *Server) Stop() error {
 	return s.lis.Close()
 }
 
+//TODO close client connections gracefully
 func (s *Server) GracefulStop() error {
-	//TODO close client connections gracefully
 	zap.L().Info("titan serve graceful", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }

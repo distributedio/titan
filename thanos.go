@@ -2,6 +2,7 @@ package thanos
 
 import (
 	"net"
+	"time"
 
 	"gitlab.meitu.com/platform/thanos/command"
 	"gitlab.meitu.com/platform/thanos/context"
@@ -22,6 +23,7 @@ func New(ctx *context.ServerContext) *Server {
 //Serve lisen fd , recv client connection ,leave connection to a separate goroutine
 func (s *Server) Serve(lis net.Listener) error {
 	zap.L().Info("thanos server start", zap.String("addr", lis.Addr().String()))
+	s.servCtx.StartAt = time.Now()
 	s.lis = lis
 	for {
 		conn, err := lis.Accept()

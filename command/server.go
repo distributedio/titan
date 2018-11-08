@@ -3,6 +3,8 @@ package command
 import (
 	"errors"
 	"fmt"
+	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -335,4 +337,42 @@ func Time(ctx *Context) {
 	resp.ReplyArray(ctx.Out, 2)
 	resp.ReplyBulkString(ctx.Out, strconv.Itoa(int(sec)))
 	resp.ReplyBulkString(ctx.Out, strconv.Itoa(int(msec)))
+}
+
+// Info returns information and statistics about the server in a format that is simple to parse by computers and easy to read by humans
+func Info(ctx *Context) {
+	exe, err := os.Executable()
+	if err != nil {
+		resp.ReplyError(ctx.Out, "ERR "+err.Error())
+	}
+
+	// count the number of clients
+	var numberOfClients int
+	ctx.Server.Clients.Range(func(k, v interface{}) bool {
+		numberOfClients++
+		return true
+	})
+
+	var lines []string
+	lines = append(lines, "# Server")
+	lines = append(lines, "thanos_version:"+context.ReleaseVersion)
+	lines = append(lines, "thanos_git_sha1:"+context.GitHash)
+	lines = append(lines, "thanos_build_id:"+context.BuildTS)
+	lines = append(lines, "os:"+runtime.GOOS)
+	lines = append(lines, "arch_bits:"+runtime.GOARCH)
+	lines = append(lines, "go_version:"+context.GolangVersion)
+	lines = append(lines, "process_id:"+strconv.Itoa(os.Getpid()))
+	lines = append(lines, "uptime_in_seconds:"+strconv.FormatInt(ctx.Server.StartAt.Unix(), 10))
+	lines = append(lines, "uptime_in_days:"+strconv.FormatInt(ctx.Server.StartAt.Unix()/86400, 10))
+	lines = append(lines, "executable:"+exe)
+
+	lines = append(lines, "# Clients")
+	lines = append(lines, "connected_clients:"+strconv.Itoa(numberOfClients))
+	lines = append(lines, "client_longest_output_list:0")
+	lines = append(lines, "client_biggest_input_buf:0")
+	lines = append(lines, "blocked_clients:0")
+	lines = append(lines, "client_namespace:"+ctx.Client.Namespace)
+
+	resp.ReplyBulkString(ctx.Out, strings.Join(lines, "\n")+"\n")
+	return
 }

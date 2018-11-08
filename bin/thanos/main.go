@@ -59,7 +59,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	//init log create sucess , log replace fmt
 	store, err := db.Open(&config.Server.Tikv)
 	if err != nil {
 		zap.L().Fatal("open db failed", zap.Error(err))
@@ -133,7 +132,7 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	log := logger.With(zap.Int("PID", os.Getpid()))
 	zap.ReplaceGlobals(log)
 	//http change log level
-	http.Handle("/thanos/set-log-level", lv)
+	http.Handle("/thanos/set/level", lv)
 
 	return nil
 }

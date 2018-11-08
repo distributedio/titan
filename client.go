@@ -3,10 +3,10 @@ package thanos
 import (
 	"bufio"
 	"io/ioutil"
-	"log"
 	"net"
 	"strings"
 	"time"
+	"go.uber.org/zap"
 
 	"gitlab.meitu.com/platform/thanos/command"
 	"gitlab.meitu.com/platform/thanos/context"
@@ -30,7 +30,6 @@ func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor)
 }
 
 func (c *client) serve(conn net.Conn) error {
-	log.Println("serve conn")
 	c.conn = conn
 	c.r = bufio.NewReader(conn)
 
@@ -43,7 +42,6 @@ func (c *client) serve(conn net.Conn) error {
 	errc := make(chan error)
 	go func() {
 		for {
-			log.Println("read command")
 			cmd, err := c.readCommand()
 			if err != nil {
 				errc <- err
@@ -62,6 +60,8 @@ func (c *client) serve(conn net.Conn) error {
 			return c.conn.Close()
 		case cmd = <-cmdc:
 		case err = <-errc:
+			zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
 			c.conn.Close()
 			return err
 		}
@@ -75,10 +75,11 @@ func (c *client) serve(conn net.Conn) error {
 		c.cliCtx.LastCmd = cmd[0]
 
 		ctx := &command.Context{
-			Name: cmd[0],
-			Args: cmd[1:],
-			In:   c.r,
-			Out:  c.conn,
+			Name:    cmd[0],
+			Args:    cmd[1:],
+			In:      c.r,
+			Out:     c.conn,
+			TraceID: GenerateTraceID(),
 		}
 		innerCtx, cancel := context.WithCancel(rootCtx)
 		ctx.Context = innerCtx
@@ -89,6 +90,12 @@ func (c *client) serve(conn net.Conn) error {
 			if c.cliCtx.SkipN > 0 {
 				c.cliCtx.SkipN--
 			}
+		}
+		if env := zap.L().Check(zap.DebugLevel, "recv client command"); env != nil {
+			env.Write(zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID),
+				zap.String("traceid", ctx.TraceID),
+				zap.String("command", ctx.Name))
 		}
 		c.exec.Execute(ctx)
 		cancel()
@@ -131,6 +138,5 @@ func (c *client) readCommand() ([]string, error) {
 		}
 		argv[i] = arg
 	}
-	log.Println(argv)
 	return argv, nil
 }

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
@@ -60,7 +61,7 @@ func main() {
 
 	store, err := db.Open(&config.Server.Tikv)
 	if err != nil {
-		fmt.Println(err)
+		zap.L().Fatal("open db failed", zap.Error(err))
 		os.Exit(1)
 	}
 
@@ -73,25 +74,19 @@ func main() {
 
 	cont := continuous.New(continuous.LoggerOutput(writer), continuous.PidFile(config.PIDFileName))
 	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}); err != nil {
-		fmt.Printf("Add server failed: %v\n", err)
-		os.Exit(1)
+		zap.L().Fatal("add thanos server failed:", zap.Error(err))
 	}
 
 	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}); err != nil {
-		fmt.Printf("Add server failed: %v\n", err)
-		os.Exit(1)
+		zap.L().Fatal("add statues server failed:", zap.Error(err))
 	}
 
 	if err := cont.Serve(); err != nil {
-		fmt.Printf("run server failed: %v\n", err)
-		os.Exit(1)
+		zap.L().Fatal("run server failed:", zap.Error(err))
 	}
 }
 
 //Logger zap logger
-//TODO http set level
-// loggerHandler := log.NewHTTPHandler(logger)
-// http.Handle("/titan/set-log-level", loggerHandler)
 func GlobalLogger(level, name string, write io.Writer) error {
 	var lv = zap.NewAtomicLevel()
 	switch level {
@@ -110,7 +105,6 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	default:
 		return fmt.Errorf("unknown log level(%s)\n", level)
 	}
-
 	timeEncoder := func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Local().Format("2006-01-02 15:04:05.999999999"))
 	}
@@ -137,6 +131,8 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	logger.Named(name)
 	log := logger.With(zap.Int("PID", os.Getpid()))
 	zap.ReplaceGlobals(log)
+	//http change log level
+	http.Handle("/thanos/log/level", lv)
 
 	return nil
 }

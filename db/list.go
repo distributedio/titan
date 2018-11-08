@@ -622,8 +622,7 @@ func (l *LList) Destory() error {
 	// delete the meta data
 	l.txn.t.Delete(l.rawMetaKey)
 	// leaving the data to gc
-	gc(l.txn, l.rawDataKeyPrefix)
-	return nil
+	return gc(l.txn, l.rawDataKeyPrefix)
 }
 
 // calculateIndex return the real index between left and right, return ErrPerc=

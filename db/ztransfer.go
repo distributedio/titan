@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	log "gitlab.meitu.com/gocommons/logbunny"
 	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/titan/monitor"
+	"go.uber.org/zap"
 )
 
 var (
@@ -32,7 +32,7 @@ func loadZList(txn *Transaction, metaKey []byte) (*ZList, error) {
 		return nil, ErrTypeMismatch
 	}
 	if obj.Encoding != ObjectEncodingZiplist {
-		log.Error("[ZT] error in trans zlist, encoding type error", log.Err(err))
+		zap.L().Error("[ZT] error in trans zlist, encoding type error", zap.Error(err))
 		return nil, ErrEncodingMismatch
 	}
 	if obj.ExpireAt != 0 && obj.ExpireAt < Now() {
@@ -63,7 +63,7 @@ func toZTKey(metakey []byte) []byte {
 
 // PutZList should be called after ZList created
 func PutZList(txn *Transaction, metakey []byte) error {
-	log.Debug("[ZT] Zlist recorded in txn", log.String("key", string(metakey)))
+	zap.L().Debug("[ZT] Zlist recorded in txn", zap.String("key", string(metakey)))
 	return txn.t.Set(toZTKey(metakey), []byte{0})
 }
 
@@ -78,24 +78,24 @@ func doZListTransfer(txn *Transaction, metakey []byte) (int, error) {
 	if err != nil {
 		if err == ErrTypeMismatch || err == ErrEncodingMismatch || err == ErrKeyNotFound {
 			if err = RemoveZTKey(txn, metakey); err != nil {
-				log.Error("[ZT] error in remove ZTKkey", log.Err(err))
+				zap.L().Error("[ZT] error in remove ZTKkey", zap.Error(err))
 				return 0, err
 			}
 			return 0, nil
 		}
-		log.Error("[ZT] error in create zlist", log.Err(err))
+		zap.L().Error("[ZT] error in create zlist", zap.Error(err))
 		return 0, err
 	}
 
 	//llist, err := zlist.TransferToLList(splitMetaKey(metakey))
 	llist, err := zlist.TransferToLList(nil, 1, nil)
 	if err != nil {
-		log.Error("[ZT] error in convert zlist", log.Err(err))
+		zap.L().Error("[ZT] error in convert zlist", zap.Error(err))
 		return 0, err
 	}
 	// clean the zt key, after success
 	if err = RemoveZTKey(txn, metakey); err != nil {
-		log.Error("[ZT] error in remove ZTKkey", log.Err(err))
+		zap.L().Error("[ZT] error in remove ZTKkey", zap.Error(err))
 		return 0, err
 	}
 
@@ -112,12 +112,12 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 	sum := 0
 	commit := func(t *Transaction) {
 		if err = t.Commit(context.Background()); err != nil {
-			log.Error("[ZT] error in commit transfer", log.Err(err))
+			zap.L().Error("[ZT] error in commit transfer", zap.Error(err))
 			txn.Rollback()
 		} else {
 			monitor.WithLabelCounter(monitor.ZTInfoType, "zlist").Add(float64(batchCount))
 			monitor.WithLabelCounter(monitor.ZTInfoType, "keys").Add(float64(sum))
-			log.Debug("[ZT] transfer zlist succeed", log.Int("count", batchCount), log.Int("n", sum))
+			zap.L().Debug("[ZT] transfer zlist succeed", zap.Int("count", batchCount), zap.Int("n", sum))
 		}
 		txnstart = false
 		batchCount = 0
@@ -130,7 +130,7 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 		case metakey := <-ztQueue:
 			if !txnstart {
 				if txn, err = db.Begin(); err != nil {
-					log.Error("[ZT] zt worker error in kv begin", log.Err(err))
+					zap.L().Error("[ZT] zt worker error in kv begin", zap.Error(err))
 					continue
 				}
 				txnstart = true
@@ -160,18 +160,18 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 	txn, err := db.Begin()
 	if err != nil {
-		log.Error("[ZT] error in kv begin", log.Err(err))
+		zap.L().Error("[ZT] error in kv begin", zap.Error(err))
 		return toZTKey(nil), nil
 	}
 	iter, err := txn.t.Seek(prefix)
 	if err != nil {
-		log.Error("[ZT] error in seek", log.Err(err))
+		zap.L().Error("[ZT] error in seek", zap.Error(err))
 		return toZTKey(nil), err
 	}
 
 	for ; iter.Valid() && iter.Key().HasPrefix(prefix); err = iter.Next() {
 		if err != nil {
-			log.Error("[ZT] error in iter next", log.Err(err))
+			zap.L().Error("[ZT] error in iter next", zap.Error(err))
 			return toZTKey(nil), err
 		}
 		select {
@@ -182,7 +182,7 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 			return iter.Key(), nil
 		}
 	}
-	log.Debug("[ZT] no more ZT item, retrive iterator")
+	zap.L().Debug("[ZT] no more ZT item, retrive iterator")
 	return toZTKey(nil), txn.Commit(context.Background())
 }
 
@@ -199,16 +199,16 @@ func StartZT(db *DB, conf *conf.ZT) {
 	for _ = range tick {
 		isLeader, err := isLeader(db, sysZTLeader, time.Duration(sysZTLeaderFlushInterval))
 		if err != nil {
-			log.Error("[ZT] check ZT leader failed", log.Err(err))
+			zap.L().Error("[ZT] check ZT leader failed", zap.Error(err))
 			continue
 		}
 		if !isLeader {
-			log.Debug("[ZT] not ZT leader")
+			zap.L().Debug("[ZT] not ZT leader")
 			continue
 		}
 
 		if prefix, err = runZT(db, prefix, tick); err != nil {
-			log.Error("[ZT] error in run ZT", log.Err(err))
+			zap.L().Error("[ZT] error in run ZT", zap.Error(err))
 			continue
 		}
 	}

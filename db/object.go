@@ -138,7 +138,7 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 		return err
 	}
 	if obj.Type != ObjectString {
-		return gc(txn, dkey)
+		return gc(txn.t, dkey)
 	}
 	return nil
 }

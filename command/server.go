@@ -14,7 +14,7 @@ import (
 
 // Monitor streams back every command processed by the Thanos server
 func Monitor(ctx *Context) {
-	ctx.Server.Monitors.Store(ctx.Client.RemoteAddr, ctx.Out)
+	ctx.Server.Monitors.Store(ctx.Client.RemoteAddr, ctx)
 	resp.ReplySimpleString(ctx.Out, "OK")
 }
 

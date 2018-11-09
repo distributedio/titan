@@ -71,8 +71,8 @@ func GetZList(txn *Transaction, metaKey []byte) (*ZList, error) {
 // ZListMeta defined zip list, with only objectMeta info.
 type ZList struct {
 	Object
-	value      pb.Zlistvalue //[][]byte
 	rawMetaKey []byte
+	value      pb.Zlistvalue //[][]byte
 	txn        *Transaction
 }
 

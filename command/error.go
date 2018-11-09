@@ -79,17 +79,17 @@ var (
 	// ErrMultiNested indicates a nested multi command which is not allowed
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
 	// ErrTypeMismatchi Operation against a key holding the wrong kind of value
-	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
+	ErrTypeMismatch = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
 	//EmptyArray error
 	EmptyArray = errors.New("EmptyArray error")
 )
 
 //ErrUnKnownCommand return RedisError of the cmd
-func ErrUnKnownCommand(cmd string) error {
-	return fmt.Errorf(UnKnownCommandStr, cmd)
+func ErrUnKnownCommand(cmd string) string {
+	return fmt.Sprintf(UnKnownCommandStr, cmd)
 }
 
 // ErrWrongArgs return RedisError of the cmd
-func ErrWrongArgs(cmd string) error {
-	return fmt.Errorf(WrongArgs, cmd)
+func ErrWrongArgs(cmd string) string {
+	return fmt.Sprintf(WrongArgs, cmd)
 }

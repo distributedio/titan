@@ -81,7 +81,7 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	s, err := txn.String(key)
-	if err != nil && err != db.ErrKeyNotFound {
+	if err != nil && err != db.ErrKeyNotFound && err != ErrTypeMismatch {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -97,6 +97,10 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if s.Exist() {
 			return NullBulkString(ctx.Out), nil
 		}
+	}
+
+	if err == db.ErrTypeMismatch {
+		txn.Destory(&s.Meta.Object, key)
 	}
 
 	s = txn.NewString(key)
@@ -268,7 +272,7 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, ErrTypeMismatch
+			return Integer(ctx.Out, int64(0)), nil
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -289,11 +293,12 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)
-	if err != nil {
-		if err == db.ErrTypeMismatch {
-			return nil, ErrTypeMismatch
-		}
+	if err != nil && err != db.ErrTypeMismatch {
 		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if err == db.ErrTypeMismatch {
+		txn.Destory(&str.Meta.Object, key)
 	}
 
 	if !str.Exist() {
@@ -316,11 +321,12 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
 	str, err := txn.String([]byte(key))
-	if err != nil {
-		if err == db.ErrTypeMismatch {
-			return nil, ErrTypeMismatch
-		}
+	if err != nil && err != db.ErrTypeMismatch {
 		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if err == db.ErrTypeMismatch {
+		txn.Destory(&str.Meta.Object, key)
 	}
 
 	if !str.Exist() {

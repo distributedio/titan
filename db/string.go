@@ -4,17 +4,23 @@ import (
 	"strconv"
 )
 
+//StringMeta string meta msg
 type StringMeta struct {
 	Object
 	Value []byte
 }
 
+//String object operate tikv
 type String struct {
 	meta StringMeta
 	key  []byte
 	txn  *Transaction
 }
 
+//GetString return string object ,
+// if key is exist , object load meta
+// otherwise object is null if key is not exist and err is not found
+// otherwise  return err
 func GetString(txn *Transaction, key []byte) (*String, error) {
 	str := &String{txn: txn, key: key}
 	now := Now()
@@ -60,6 +66,9 @@ func (s *String) Get() ([]byte, error) {
 	return s.meta.Value, nil
 }
 
+//Set set the string value of a key
+//the num of expire slice is not zero and expire[0] is not zero ,the key add exprie queue
+//otherwise the delete expire queue
 func (s *String) Set(val []byte, expire ...int64) error {
 	timestamp := Now()
 	if len(expire) != 0 && expire[0] > 0 {

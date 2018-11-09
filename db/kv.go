@@ -58,7 +58,7 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 		metaKeys[i] = MetaKey(kv.txn.db, key)
 	}
 
-	values, err := store.BatchGetValues(kv.txn.t, metaKeys)
+	values, err := BatchGetValues(kv.txn, metaKeys)
 	if err != nil {
 		return count, err
 	}

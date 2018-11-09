@@ -13,6 +13,17 @@ const (
 	DefaultNamespace = "default"
 )
 
+// Version information.
+var (
+	ReleaseVersion = "None"
+	BuildTS        = "None"
+	GitHash        = "None"
+	GitBranch      = "None"
+	GitLog         = "None"
+	GolangVersion  = "None"
+	ConfigFile     = "None"
+)
+
 // Command releated context
 type Command struct {
 	Name string
@@ -65,6 +76,7 @@ type ServerContext struct {
 	Monitors    sync.Map
 	Clients     sync.Map
 	Pause       time.Duration // elapse to pause all clients
+	StartAt     time.Time
 }
 
 // Context combines the client and server context

@@ -4,12 +4,12 @@ PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GITHASH := $(shell git rev-parse --short HEAD)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/ | grep -v _test.go)
 
-LDFLAGS += -X "$(PKG).ReleaseVersion=$(shell git tag  --contains)"
-LDFLAGS += -X "$(PKG).BuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
-LDFLAGS += -X "$(PKG).GitHash=$(GITHASH)"
-LDFLAGS += -X "$(PKG).GolangVersion=$(shell go version)"
-LDFLAGS += -X "$(PKG).GitLog=$(shell git log --abbrev-commit --oneline -n 1 | sed 's/$(GITHASH)//g')"
-LDFLAGS += -X "$(PKG).GitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
+LDFLAGS += -X "$(PKG)/context.ReleaseVersion=$(shell git tag  --contains)"
+LDFLAGS += -X "$(PKG)/context.BuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
+LDFLAGS += -X "$(PKG)/context.GitHash=$(GITHASH)"
+LDFLAGS += -X "$(PKG)/context.GolangVersion=$(shell go version)"
+LDFLAGS += -X "$(PKG)/context.GitLog=$(shell git log --abbrev-commit --oneline -n 1 | sed 's/$(GITHASH)//g')"
+LDFLAGS += -X "$(PKG)/context.GitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
 
 .PHONY: all build clean test coverage lint proto
 all: build

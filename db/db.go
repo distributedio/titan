@@ -1,10 +1,15 @@
 package db
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
+
+	"go.uber.org/zap"
 
 	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/thanos/db/store"
@@ -19,8 +24,7 @@ var (
 	//ErrInteger
 	ErrInteger = errors.New("value is not an integer or out of range")
 	// ErrPrecision list index reach precision limitatin
-	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
-
+	ErrPrecision        = errors.New("list reaches precision limitation, rebalance now")
 	ErrOutOfRange       = errors.New("error index/offset out of range")
 	ErrInvalidLength    = errors.New("error data length is invalid for unmarshaler")
 	ErrEncodingMismatch = errors.New("error object encoding type")
@@ -29,6 +33,9 @@ var (
 	IsErrNotFound = store.IsErrNotFound
 	// IsRetryableError returns true if the error is temporary and can be retried
 	IsRetryableError = store.IsRetryableError
+
+	sysNamespace  = "$sys"
+	sysDatabaseID = 0
 )
 
 type Iterator store.Iterator
@@ -75,11 +82,13 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	rs := &RedisStore{s}
-	go StartGC(rs)
-	go StartExpire(rs)
+	rds := &RedisStore{s}
+	sysdb := rds.DB(sysNamespace, sysDatabaseID)
+	go StartGC(sysdb)
+	go StartExpire(sysdb)
+	//go StartZT(sysdb, conf)
 
-	return rs, nil
+	return rds, nil
 }
 
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
@@ -203,4 +212,94 @@ func DBPrefix(db *DB) []byte {
 	prefix = append(prefix, db.ID.Bytes()...)
 	prefix = append(prefix, ':')
 	return prefix
+}
+
+//Leader Option
+
+func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
+	databytes := make([]byte, 24)
+	copy(databytes, id)
+	ts := uint64((time.Now().Add(interval * time.Second).Unix()))
+	binary.BigEndian.PutUint64(databytes[16:], ts)
+
+	if err := txn.Set(key, databytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) (bool, error) {
+	val, err := txn.Get(key)
+	if err != nil {
+		if !IsErrNotFound(err) {
+			zap.L().Error("query leader message faild", zap.Error(err))
+			return false, err
+		}
+
+		zap.L().Debug("no leader now, create new lease")
+		if err := flushLease(txn, key, id, interval); err != nil {
+			zap.L().Error("create lease failed", zap.Error(err))
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	curID := val[0:16]
+	ts := int64(binary.BigEndian.Uint64(val[16:]))
+
+	if time.Now().Unix() > ts {
+		zap.L().Error("lease expire, create new lease")
+		if err := flushLease(txn, key, id, interval); err != nil {
+			zap.L().Error("create lease failed", zap.Error(err))
+			return false, err
+		}
+		return true, nil
+	}
+
+	if bytes.Equal(curID, id) {
+		if err := flushLease(txn, key, id, interval); err != nil {
+			zap.L().Error("flush lease failed", zap.Error(err))
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
+	count := 0
+	for {
+		txn, err := db.Begin()
+		if err != nil {
+			zap.L().Error("transection begin failed", zap.Error(err))
+			continue
+		}
+
+		isLeader, err := checkLeader(txn.t, leader, UUID(), interval)
+		if err != nil {
+			txn.Rollback()
+			if IsRetryableError(err) {
+				count++
+				if count < 3 {
+					continue
+				}
+			}
+			return isLeader, err
+		}
+
+		if err := txn.Commit(context.Background()); err != nil {
+			txn.Rollback()
+			if IsRetryableError(err) {
+				count++
+				if count < 3 {
+					continue
+				}
+			}
+			return isLeader, err
+		}
+
+		//TODO add monitor
+		return isLeader, err
+	}
 }

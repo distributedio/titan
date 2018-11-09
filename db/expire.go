@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"gitlab.meitu.com/platform/thanos/db/store"
 	"go.uber.org/zap"
 )
 
@@ -39,27 +40,27 @@ func expireKey(key []byte, ts int64) []byte {
 	return buf
 }
 
-func expireAt(txn *Transaction, mkey []byte, objID []byte, old int64, new int64) error {
+func expireAt(txn store.Transaction, mkey []byte, objID []byte, old int64, new int64) error {
 	oldKey := expireKey(mkey, old)
 	newKey := expireKey(mkey, new)
 
 	if old > 0 {
-		if err := txn.t.Delete(oldKey); err != nil {
+		if err := txn.Delete(oldKey); err != nil {
 			return err
 		}
 	}
 
 	if new > 0 {
-		if err := txn.t.Set(newKey, objID); err != nil {
+		if err := txn.Set(newKey, objID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func unExpireAt(txn *Transaction, mkey []byte, expireAt int64) error {
+func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 	oldKey := expireKey(mkey, expireAt)
-	if err := txn.t.Delete(oldKey); err != nil {
+	if err := txn.Delete(oldKey); err != nil {
 		return err
 	}
 	return nil

@@ -44,7 +44,7 @@ var (
 	ErrInvalidDB = errors.New("ERR invalid DB index")
 
 	// ErrTikv TIKV ERROR
-	// ErrTikv = errors.New("TIKV ERROR")
+	ErrExpire = errors.New("ERR invalid expire time in set")
 
 	// ErrInteger value is not an integer or out of range
 	ErrInteger = errors.New("ERR value is not an integer or out of range")

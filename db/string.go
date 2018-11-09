@@ -73,7 +73,7 @@ func (s *String) Get() ([]byte, error) {
 
 func (s *String) Set(val []byte, expire ...int64) error {
 	timestamp := Now()
-	if len(expire) != 0 {
+	if len(expire) != 0 && expire[0] > 0 {
 		old := s.meta.ExpireAt
 		s.meta.ExpireAt = timestamp + expire[0]
 		if err := expireAt(s.txn, s.key, s.key, old, s.meta.ExpireAt); err != nil {
@@ -156,8 +156,7 @@ func (s *String) Incr(delta int64) (int64, error) {
 	if value != nil {
 		v, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
-			//TODO
-			// return nil, ErrInteger
+			return 0, ErrInteger
 		}
 		delta = v + delta
 	}
@@ -175,8 +174,7 @@ func (s *String) Incrf(delta float64) (float64, error) {
 	if value != nil {
 		v, err := strconv.ParseFloat(string(value), 64)
 		if err != nil {
-			// TODO
-			// return nil, ErrInteger
+			return 0, ErrInteger
 		}
 		delta = v + delta
 	}

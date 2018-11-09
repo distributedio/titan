@@ -2,6 +2,7 @@ package store
 
 import (
 	"strings"
+	"unsafe"
 
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
@@ -39,20 +40,7 @@ func LockKeys(txn Transaction, keys [][]byte) error {
 }
 
 // BatchGetValues issue batch requests to get values
-func BatchGetValues(txn Transaction, keys [][]byte) ([][]byte, error) {
-	kvkeys := make([]kv.Key, len(keys))
-	for i := range keys {
-		kvkeys[i] = keys[i]
-	}
-	kvs, err := kv.BatchGetValues(txn, kvkeys)
-	if err != nil {
-		return nil, err
-	}
-
-	values := make([][]byte, len(keys))
-	for i := range keys {
-		values[i] = kvs[string(keys[i])]
-	}
-
-	return values, nil
+func BatchGetValues(txn Transaction, keys [][]byte) (map[string][]byte, error) {
+	kvkeys := *(*[]kv.Key)(unsafe.Pointer(&keys))
+	return kv.BatchGetValues(txn, kvkeys)
 }

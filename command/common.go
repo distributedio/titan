@@ -100,3 +100,116 @@ func Token(key, namespace []byte, createAt int64) ([]byte, error) {
 	token = append(token, encodedSign...)
 	return token, nil
 }
+
+// globMatch matches s with pattern in glob-style
+func globMatch(pattern, val []byte, nocase bool) bool {
+	if !nocase {
+		pattern = bytes.ToLower(pattern)
+		val = bytes.ToLower(val)
+	}
+	for len(pattern) > 0 {
+		switch pattern[0] {
+		case '*':
+			for len(pattern) >= 2 && pattern[1] == '*' {
+				pattern = pattern[1:]
+			}
+			if len(pattern) == 1 {
+				return true
+			}
+			for len(val) > 0 {
+				if globMatch(pattern[1:], val, nocase) {
+					return true
+				}
+				val = val[1:]
+			}
+			return false
+		case '?':
+			if len(val) == 0 {
+				return false
+			}
+			val = val[1:]
+		case '[':
+			pattern = pattern[1:]
+			not := false
+			if len(pattern) > 0 && pattern[0] == '^' {
+				not = true
+				pattern = pattern[1:]
+			}
+
+			var match bool
+			for len(pattern) > 0 {
+				if len(pattern) >= 2 && pattern[0] == '\\' {
+					pattern = pattern[1:]
+					if pattern[0] == val[0] {
+						match = true
+					}
+				} else if pattern[0] == ']' {
+					break
+				} else if len(pattern) >= 3 && pattern[1] == '-' {
+					if val[0] >= pattern[0] && val[0] <= pattern[2] || val[0] <= pattern[0] && val[0] >= pattern[2] {
+						match = true
+					}
+					pattern = pattern[2:]
+				} else if pattern[0] == val[0] {
+					match = true
+				} else if len(pattern) == 1 {
+					break
+				}
+				if len(pattern) > 0 {
+					pattern = pattern[1:]
+				}
+			}
+			if not {
+				match = !match
+			}
+			if !match {
+				return false
+			}
+			val = val[1:]
+		case '\\':
+			if len(pattern) >= 2 {
+				pattern = pattern[1:]
+			}
+			fallthrough
+		default:
+			if pattern[0] != val[0] {
+				return false
+			}
+			val = val[1:]
+		}
+		if len(pattern) > 0 {
+			pattern = pattern[1:]
+		}
+		if len(val) == 0 {
+			for len(pattern) > 0 && pattern[0] == '*' {
+				pattern = pattern[1:]
+			}
+			break
+		}
+	}
+	if len(pattern) == 0 && len(val) == 0 {
+		return true
+	}
+	return false
+
+}
+
+//globMatchPrefix Glob-style patter prefix
+func globMatchPrefix(val []byte) []byte {
+	var v []byte
+	pattern := val
+	for i := 0; i < len(pattern); i++ {
+		switch pattern[i] {
+		case '\\':
+			if i+1 < len(pattern) {
+				i++
+				v = append(v, pattern[i])
+			}
+		case '*', '[', ']', '?':
+			return v
+		default:
+			v = append(v, pattern[i])
+		}
+	}
+	return v
+}

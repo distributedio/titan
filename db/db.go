@@ -235,10 +235,10 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 			continue
 		}
 
-		isLeader, err := checkLeader(txn.t, leader, gInstanceID.Bytes(), interval)
+		isLeader, err := checkLeader(txn.t, leader, UUID(), interval)
 		if err != nil {
 			txn.Rollback()
-			if IsErrRetriable(err) {
+			if IsRetryableError(err) {
 				count++
 				if count < 3 {
 					continue
@@ -249,7 +249,7 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 
 		if err := txn.Commit(context.Background()); err != nil {
 			txn.Rollback()
-			if IsErrRetriable(err) {
+			if IsRetryableError(err) {
 				count++
 				if count < 3 {
 					continue

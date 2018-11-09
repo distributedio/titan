@@ -15,10 +15,11 @@ import (
 
 // Context is the runtime context of a command
 type Context struct {
-	Name string
-	Args []string
-	In   io.Reader
-	Out  io.Writer
+	Name    string
+	Args    []string
+	In      io.Reader
+	Out     io.Writer
+	TraceID string
 	*context.Context
 }
 
@@ -196,14 +197,17 @@ func AutoCommit(cmd TxnCommand) Command {
 
 func feedMonitors(ctx *Context) {
 	ctx.Server.Monitors.Range(func(k, v interface{}) bool {
-		out := v.(io.Writer)
+		mCtx := v.(*Context)
+		if mCtx.Client.Namespace != sysAdminNamespace && mCtx.Client.Namespace != ctx.Client.Namespace {
+			return true
+		}
 
 		now := time.Now().UnixNano() / 1000
 		ts := strconv.FormatFloat(float64(now)/1000000, 'f', -1, 64)
 		id := strconv.FormatInt(int64(ctx.Client.DB.ID), 10)
 
 		line := ts + " [" + id + " " + ctx.Client.RemoteAddr + "]" + " " + ctx.Name + " " + strings.Join(ctx.Args, " ")
-		err := resp.ReplySimpleString(out, line)
+		err := resp.ReplySimpleString(mCtx.Out, line)
 		if err != nil {
 			ctx.Server.Monitors.Delete(k)
 		}

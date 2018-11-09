@@ -106,7 +106,8 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-// MGet returns the values of all specified key  TODO use BatchGetRequest to gain performance
+// MGet returns the values of all specified key
+// use BatchGetRequest to gain performance
 func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	count := len(ctx.Args)
 	values := make([][]byte, count)
@@ -146,15 +147,13 @@ func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-//TODO bug
-// 一个失败其他不应该提交 现在提交成功了
 func MSetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	args := ctx.Args
 	if argc%2 != 0 {
 		return nil, ErrMSet
 	}
-	for i := 2; i < argc-1; i += 2 {
+	for i := 2; i <= argc; i += 2 {
 		if str, _ := txn.String([]byte(ctx.Args[0])); !str.Exist() {
 			ctx.Args = append(args[i-2:i], "nx")
 			if _, err := Set(ctx, txn); err != nil {
@@ -381,7 +380,6 @@ func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	delta, err := str.Incr(1)
 	if err != nil {
-		//TODO
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(delta)), nil
@@ -405,9 +403,8 @@ func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		str = txn.NewString(key)
 	}
 
-	delta, err = str.Incr(1)
+	delta, err = str.Incr(delta)
 	if err != nil {
-		//TODO
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(delta)), nil
@@ -433,7 +430,6 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	delta, err = str.Incrf(delta)
 	if err != nil {
-		//TODO
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
@@ -454,7 +450,6 @@ func Decr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	delta, err := str.Incr(-1)
 	if err != nil {
-		//TODO
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(delta)), nil
@@ -479,34 +474,7 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	delta, err = str.Incr(-delta)
 	if err != nil {
-		//TODO
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(delta)), nil
-}
-
-func DecrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(ctx.Args[0])
-	str, err := txn.String([]byte(key))
-	if err != nil {
-		if err == db.ErrTypeMismatch {
-			return nil, ErrTypeMismatch
-		}
-		return nil, errors.New("ERR " + err.Error())
-	}
-	delta, err := strconv.ParseFloat(string(ctx.Args[1]), 64)
-	if err != nil {
-		return nil, ErrInteger
-	}
-
-	if !str.Exist() {
-		str = txn.NewString(key)
-	}
-
-	delta, err = str.Incrf(-delta)
-	if err != nil {
-		//TODO
-		return nil, errors.New("ERR " + err.Error())
-	}
-	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
 }

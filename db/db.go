@@ -15,6 +15,9 @@ var (
 	ErrTypeMismatch = errors.New("type mismatch")
 	// ErrKeyNotFound key not exist
 	ErrKeyNotFound = errors.New("key not found")
+
+	//ErrInteger
+	ErrInteger = errors.New("value is not an integer or out of range")
 	// ErrPrecision list index reach precision limitatin
 	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
 

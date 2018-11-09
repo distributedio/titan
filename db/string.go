@@ -156,8 +156,7 @@ func (s *String) Incr(delta int64) (int64, error) {
 	if value != nil {
 		v, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
-			//TODO
-			// return nil, ErrInteger
+			return 0, ErrInteger
 		}
 		delta = v + delta
 	}
@@ -175,8 +174,7 @@ func (s *String) Incrf(delta float64) (float64, error) {
 	if value != nil {
 		v, err := strconv.ParseFloat(string(value), 64)
 		if err != nil {
-			// TODO
-			// return nil, ErrInteger
+			return 0, ErrInteger
 		}
 		delta = v + delta
 	}

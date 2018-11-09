@@ -32,7 +32,6 @@ func init() {
 		"incrbyFloat": IncrByFloat,
 		"decr":        Decr,
 		"decrby":      DecrBy,
-		"decrbyfloat": DecrByFloat,
 		"incrbyfloat": IncrByFloat,
 
 		// keys
@@ -94,11 +93,22 @@ func init() {
 		// strings
 		"get":    CommandInfo{Proc: AutoCommit(Get), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"set":    CommandInfo{Proc: AutoCommit(Set), Cons: Constraint{-3, flags("wm"), 1, 1, 1}},
+		"setnx":  CommandInfo{Proc: AutoCommit(SetNx), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
+		"setex":  CommandInfo{Proc: AutoCommit(SetEx), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
+		"psetex": CommandInfo{Proc: AutoCommit(PSetEx), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
 		"mget":   CommandInfo{Proc: AutoCommit(MGet), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
 		"mset":   CommandInfo{Proc: AutoCommit(MSet), Cons: Constraint{-3, flags("wm"), 1, -1, 2}},
+		"msetnx": CommandInfo{Proc: AutoCommit(MSetNx), Cons: Constraint{-3, flags("wm"), 1, -1, 2}},
 		"strlen": CommandInfo{Proc: AutoCommit(Strlen), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"append": CommandInfo{Proc: AutoCommit(Append), Cons: Constraint{3, flags("wm"), 1, 1, 1}},
-		"incr":   CommandInfo{Proc: AutoCommit(Incr), Cons: Constraint{2, flags("wmF"), 1, 1, 1}},
+		// "setrange": CommandInfo{Proc: AutoCommit(SetRange), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
+		"getrange":    CommandInfo{Proc: AutoCommit(GetRange), Cons: Constraint{4, flags("r"), 1, 1, 1}},
+		"incr":        CommandInfo{Proc: AutoCommit(Incr), Cons: Constraint{2, flags("wmF"), 1, 1, 1}},
+		"decr":        CommandInfo{Proc: AutoCommit(Decr), Cons: Constraint{2, flags("wmF"), 1, 1, 1}},
+		"incrby":      CommandInfo{Proc: AutoCommit(IncrBy), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
+		"decrby":      CommandInfo{Proc: AutoCommit(DecrBy), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
+		"incrbyfloat": CommandInfo{Proc: AutoCommit(IncrByFloat), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
+
 		// keys
 		"type":     CommandInfo{Proc: AutoCommit(Type), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"exists":   CommandInfo{Proc: AutoCommit(Exists), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},

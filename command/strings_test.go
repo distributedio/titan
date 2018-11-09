@@ -264,224 +264,181 @@ func TestStringSet(t *testing.T) {
 	EqualMGet(t, []string{key}, []string{"value"}, nil)
 }
 
-/*
 func TestStringSetEx(t *testing.T) {
-	args := make([][]byte, 3)
-	key := []byte("setex")
+	args := make([]string, 3)
+	key := "setex"
 	args[0] = key
-	args[1] = []byte("10000")
+	args[1] = "10000"
 	args[2] = value
-	cmdctx.Db.Begin()
-	r, err := SetExHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisOkResp, r)
-	assert.NoError(t, err)
+
+	ctx := ContextTest("setex", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "OK")
 	EqualGet(t, key, value, nil)
 
-	args[1] = []byte("x")
-	cmdctx.Db.Begin()
-	r, err = SetExHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisIntegerResp, r)
-	assert.NotNil(t, err)
+	args[1] = "x"
+	ctx = ContextTest("setex", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrInteger.Error())
 }
 
 func TestStringSetNx(t *testing.T) {
-	args := make([][]byte, 2)
-	key := []byte("setnx")
+	args := make([]string, 2)
+	key := "setnx"
 	args[0] = key
 	args[1] = value
-	cmdctx.Db.Begin()
-	r, err := SetNxHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisOneResp, r)
-	assert.NoError(t, err)
+
+	ctx := ContextTest("setnx", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "1")
 	EqualGet(t, key, value, nil)
 
-	args[1] = []byte("v1")
-	cmdctx.Db.Begin()
-	r, err = SetNxHandler(args, cmdctx)
-	assert.Equal(t, RedisZeroResp, r)
-	cmdctx.Db.Commit()
-	assert.NoError(t, err)
+	args[1] = "v1"
+	ctx = ContextTest("setnx", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "0")
 	EqualGet(t, key, value, nil)
 }
 
 func TestStringPSetEx(t *testing.T) {
-	args := make([][]byte, 3)
-	key := []byte("psetex")
+	args := make([]string, 3)
+	key := "psetex"
 	args[0] = key
-	args[1] = []byte("100000")
+	args[1] = "100000"
 	args[2] = value
-	cmdctx.Db.Begin()
-	r, err := PSetExHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisOkResp, r)
-	assert.NoError(t, err)
+
+	ctx := ContextTest("psetex", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "OK")
 	EqualGet(t, key, value, nil)
 
-	args[1] = []byte("x")
-	cmdctx.Db.Begin()
-	r, err = PSetExHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisIntegerResp, r)
-	assert.NotNil(t, err)
+	args[1] = "x"
+	ctx = ContextTest("psetex", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrInteger.Error())
 }
 
+/*
 func TestStringRange(t *testing.T) {
-	args := make([][]byte, 3)
-	key := []byte("range")
+	args := make([]string, 3)
+	key := "range"
 	args[0] = key
-	args[1] = []byte("10")
+	args[1] = "10"
 	args[2] = value
 
-	cmdctx.Db.Begin()
-	r, err := SetRangeHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(len(args[2]) + 10)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	ctx := ContextTest("setrange", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(len(args[2])+10))
 
-	cmdctx.Db.Begin()
-	r, err = SetRangeHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	rr = &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(len(args[2]) + 10)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	ctx = ContextTest("setrange", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(len(args[2])+10))
 
-	args[1] = []byte("1073741824")
-	cmdctx.Db.Begin()
-	r, err = SetRangeHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisMaximumResp, r)
-	assert.NotNil(t, err)
+	args[1] = "1073741824"
+	ctx = ContextTest("setrange", args...)
+	Call(ctx)
+
+	// assert.Contains(t, ctxString(ctx.Out), ErrMai
 }
+*/
 
 func TestStringIncr(t *testing.T) {
-	args := make([][]byte, 1)
-	args[0] = []byte("incr")
-	cmdctx.Db.Begin()
-	r, err := IncrHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(1)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	args := make([]string, 1)
+	args[0] = "incr"
+	ctx := ContextTest("incr", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "1")
 
-	args[0] = []byte("setex")
-	cmdctx.Db.Begin()
-	r, err = IncrHandler(args, cmdctx)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisIntegerResp, r)
-	assert.NotNil(t, err)
+	args[0] = "setex"
+	ctx = ContextTest("incr", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrInteger.Error())
 }
 
 func TestStringIncrBy(t *testing.T) {
-	args := make([][]byte, 2)
-	args[0] = []byte("incrby")
-	args[1] = []byte("2")
-	cmdctx.Db.Begin()
-	r, err := IncrByHandler(cmdctx, args)
-	cmdctx.Db.Commit()
-	rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(2)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	args := make([]string, 2)
+	args[0] = "incrby"
+	args[1] = "2"
+	ctx := ContextTest("incrby", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "2")
 
-	args[1] = []byte("-2")
-	cmdctx.Db.Begin()
-	r, err = IncrByHandler(cmdctx, args)
-	cmdctx.Db.Commit()
-	rr = &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(0)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	args[1] = "-2"
+	ctx = ContextTest("incrby", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "0")
 
-	//TODO bug
-
-		args[1] = []byte("02")
-		cmdctx.Db.Begin()
-		r, err = IncrByHandler(cmdctx, args)
-		cmdctx.Db.Commit()
-		assert.Equal(t, RedisIntegerResp, r)
-		assert.NotNil(t, err)
+	args[1] = "02"
+	ctx = ContextTest("incrby", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "2")
 
 }
 
 //bug
 func TestStringIncrByFloat(t *testing.T) {
 	/*
-		args := make([][]byte, 2)
-		args[0] = []byte("incrbyfloat")
-		args[1] = []byte("2.0e2")
-		cmdctx.Db.Begin()
-		r, err := IncrByFloatHandler(cmdctx, args)
-		cmdctx.Db.Commit()
-		rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(200)}
-		assert.Equal(t, rr, r)
-		assert.NoError(t, err)
+			args := make([][]byte, 2)
+			args[0] = []byte("incrbyfloat")
+			args[1] = []byte("2.0e2")
+			cmdctx.Db.Begin()
+			r, err := IncrByFloatHandler(cmdctx, args)
+			cmdctx.Db.Commit()
+			rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(200)}
+			assert.Equal(t, rr, r)
+			assert.NoError(t, err)
 
-		args[1] = []byte("2.0e2")
-		cmdctx.Db.Begin()
-		r, err = IncrByFloatHandler(cmdctx, args)
-		cmdctx.Db.Commit()
-		rr = &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(0)}
-		assert.Equal(t, rr, r)
-		assert.NoError(t, err)
-
-			args[1] = []byte("02")
+			args[1] = []byte("2.0e2")
 			cmdctx.Db.Begin()
 			r, err = IncrByFloatHandler(cmdctx, args)
 			cmdctx.Db.Commit()
-			assert.Equal(t, RedisIntegerResp, r)
-			assert.NotNil(t, err)
-	//
+			rr = &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(0)}
+			assert.Equal(t, rr, r)
+			assert.NoError(t, err)
+
+				args[1] = []byte("02")
+				cmdctx.Db.Begin()
+				r, err = IncrByFloatHandler(cmdctx, args)
+				cmdctx.Db.Commit()
+				assert.Equal(t, RedisIntegerResp, r)
+				assert.NotNil(t, err)
+		//
+	*/
 }
 
 func TestStringDecr(t *testing.T) {
-	args := make([][]byte, 1)
-	args[0] = []byte("decr")
-	cmdctx.Db.Begin()
-	r, err := DecrHandler(cmdctx, args)
-	cmdctx.Db.Commit()
-	rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(-1)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	args := make([]string, 1)
+	args[0] = "decr"
+	ctx := ContextTest("decr", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "-1")
 
-	args[0] = []byte("setex")
-	cmdctx.Db.Begin()
-	r, err = DecrHandler(cmdctx, args)
-	cmdctx.Db.Commit()
-	assert.Equal(t, RedisIntegerResp, r)
-	assert.NotNil(t, err)
+	args[0] = "setex"
+	ctx = ContextTest("decr", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrInteger.Error())
 }
 
 func TestStringDecrBy(t *testing.T) {
-	args := make([][]byte, 2)
-	args[0] = []byte("decrby")
-	args[1] = []byte("2")
-	cmdctx.Db.Begin()
-	r, err := DecrByHandler(cmdctx, args)
-	cmdctx.Db.Commit()
-	rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(-2)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	args := make([]string, 2)
+	args[0] = "decrby"
+	args[1] = "2"
 
-	args[1] = []byte("-2")
-	cmdctx.Db.Begin()
-	r, err = DecrByHandler(cmdctx, args)
-	cmdctx.Db.Commit()
-	rr = &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(0)}
-	assert.Equal(t, rr, r)
-	assert.NoError(t, err)
+	ctx := ContextTest("decrby", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "-2")
 
-	//bug
+	args[1] = "-2"
+	ctx = ContextTest("decrby", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "0")
 
-		args[1] = []byte("02")
-		r, err = DecrByHandler(cmdctx, args)
-		assert.Equal(t, RedisIntegerResp, r)
-		assert.NotNil(t, err)
-
+	args[1] = "02"
+	ctx = ContextTest("decrby", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "-2")
 }
 
-*/
 func TestStringMset(t *testing.T) {
 	args := make([]string, 4)
 	args[0] = "Mset1"
@@ -492,14 +449,34 @@ func TestStringMset(t *testing.T) {
 	ctx := ContextTest("mset", args...)
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), "OK")
-
-	EqualGet(t, args[0], args[1], nil)
-	EqualGet(t, args[2], args[3], nil)
 	EqualMGet(t, []string{args[0], args[2]}, []string{args[1], args[3]}, nil)
 
 	ctx = ContextTest("mset", args[:3]...)
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), ErrMSet.Error())
+}
+
+func TestStringMsetNx(t *testing.T) {
+	args := make([]string, 4)
+	args[0] = "MsetN1"
+	args[1] = "MsetN3"
+	args[2] = "MsetN2"
+	args[3] = "MsetN4"
+
+	ctx := ContextTest("msetnx", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "1")
+	EqualMGet(t, []string{args[0], args[2]}, []string{args[1], args[3]}, nil)
+
+	ctx = ContextTest("msetnx", args[:3]...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrMSet.Error())
+
+	args[2] = "MsetN5"
+	ctx = ContextTest("msetnx", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "0")
+	EqualGet(t, args[0], args[1], nil)
 }
 
 func TestStringAppend(t *testing.T) {

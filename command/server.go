@@ -12,9 +12,11 @@ import (
 	"gitlab.meitu.com/platform/thanos/resp"
 )
 
+const sysAdminNamespace = "$sys.admin"
+
 // Monitor streams back every command processed by the Thanos server
 func Monitor(ctx *Context) {
-	ctx.Server.Monitors.Store(ctx.Client.RemoteAddr, ctx.Out)
+	ctx.Server.Monitors.Store(ctx.Client.RemoteAddr, ctx)
 	resp.ReplySimpleString(ctx.Out, "OK")
 }
 
@@ -27,6 +29,9 @@ func Client(ctx *Context) {
 		clients := &ctx.Server.Clients
 		clients.Range(func(k, v interface{}) bool {
 			client := v.(*context.ClientContext)
+			if ctx.Client.Namespace != sysAdminNamespace && client.Namespace != ctx.Client.Namespace {
+				return true
+			}
 			age := now.Sub(client.Created) / time.Second
 			idle := now.Sub(client.Updated) / time.Second
 			flags := "N"
@@ -62,6 +67,10 @@ func Client(ctx *Context) {
 		resp.ReplySimpleString(ctx.Out, "OK")
 	}
 	pause := func(ctx *Context) {
+		if ctx.Client.Namespace != sysAdminNamespace {
+			resp.ReplyError(ctx.Out, "ERR client pause can be used by $sys.admin only")
+			return
+		}
 		args := ctx.Args[1:]
 		if len(args) != 1 {
 			resp.ReplyError(ctx.Out, syntaxErr)
@@ -136,6 +145,11 @@ func Client(ctx *Context) {
 		closeSelf := false
 		ctx.Server.Clients.Range(func(k, v interface{}) bool {
 			cli := v.(*context.ClientContext)
+
+			if cli.Namespace != sysAdminNamespace && cli.Namespace != ctx.Client.Namespace {
+				return true
+			}
+
 			if id != 0 && cli.ID != id {
 				return true
 			}

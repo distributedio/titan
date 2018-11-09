@@ -13,7 +13,7 @@ type Thanos struct {
 // Config is the config of titan server
 type Server struct {
 	Tikv          Tikv   `cfg:"tikv"`
-	Auth          string `cfg:"auth;"";;client connetion auth"`
+	Auth          string `cfg:"auth;;;client connetion auth"`
 	Listen        string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
 	MaxConnection int64  `cfg:"max-connection;1000;numeric;client connection count"`
 }

@@ -36,7 +36,7 @@ Visit [Thanos](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=29745
 - [x] command count
 - [x] command getkeys
 - [x] command info
-- [ ] info
+- [x] info
 - [ ] slowlog
 
 ### Keys

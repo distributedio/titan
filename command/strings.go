@@ -301,10 +301,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		txn.Destory(&str.Meta.Object, key)
 	}
 
-	if !str.Exist() {
-		str = txn.NewString(key)
-	}
-
+	str = txn.NewString(key)
 	ui, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
@@ -329,10 +326,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		txn.Destory(&str.Meta.Object, key)
 	}
 
-	if !str.Exist() {
-		str = txn.NewString(key)
-	}
-
+	str = txn.NewString(key)
 	ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger

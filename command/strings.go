@@ -178,13 +178,12 @@ func Strlen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	v, err := str.Len()
-	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return Integer(ctx.Out, int64(0)), nil
-		}
-		return nil, errors.New("ERR " + err.Error())
+	if !str.Exist() {
+		return Integer(ctx.Out, int64(0)), nil
 	}
+
+	v, _ := str.Len()
+
 	return Integer(ctx.Out, int64(v)), nil
 }
 
@@ -297,6 +296,10 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+
 	ui, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
@@ -319,6 +322,11 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
+
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+
 	ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger

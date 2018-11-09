@@ -197,89 +197,23 @@ func AutoCommit(cmd TxnCommand) Command {
 
 func feedMonitors(ctx *Context) {
 	ctx.Server.Monitors.Range(func(k, v interface{}) bool {
-		out := v.(io.Writer)
+		mCtx := v.(*Context)
+		if mCtx.Client.Namespace != sysAdminNamespace && mCtx.Client.Namespace != ctx.Client.Namespace {
+			return true
+		}
 
 		now := time.Now().UnixNano() / 1000
 		ts := strconv.FormatFloat(float64(now)/1000000, 'f', -1, 64)
 		id := strconv.FormatInt(int64(ctx.Client.DB.ID), 10)
 
 		line := ts + " [" + id + " " + ctx.Client.RemoteAddr + "]" + " " + ctx.Name + " " + strings.Join(ctx.Args, " ")
-		err := resp.ReplySimpleString(out, line)
+		err := resp.ReplySimpleString(mCtx.Out, line)
 		if err != nil {
 			ctx.Server.Monitors.Delete(k)
 		}
 
 		return true
 	})
-}
-
-// globMatch matches s with pattern in glob-style
-func globMatch(s string, pattern string) bool {
-	i := 0
-	j := 0
-	for i < len(s) && j < len(pattern) {
-		p := pattern[j]
-		switch p {
-		case '?':
-			i++
-			j++
-			continue
-		case '*':
-			j++
-			if j == len(pattern) {
-				return true
-			}
-			p = pattern[j]
-			for i < len(s) {
-				if !globMatch(s[i:], pattern[j:]) {
-					i++
-					continue
-				}
-				return true
-			}
-			if i == len(s) {
-				return false
-			}
-			continue
-		case '[':
-			exclude := false
-			if pattern[j+1] == '^' {
-				j++
-				exclude = true
-			}
-			matched := false
-			for j < len(pattern) && pattern[j] != ']' {
-				p = pattern[j]
-				if !matched && s[i] == p {
-					matched = true
-				}
-				j++
-			}
-			if j == len(pattern) {
-				return false
-			}
-			if matched == exclude {
-				return false
-			}
-			j++
-			i++
-			continue
-		case '\\':
-			j++
-			fallthrough
-		default:
-			if s[i] != p {
-				return false
-			}
-			i++
-			j++
-			continue
-		}
-	}
-	if i < len(s) {
-		return false
-	}
-	return true
 }
 
 // Executor execute any command

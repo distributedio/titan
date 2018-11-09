@@ -18,17 +18,10 @@ type String struct {
 func GetString(txn *Transaction, key []byte) (*String, error) {
 	str := &String{txn: txn, key: key}
 	now := Now()
-
 	mkey := MetaKey(txn.db, key)
 	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
-			str.meta.CreatedAt = now
-			str.meta.UpdatedAt = now
-			str.meta.ExpireAt = 0
-			str.meta.ID = UUID()
-			str.meta.Type = ObjectString
-			str.meta.Encoding = ObjectEncodingRaw
 			return str, nil
 		}
 		return nil, err
@@ -36,17 +29,13 @@ func GetString(txn *Transaction, key []byte) (*String, error) {
 	if err := str.decode(meta); err != nil {
 		return nil, err
 	}
-
 	if str.meta.Type != ObjectString {
 		return nil, ErrTypeMismatch
 	}
-
 	if str.meta.Encoding != ObjectEncodingRaw {
 		return nil, ErrTypeMismatch
 	}
-
 	str.meta.UpdatedAt = now
-
 	return str, nil
 }
 
@@ -88,9 +77,6 @@ func (s *String) Set(val []byte, expire ...int64) error {
 
 //Len value len
 func (s *String) Len() (int, error) {
-	if !s.Exist() {
-		return 0, ErrKeyNotFound
-	}
 	return len(s.meta.Value), nil
 }
 

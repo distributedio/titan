@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"io"
+	"strings"
 
 	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/thanos/context"
@@ -39,4 +40,9 @@ func ContextTest(name string, args ...string) *Context {
 
 func ctxString(buf io.Writer) string {
 	return buf.(*bytes.Buffer).String()
+}
+
+func ctxLines(buf io.Writer) []string {
+	str := ctxString(buf)
+	return strings.Split(str, "\r\n")
 }

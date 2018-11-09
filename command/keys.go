@@ -323,7 +323,7 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return func() {
 		resp.ReplyArray(ctx.Out, 2)
 		resp.ReplyBulkString(ctx.Out, string(end))
-		BytesArray(ctx.Out, list)
+		BytesArray(ctx.Out, list)()
 	}, nil
 
 }

@@ -29,7 +29,6 @@ func init() {
 		// "setbit":      SetBit,
 		"incr":        Incr,
 		"incrby":      IncrBy,
-		"incrbyFloat": IncrByFloat,
 		"decr":        Decr,
 		"decrby":      DecrBy,
 		"incrbyfloat": IncrByFloat,

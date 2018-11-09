@@ -64,12 +64,6 @@ var (
 	// ErrSyntax syntax error
 	ErrSyntax = errors.New("ERR syntax error")
 
-	// ErrValue value is not an integer or out of range
-	// ErrValue = errors.New("ERR value is not an integer or out of range")
-
-	// ErrType Operation against a key holding the wrong kind of value
-	ErrType = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
-
 	// ErrMSet wrong number of arguments for MSET
 	ErrMSet = errors.New("ERR wrong number of arguments for MSET")
 
@@ -84,7 +78,7 @@ var (
 
 	// ErrMultiNested indicates a nested multi command which is not allowed
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
-	// ErrTypeMismatch
+	// ErrTypeMismatchi Operation against a key holding the wrong kind of value
 	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
 	//EmptyArray error
 	EmptyArray = errors.New("EmptyArray error")

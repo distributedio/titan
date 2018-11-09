@@ -39,17 +39,17 @@ func expireKey(key []byte, ts int64) []byte {
 	return buf
 }
 
-func expireAt(txn *Transaction, mkey []byte, objID []byte, old int64, new int64) error {
-	oldKey := expireKey(mkey, old)
-	newKey := expireKey(mkey, new)
+func expireAt(txn *Transaction, mkey []byte, objID []byte, oldAt int64, newAt int64) error {
+	oldKey := expireKey(mkey, oldAt)
+	newKey := expireKey(mkey, newAt)
 
-	if old > 0 {
+	if oldAt > 0 {
 		if err := txn.t.Delete(oldKey); err != nil {
 			return err
 		}
 	}
 
-	if new > 0 {
+	if newAt > 0 {
 		if err := txn.t.Set(newKey, objID); err != nil {
 			return err
 		}
@@ -58,6 +58,9 @@ func expireAt(txn *Transaction, mkey []byte, objID []byte, old int64, new int64)
 }
 
 func unExpireAt(txn *Transaction, mkey []byte, expireAt int64) error {
+	if expireAt == 0 {
+		return nil
+	}
 	oldKey := expireKey(mkey, expireAt)
 	if err := txn.t.Delete(oldKey); err != nil {
 		return err

@@ -62,17 +62,20 @@ func (s *String) Get() ([]byte, error) {
 
 func (s *String) Set(val []byte, expire ...int64) error {
 	timestamp := Now()
+	mkey := MetaKey(s.txn.db, s.key)
 	if len(expire) != 0 && expire[0] > 0 {
 		old := s.meta.ExpireAt
 		s.meta.ExpireAt = timestamp + expire[0]
-		if err := expireAt(s.txn, s.key, s.key, old, s.meta.ExpireAt); err != nil {
+		if err := expireAt(s.txn, mkey, s.meta.ID, old, s.meta.ExpireAt); err != nil {
 			return err
 		}
 	} else {
+		//可能key不存在过期,因此不关系返回的错误
+		unExpireAt(s.txn, mkey, s.meta.ExpireAt)
 		s.meta.ExpireAt = 0
 	}
 	s.meta.Value = val
-	return s.txn.t.Set(MetaKey(s.txn.db, s.key), s.encode())
+	return s.txn.t.Set(mkey, s.encode())
 }
 
 //Len value len

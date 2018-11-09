@@ -114,6 +114,7 @@ func init() {
 		"flushdb":  CommandInfo{Proc: AutoCommit(FlushDB), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
 		"flushall": CommandInfo{Proc: AutoCommit(FlushAll), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
 		"time":     CommandInfo{Proc: Time, Cons: Constraint{1, flags("RF"), 0, 0, 0}},
+		"info":     CommandInfo{Proc: Info, Cons: Constraint{-1, flags("lt"), 0, 0, 0}},
 
 		// hashes
 		"hdel":         CommandInfo{Proc: AutoCommit(HDel), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},

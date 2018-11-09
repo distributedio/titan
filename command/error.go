@@ -44,7 +44,7 @@ var (
 	ErrInvalidDB = errors.New("ERR invalid DB index")
 
 	// ErrTikv TIKV ERROR
-	// ErrTikv = errors.New("TIKV ERROR")
+	ErrExpire = errors.New("ERR invalid expire time in set")
 
 	// ErrInteger value is not an integer or out of range
 	ErrInteger = errors.New("ERR value is not an integer or out of range")
@@ -64,9 +64,6 @@ var (
 	// ErrSyntax syntax error
 	ErrSyntax = errors.New("ERR syntax error")
 
-	// ErrType Operation against a key holding the wrong kind of value
-	ErrType = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
-
 	// ErrMSet wrong number of arguments for MSET
 	ErrMSet = errors.New("ERR wrong number of arguments for MSET")
 
@@ -81,7 +78,7 @@ var (
 
 	// ErrMultiNested indicates a nested multi command which is not allowed
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
-	// ErrTypeMismatch
+	// ErrTypeMismatchi Operation against a key holding the wrong kind of value
 	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
 	//EmptyArray error
 	EmptyArray = errors.New("EmptyArray error")

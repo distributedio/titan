@@ -15,6 +15,9 @@ var (
 	ErrTypeMismatch = errors.New("type mismatch")
 	// ErrKeyNotFound key not exist
 	ErrKeyNotFound = errors.New("key not found")
+
+	//ErrInteger
+	ErrInteger = errors.New("value is not an integer or out of range")
 	// ErrPrecision list index reach precision limitatin
 	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
 
@@ -30,11 +33,6 @@ var (
 
 type Iterator store.Iterator
 
-// BatchGetValues issue batch requests to get values
-func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
-	return store.BatchGetValues(txn.t, keys)
-}
-
 type DBID byte
 
 func (id DBID) String() string {
@@ -46,6 +44,19 @@ func (id DBID) Bytes() []byte {
 func toDBID(v []byte) DBID {
 	id, _ := strconv.Atoi(string(v))
 	return DBID(id)
+}
+
+// BatchGetValues issue batch requests to get values
+func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
+	kvs, err := store.BatchGetValues(txn.t, keys)
+	if err != nil {
+		return nil, err
+	}
+	values := make([][]byte, len(keys))
+	for i := range keys {
+		values[i] = kvs[string(keys[i])]
+	}
+	return values, nil
 }
 
 // DB is a redis compatible data structure storage
@@ -118,6 +129,30 @@ func (txn *Transaction) ZList(key []byte) (*ZList, error) {
 //TODO 获得一个string 对象 ，但是可能是不安全 ，string 可能过期了
 func (txn *Transaction) String(key []byte) (*String, error) {
 	return GetString(txn, key)
+}
+
+// BatchGetValues issue batch requests to get values
+func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
+	sobjs := make([]*String, len(keys))
+	tkeys := make([][]byte, len(keys))
+	for i, key := range keys {
+		tkeys[i] = MetaKey(txn.db, key)
+	}
+	mdata, err := store.BatchGetValues(txn.t, tkeys)
+	if err != nil {
+		return nil, err
+	}
+	for i, key := range tkeys {
+		obj := txn.NewString(key)
+		if data, ok := mdata[string(key)]; ok {
+			if err := obj.decode(data); err != nil {
+				//TODO log
+				//log
+			}
+		}
+		sobjs[i] = obj
+	}
+	return sobjs, nil
 }
 
 // String return a string object

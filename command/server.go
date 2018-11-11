@@ -227,8 +227,8 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, obj.String()), nil
 }
 
-// CommandCommand returns info about commands
-func CommandCommand(ctx *Context) {
+// RCommand returns info about commands
+func RCommand(ctx *Context) {
 	count := func(ctx *Context) {
 		resp.ReplyInteger(ctx.Out, int64(len(commands)))
 	}

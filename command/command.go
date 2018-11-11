@@ -24,11 +24,11 @@ type Context struct {
 }
 
 const (
-	BitMaxOffset = 232
-	BitValueZero = 0
-	BitValueOne  = 1
+// BitMaxOffset = 232
+// BitValueZero = 0
+// BitValueOne  = 1
 
-	MaxRangeInteger = 2<<29 - 1
+// MaxRangeInteger = 2<<29 - 1
 )
 
 // Command is a redis command implementation
@@ -116,13 +116,13 @@ func Call(ctx *Context) {
 		return
 	}
 
-	cmdInfo, ok := commands[name]
+	cmdInfoCommand, ok := commands[name]
 	if !ok {
 		resp.ReplyError(ctx.Out, "ERR unknown command '"+ctx.Name+"'")
 		return
 	}
 	argc := len(ctx.Args) + 1 // include the command name
-	arity := cmdInfo.Cons.Arity
+	arity := cmdInfoCommand.Cons.Arity
 	if arity > 0 && argc != arity {
 		resp.ReplyError(ctx.Out, "ERR wrong number of arguments for '"+ctx.Name+"' command")
 		return
@@ -144,11 +144,11 @@ func Call(ctx *Context) {
 
 	feedMonitors(ctx)
 	start := time.Now()
-	cmdInfo.Proc(ctx)
+	cmdInfoCommand.Proc(ctx)
 	cost := time.Since(start)
 
-	cmdInfo.Stat.Calls++
-	cmdInfo.Stat.Microseconds += cost.Nanoseconds() / int64(1000)
+	cmdInfoCommand.Stat.Calls++
+	cmdInfoCommand.Stat.Microseconds += cost.Nanoseconds() / int64(1000)
 }
 
 // TxnCall call command with transaction, it is used with multi/exec
@@ -219,7 +219,7 @@ func feedMonitors(ctx *Context) {
 // Executor execute any command
 type Executor struct {
 	txnCommands map[string]TxnCommand
-	commands    map[string]CommandInfo
+	commands    map[string]InfoCommand
 }
 
 // NewExecutor new a Executor object
@@ -232,8 +232,8 @@ func (e *Executor) Execute(ctx *Context) {
 	Call(ctx)
 }
 
-// CommandInfo combines command procedure, constraint and statistics
-type CommandInfo struct {
+// InfoCommand combines command procedure, constraint and statistics
+type InfoCommand struct {
 	Proc Command
 	Stat Statistic
 	Cons Constraint

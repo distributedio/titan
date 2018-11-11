@@ -43,7 +43,7 @@ var (
 	// ErrInvalidDB invalid DB index
 	ErrInvalidDB = errors.New("ERR invalid DB index")
 
-	// ErrTikv TIKV ERROR
+	//ErrExpire expire time in set
 	ErrExpire = errors.New("ERR invalid expire time in set")
 
 	// ErrInteger value is not an integer or out of range
@@ -78,10 +78,11 @@ var (
 
 	// ErrMultiNested indicates a nested multi command which is not allowed
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
-	// ErrTypeMismatchi Operation against a key holding the wrong kind of value
+
+	// ErrTypeMismatch Operation against a key holding the wrong kind of value
 	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
-	//EmptyArray error
-	EmptyArray = errors.New("EmptyArray error")
+	//ErrEmptyArray error
+	ErrEmptyArray = errors.New("EmptyArray error")
 )
 
 //ErrUnKnownCommand return RedisError of the cmd

@@ -1,5 +1,6 @@
 package resp
 
+//Encoder encode RESP interface
 type Encoder interface {
 	Error(s string) error
 	SimpleString(s string) error
@@ -9,6 +10,7 @@ type Encoder interface {
 	Array(size int) error
 }
 
+//Decoder decoder RESP interface
 type Decoder interface {
 	Error() (string, error)
 	SimpleString() (string, error)

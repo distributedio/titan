@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	// DefaultNamespace default namespce
 	DefaultNamespace = "default"
 )
 
@@ -53,6 +54,7 @@ type ClientContext struct {
 	Done chan struct{}
 }
 
+// NewClientContext new client context object ,id must be uniq
 func NewClientContext(id int64, conn net.Conn) *ClientContext {
 	now := time.Now()
 	cli := &ClientContext{

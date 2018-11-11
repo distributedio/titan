@@ -8,64 +8,39 @@ import (
 )
 
 // GetZList generate List objectm with auto reation, if zip is true, zipped list will be choose
-func GetZList(txn *Transaction, metaKey []byte) (*ZList, error) {
+func GetZList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (*ZList, error) {
+	l := &ZList{
+		rawMetaKey: metaKey,
+		txn:        txn,
+	}
+	if err := l.Unmarshal(obj, val); err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
+func NewZList(txn *Transaction, key []byte) (List, error) {
+	metaKey := MetaKey(txn.db, key)
 	ts := Now()
-	val, err := txn.t.Get(metaKey)
-	if err != nil {
-		if IsErrNotFound(err) { // error NotFound
-			obj := Object{
-				ExpireAt:  0,
-				CreatedAt: ts,
-				UpdatedAt: ts,
-				Type:      ObjectList,
-				ID:        UUID(),
-				Encoding:  ObjectEncodingLinkedlist,
-			}
-			obj.Encoding = ObjectEncodingZiplist
-			l := &ZList{
-				Object:     obj,
-				value:      pb.Zlistvalue{},
-				rawMetaKey: metaKey,
-				txn:        txn,
-			}
-
-			if b, err := l.Marshal(); err != nil {
-				return nil, err
-			} else {
-				if err := txn.t.Set(metaKey, b); err != nil {
-					return nil, err
-				}
-				//PutZList(txn, metaKey)
-				return l, nil
-			}
-		}
-		return nil, err
+	obj := Object{
+		ExpireAt:  0,
+		CreatedAt: ts,
+		UpdatedAt: ts,
+		Type:      ObjectList,
+		ID:        UUID(),
+		Encoding:  ObjectEncodingZiplist,
 	}
-
-	// exist
-	obj, err := DecodeObject(val)
+	l := &ZList{
+		Object:     obj,
+		value:      pb.Zlistvalue{},
+		rawMetaKey: metaKey,
+		txn:        txn,
+	}
+	b, err := l.Marshal()
 	if err != nil {
 		return nil, err
 	}
-	if obj.Type != ObjectList {
-		return nil, ErrTypeMismatch
-	}
-	if IsExpired(obj, ts) {
-		return nil, ErrKeyNotFound
-	}
-	if obj.Encoding == ObjectEncodingZiplist {
-		// found last zlist object
-		l := &ZList{
-			rawMetaKey: metaKey,
-			txn:        txn,
-		}
-		if err = l.Unmarshal(obj, val); err != nil {
-			return nil, err
-		}
-		return l, nil
-	} else {
-		return nil, ErrEncodingMismatch
-	}
+	return l, txn.t.Set(metaKey, b)
 }
 
 // ZListMeta defined zip list, with only objectMeta info.
@@ -74,6 +49,14 @@ type ZList struct {
 	rawMetaKey []byte
 	value      pb.Zlistvalue //[][]byte
 	txn        *Transaction
+}
+
+//TODO
+func (l *ZList) Exist() bool {
+	if l.value.V == nil {
+		return false
+	}
+	return true
 }
 
 // Marshal encode zlist into byte slice

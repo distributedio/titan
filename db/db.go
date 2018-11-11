@@ -124,15 +124,27 @@ func (txn *Transaction) Rollback() error {
 	return txn.t.Rollback()
 }
 
-// List return a list object, a new list is created if the key dose not exist.
-func (txn *Transaction) List(key []byte) (*LList, error) {
-	return GetLList(txn, key)
+// List return a list object, a null list is created if the key dose not exist.
+func (txn *Transaction) List(key []byte) (List, error) {
+	return GetList(txn, key)
 }
 
+// List return a list new object
+func (txn *Transaction) NewList(key []byte, count int) (List, error) {
+	return NewList(txn, key, count)
+}
+
+/*
 // List return a list object, a new list is created if the key dose not exist.
 func (txn *Transaction) ZList(key []byte) (*ZList, error) {
 	return GetZList(txn, key)
 }
+
+// List return a list new object
+func (txn *Transaction) NewZList(key []byte) (*ZList, error) {
+	return GetZList(txn, key)
+}
+*/
 
 // String return a string object
 //TODO 获得一个string 对象 ，但是可能是不安全 ，string 可能过期了

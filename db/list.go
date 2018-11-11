@@ -4,13 +4,11 @@ const (
 	initIndex = 0x0
 )
 
-//TODO conf
 var (
 	// ListZipThreshould create the zlist type of list if count key > ListZipThreshould
 	ListZipThreshould = 100
 )
 
-//List interface
 type List interface {
 	Index(n int64) (data []byte, err error)
 	Insert(pivot, v []byte, before bool) error

@@ -70,7 +70,7 @@ func (id DBID) Bytes() []byte {
 //toDBID the type []byte of id change  the type DBID of id
 func toDBID(v []byte) DBID {
 	id, _ := strconv.Atoi(string(v))
-	return IDDB(id)
+	return DBID(id)
 }
 
 // BatchGetValues issue batch requests to get values
@@ -89,7 +89,7 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 // DB is a redis compatible data structure storage
 type DB struct {
 	Namespace string
-	ID        IDDB
+	ID        DBID
 	kv        *RedisStore
 }
 
@@ -116,7 +116,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 
 //DB return DB object
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: IDDB(id), kv: rds}
+	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
 }
 
 //Close close store connect

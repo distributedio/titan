@@ -18,8 +18,9 @@ const (
 	IsLeaderType
 	LRangeSeekType
 	CommandCallType
+	RecycleInfoType
 	TransactionCommitType
-	TransactionRollbackType
+	TransactionRetryType
 	TransactionConflictType
 	TransactionFailureType
 	LogMetricsType
@@ -32,8 +33,9 @@ var MetricsTypeValue = map[metricsType]string{
 	IsLeaderType:            "IsLeaderGaugeVec",
 	LRangeSeekType:          "LRangeSeekHistogramVec",
 	CommandCallType:         "CommandTransferHistogram",
+	RecycleInfoType:         "GCInfoType",
 	TransactionCommitType:   "TransactionCommitHistogramVec",
-	TransactionRollbackType: "TransactionRollbackGaugeVec",
+	TransactionRetryType:    "TransactionRollbackGaugeVec",
 	TransactionConflictType: "TransactionConflictGauageVec",
 	TransactionFailureType:  "TransactionFailureGaugeVec",
 	LogMetricsType:          "LogMetrics",
@@ -44,20 +46,22 @@ const (
 	namespace = "titan"
 
 	//promethues default label key
-	command   = "command"
-	biz       = "biz"
-	leader    = "leader"
-	ztinfo    = "ztinfo"
-	labelName = "level"
+	command     = "command"
+	biz         = "biz"
+	leader      = "leader"
+	ztinfo      = "ztinfo"
+	labelName   = "level"
+	recycleinfo = "recycleinfo"
 )
 
 var (
 	//Label value slice when creating prometheus object
-	commandLabel = []string{command}
-	bizLabel     = []string{biz}
-	leaderLabel  = []string{leader}
-	multiLabel   = []string{biz, command}
-	ztInfoLabel  = []string{ztinfo}
+	commandLabel     = []string{command}
+	bizLabel         = []string{biz}
+	leaderLabel      = []string{leader}
+	multiLabel       = []string{biz, command}
+	ztInfoLabel      = []string{ztinfo}
+	recycleInfoLabel = []string{recycleinfo}
 
 	// global prometheus object
 	gm *Metrics
@@ -72,11 +76,12 @@ type Metrics struct {
 	ZTInfoCounterVec    *prometheus.CounterVec
 	IsLeaderGaugeVec    *prometheus.GaugeVec
 	LRangeSeekHistogram prometheus.Histogram
+	RecycleInfoGaugeVec *prometheus.GaugeVec
 
 	//command biz
 	CommandCallHistogramVec       *prometheus.HistogramVec
 	TransactionCommitHistogramVec *prometheus.HistogramVec
-	TransactionRollbackGaugeVec   *prometheus.GaugeVec
+	TransactionRetryGaugeVec      *prometheus.GaugeVec
 	TransactionConflictGauageVec  *prometheus.GaugeVec
 	TransactionFailureGaugeVec    *prometheus.GaugeVec
 
@@ -97,13 +102,13 @@ func init() {
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandCallHistogramVec)
 
-	gm.TransactionRollbackGaugeVec = prometheus.NewGaugeVec(
+	gm.TransactionRetryGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "transaction_rollback_count",
-			Help:      "The count of transaction rollback",
+			Name:      "transaction_retey_count",
+			Help:      "The count of transaction retry",
 		}, multiLabel)
-	prometheus.MustRegister(gm.TransactionRollbackGaugeVec)
+	prometheus.MustRegister(gm.TransactionRetryGaugeVec)
 
 	gm.TransactionConflictGauageVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -155,6 +160,14 @@ func init() {
 		}, ztInfoLabel)
 	prometheus.MustRegister(gm.ZTInfoCounterVec)
 
+	gm.RecycleInfoGaugeVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "recycle_info",
+			Help:      "the number of recycle data",
+		}, ztInfoLabel)
+	prometheus.MustRegister(gm.RecycleInfoGaugeVec)
+
 	gm.IsLeaderGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -172,7 +185,7 @@ func init() {
 		[]string{labelName},
 	)
 
-	http.Handle("/titan/gm", prometheus.Handler())
+	http.Handle("/thanos/metrics", prometheus.Handler())
 }
 
 //GetMetrics return metrics object

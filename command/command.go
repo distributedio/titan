@@ -10,6 +10,7 @@ import (
 	"github.com/shafreeck/retry"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/metrics"
 	"gitlab.meitu.com/platform/thanos/resp"
 )
 
@@ -179,14 +180,26 @@ func AutoCommit(cmd TxnCommand) Command {
 				return err
 			}
 
+			start := time.Now()
+			mt := metrics.GetMetrics()
+			defer func() {
+				cost := time.Since(start).Seconds()
+				mt.TransactionCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			}()
 			if err := txn.Commit(ctx); err != nil {
 				txn.Rollback()
+				if db.IsConflictError(err) {
+					mt.TransactionConflictGauageVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				}
 				if db.IsRetryableError(err) {
+					mt.TransactionRetryGaugeVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 					return retry.Retriable(err)
 				}
+				mt.TransactionFailureGaugeVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
 				return err
 			}
+
 			if onCommit != nil {
 				onCommit()
 			}
@@ -229,7 +242,10 @@ func NewExecutor() *Executor {
 
 // Execute a command
 func (e *Executor) Execute(ctx *Context) {
+	start := time.Now()
 	Call(ctx)
+	cost := time.Since(start).Seconds()
+	metrics.GetMetrics().CommandCallHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 }
 
 // CommandInfo combines command procedure, constraint and statistics

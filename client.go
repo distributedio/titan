@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"time"
+
 	"go.uber.org/zap"
 
 	"gitlab.meitu.com/platform/thanos/command"

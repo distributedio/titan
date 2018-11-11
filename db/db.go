@@ -13,6 +13,7 @@ import (
 
 	"gitlab.meitu.com/platform/thanos/conf"
 	"gitlab.meitu.com/platform/thanos/db/store"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
 var (
@@ -33,6 +34,8 @@ var (
 	IsErrNotFound = store.IsErrNotFound
 	// IsRetryableError returns true if the error is temporary and can be retried
 	IsRetryableError = store.IsRetryableError
+	//IsconflictError return true if the error is conflict
+	IsConflictError = store.IsConflictError
 
 	sysNamespace  = "$sys"
 	sysDatabaseID = 0
@@ -269,6 +272,16 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 
 func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 	count := 0
+	label := "default"
+	switch {
+	case bytes.Equal(leader, sysZTLeader):
+		label = "ZT"
+	case bytes.Equal(leader, sysGCLeader):
+		label = "GC"
+	case bytes.Equal(leader, sysExpireLeader):
+		label = "EX"
+	}
+
 	for {
 		txn, err := db.Begin()
 		if err != nil {
@@ -277,6 +290,14 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 		}
 
 		isLeader, err := checkLeader(txn.t, leader, UUID(), interval)
+		defer func() {
+			if isLeader {
+				metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(1)
+				return
+			}
+			metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(0)
+		}()
+
 		if err != nil {
 			txn.Rollback()
 			if IsRetryableError(err) {
@@ -298,8 +319,6 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 			}
 			return isLeader, err
 		}
-
-		//TODO add monitor
 		return isLeader, err
 	}
 }

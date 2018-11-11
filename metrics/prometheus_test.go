@@ -22,7 +22,7 @@ func TestMetrics(t *testing.T) {
 
 	gm.TransactionConflictGauageVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
 	gm.TransactionConflictGauageVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
-	gm.TransactionRollbackGaugeVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
+	gm.TransactionRetryGaugeVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
 	gm.TransactionFailureGaugeVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
 	gm.TransactionCommitHistogramVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
 	gm.CommandCallHistogramVec.WithLabelValues(defaultLabel, defaultlabel).Desc()

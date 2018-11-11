@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db/store"
+	"gitlab.meitu.com/platform/thanos/metrics"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +32,7 @@ func toTikvGCKey(key []byte) []byte {
 // prefix: {user.ns}:{user.id}:{M/D}:{user.objectID}
 func gc(txn store.Transaction, prefix []byte) error {
 	zap.L().Debug("add to gc", zap.ByteString("prefix", prefix))
+	metrics.GetMetrics().RecycleInfoGaugeVec.WithLabelValues("gc_add_key").Inc()
 	return txn.Set(toTikvGCKey(prefix), []byte{0})
 }
 
@@ -130,6 +132,7 @@ func doGC(db *DB, limit int64) error {
 			txn.Rollback()
 			return err
 		}
+		metrics.GetMetrics().RecycleInfoGaugeVec.WithLabelValues("gc_delete_key").Add(float64(count))
 	}
 	return nil
 }

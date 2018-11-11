@@ -81,7 +81,8 @@ var (
 
 	// ErrTypeMismatch Operation against a key holding the wrong kind of value
 	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
-	//ErrEmptyArray error
+
+	// ErrEmptyArray error
 	ErrEmptyArray = errors.New("EmptyArray error")
 )
 

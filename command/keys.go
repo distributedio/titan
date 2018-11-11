@@ -17,7 +17,7 @@ const (
 	defaultScanCount = 10
 )
 
-//Delete delete a key
+//Delete a key
 func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))

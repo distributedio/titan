@@ -10,8 +10,8 @@ import (
 	"github.com/shafreeck/retry"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 	"gitlab.meitu.com/platform/thanos/metrics"
-	"gitlab.meitu.com/platform/thanos/resp"
 )
 
 // Context is the runtime context of a command

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 )
 
 const (

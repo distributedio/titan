@@ -3,8 +3,8 @@ package command
 import (
 	"strconv"
 
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 	"gitlab.meitu.com/platform/thanos/metrics"
-	"gitlab.meitu.com/platform/thanos/resp"
 )
 
 // Auth verify the client

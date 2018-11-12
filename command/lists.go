@@ -37,7 +37,7 @@ func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-// Lpushx return ErrNotFound on key not found instead of create new list object
+// LPushx return ErrNotFound on key not found instead of create new list object
 func LPushx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -156,7 +156,7 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-//LIndex
+//LIndex get the value through index
 func LIndex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	n, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
@@ -185,7 +185,7 @@ func LIndex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(val)), nil
 }
 
-//LLen
+//LLen get the list len
 func LLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -203,6 +203,7 @@ func LLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
+//LRem removes the value element from the list stored in the key that was previously counted
 func LRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	n, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
@@ -227,6 +228,7 @@ func LRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(count)), nil
 }
 
+//LTrim trim all values outside the start and end
 func LTrim(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	start, err := strconv.ParseInt(ctx.Args[1], 10, 64)
@@ -256,6 +258,7 @@ func LTrim(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
+//LSet Sets the list element at index to value
 func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -282,6 +285,7 @@ func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, "OK"), nil
 }
 
+//RPop removes and returns the last element of the list stored at key
 func RPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -341,7 +345,7 @@ func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(val)), nil
 }
 
-// Rpush push values into list from right
+// RPush push values into list from right
 func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -366,7 +370,7 @@ func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-// Rpushx return ErrNotFound on key not found instead of create new list object
+// RPushx return ErrNotFound on key not found instead of create new list object
 func RPushx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)

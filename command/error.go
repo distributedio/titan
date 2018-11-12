@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// RedisError defines redis protocol error
+// RedisError defines the redis protocol error
 type RedisError error
 
 const (
@@ -16,11 +16,8 @@ const (
 )
 
 var (
-	// OK is the simple string "OK" return to client
+	// OK is the simple string "OK" returned to client
 	OK = "OK"
-
-	// Empty is the simple string "EMPTY" return to client
-	Empty = "Empty"
 
 	// Queued is the simple string "QUEUED" return to client
 	Queued = "QUEUED"
@@ -28,17 +25,14 @@ var (
 	// ErrProtocol invalid request
 	ErrProtocol = errors.New("ERR invalid request")
 
-	// ErrUnAuth Authentication required
-	ErrUnAuth = errors.New("ERR Authentication required")
+	// ErrNoAuth authentication required
+	ErrNoAuth = errors.New("NOAUTH Authentication required")
 
 	// ErrAuthInvalid invalid password
 	ErrAuthInvalid = errors.New("ERR invalid password")
 
 	// ErrAuthUnSet Client sent AUTH, but no password is set
 	ErrAuthUnSet = errors.New("ERR Client sent AUTH, but no password is set")
-
-	// ErrUnImplement this command is un implement
-	ErrUnImplement = errors.New("ERR this command is un implement")
 
 	// ErrInvalidDB invalid DB index
 	ErrInvalidDB = errors.New("ERR invalid DB index")

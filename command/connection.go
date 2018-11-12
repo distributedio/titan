@@ -7,7 +7,7 @@ import (
 	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
-// Auth verify the client
+// Auth verifies the client
 func Auth(ctx *Context) {
 	args := ctx.Args
 	serverauth := []byte(ctx.Server.RequirePass)

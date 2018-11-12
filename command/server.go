@@ -227,8 +227,8 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, obj.String()), nil
 }
 
-// RCommand returns info about commands
-func RCommand(ctx *Context) {
+// RedisCommand returns Array reply of details about all Redis commands
+func RedisCommand(ctx *Context) {
 	count := func(ctx *Context) {
 		resp.ReplyInteger(ctx.Out, int64(len(commands)))
 	}
@@ -325,7 +325,7 @@ func RCommand(ctx *Context) {
 	}
 }
 
-// FlushDB clear current db
+// FlushDB clears current db
 func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushDB(); err != nil {
@@ -334,7 +334,7 @@ func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-// FlushAll clean up all databases
+// FlushAll cleans up all databases
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushAll(); err != nil {

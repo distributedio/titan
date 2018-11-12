@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"strconv"
 )
 
@@ -128,16 +129,15 @@ func (s *String) GetRange(start, end int) []byte {
 	return s.Meta.Value[start:][:end+1]
 }
 
-//TODO bug
-func (s *String) SetRange(offset int64, value []byte) error {
-	/*
-		vlen := len(value)
-		if vlen < offset+len(ctx.Args[2]) {
-			value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
-		}
-		copy(value[offset:], ctx.Args[2])
-	*/
-	return s.Set(value)
+func (s *String) SetRange(val []byte, offset int64, value []byte) ([]byte, error) {
+	if int64(len(val)) < offset {
+		val = append(val, make([]byte, offset-int64(len(val))+int64(len(value)))...)
+	}
+	copy(val[offset:], value)
+	if err := s.Set(val); err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return val, nil
 }
 
 func (s *String) Incr(delta int64) (int64, error) {

@@ -11,7 +11,7 @@ import (
 
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 )
 
 const sysAdminNamespace = "$sys.admin"
@@ -227,8 +227,8 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, obj.String()), nil
 }
 
-// CommandCommand returns info about commands
-func CommandCommand(ctx *Context) {
+// RedisCommand returns Array reply of details about all Redis commands
+func RedisCommand(ctx *Context) {
 	count := func(ctx *Context) {
 		resp.ReplyInteger(ctx.Out, int64(len(commands)))
 	}
@@ -325,7 +325,7 @@ func CommandCommand(ctx *Context) {
 	}
 }
 
-// FlushDB clear current db
+// FlushDB clears current db
 func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushDB(); err != nil {
@@ -334,7 +334,7 @@ func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-// FlushAll clean up all databases
+// FlushAll cleans up all databases
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushAll(); err != nil {

@@ -7,106 +7,129 @@ import (
 )
 
 var (
+	//ErrInvalidProtocol indicates a wrong protocol format
 	ErrInvalidProtocol = errors.New("invalid protocol")
 )
 
+// ReplyError replies an error
 func ReplyError(w io.Writer, msg string) error {
-	return NewRESPEncoder(w).Error(msg)
+	return NewEncoder(w).Error(msg)
 }
 
+// ReplySimpleString replies a simplestring
 func ReplySimpleString(w io.Writer, msg string) error {
-	return NewRESPEncoder(w).SimpleString(msg)
+	return NewEncoder(w).SimpleString(msg)
 }
 
+// ReplyBulkString replies a bulkstring
 func ReplyBulkString(w io.Writer, msg string) error {
-	return NewRESPEncoder(w).BulkString(msg)
+	return NewEncoder(w).BulkString(msg)
 }
 
+// ReplyNullBulkString replies a null bulkstring
 func ReplyNullBulkString(w io.Writer) error {
-	return NewRESPEncoder(w).NullBulkString()
+	return NewEncoder(w).NullBulkString()
 }
 
+// ReplyInteger replies an integer
 func ReplyInteger(w io.Writer, val int64) error {
-	return NewRESPEncoder(w).Integer(val)
+	return NewEncoder(w).Integer(val)
 }
 
-func ReplyArray(w io.Writer, size int) (Encoder, error) {
-	r := NewRESPEncoder(w)
+// ReplyArray replies an array
+func ReplyArray(w io.Writer, size int) (*Encoder, error) {
+	r := NewEncoder(w)
 	if err := r.Array(size); err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
+// ReadError reads an error
 func ReadError(r io.Reader) (string, error) {
-	return NewRESPDecoder(r).Error()
+	return NewDecoder(r).Error()
 }
 
+// ReadSimpleString reads a simplestring
 func ReadSimpleString(r io.Reader) (string, error) {
-	return NewRESPDecoder(r).SimpleString()
+	return NewDecoder(r).SimpleString()
 }
 
+// ReadBulkString reads a bulkstring
 func ReadBulkString(r io.Reader) (string, error) {
-	return NewRESPDecoder(r).BulkString()
+	return NewDecoder(r).BulkString()
 }
 
+// ReadInteger reads a integer
 func ReadInteger(r io.Reader) (int64, error) {
-	return NewRESPDecoder(r).Integer()
+	return NewDecoder(r).Integer()
 }
 
+// ReadArray reads an array
 func ReadArray(r io.Reader) (int, error) {
-	return NewRESPDecoder(r).Array()
+	return NewDecoder(r).Array()
 }
 
-// RESP is a RESP encoder/decoder
-type RESPEncoder struct {
+// Encoder implements the Encoder interface
+type Encoder struct {
 	w io.Writer
 }
 
-func NewRESPEncoder(w io.Writer) *RESPEncoder {
-	return &RESPEncoder{w}
+// NewEncoder creates a RESP encoder
+func NewEncoder(w io.Writer) *Encoder {
+	return &Encoder{w}
 }
 
-func (r *RESPEncoder) Error(s string) error {
+//Error builds a RESP error
+func (r *Encoder) Error(s string) error {
 	_, err := r.w.Write([]byte("-" + s + "\r\n"))
 	return err
 }
 
-func (r *RESPEncoder) SimpleString(s string) error {
+//SimpleString builds a RESP simplestring
+func (r *Encoder) SimpleString(s string) error {
 	_, err := r.w.Write([]byte("+" + s + "\r\n"))
 	return err
 }
 
-func (r *RESPEncoder) BulkString(s string) error {
+//BulkString builds a RESP bulkstring
+func (r *Encoder) BulkString(s string) error {
 	length := strconv.Itoa(len(s))
 	_, err := r.w.Write([]byte("$" + length + "\r\n" + s + "\r\n"))
 	return err
 }
-func (r *RESPEncoder) NullBulkString() error {
+
+// NullBulkString builds a RESP null bulkstring
+func (r *Encoder) NullBulkString() error {
 	_, err := r.w.Write([]byte("$-1\r\n"))
 	return err
 }
 
-func (r *RESPEncoder) Integer(v int64) error {
+// Integer builds a RESP integer
+func (r *Encoder) Integer(v int64) error {
 	s := strconv.FormatInt(v, 10)
 	_, err := r.w.Write([]byte(":" + s + "\r\n"))
 	return err
 }
 
-func (r *RESPEncoder) Array(size int) error {
+// Array builds a RESP array
+func (r *Encoder) Array(size int) error {
 	s := strconv.Itoa(size)
 	_, err := r.w.Write([]byte("*" + s + "\r\n"))
 	return err
 }
 
-type RESPDecoder struct {
+// Decoder implements the decoder interface
+type Decoder struct {
 	r *Reader
 }
 
-func NewRESPDecoder(r io.Reader) *RESPDecoder {
-	return &RESPDecoder{&Reader{r}}
+// NewDecoder creates a RESP decoder
+func NewDecoder(r io.Reader) *Decoder {
+	return &Decoder{&Reader{r}}
 }
 
+//Reader implements a reader which supports reading to a delimer
 type Reader struct {
 	r io.Reader
 }
@@ -142,10 +165,14 @@ func (r *Reader) ReadBytes(delim byte) ([]byte, error) {
 	}
 
 }
+
+//Read bytes into p
 func (r *Reader) Read(p []byte) (int, error) {
 	return r.r.Read(p)
 }
-func (r *RESPDecoder) Error() (string, error) {
+
+//Error parses a RESP error
+func (r *Decoder) Error() (string, error) {
 	buf, err := r.r.ReadBytes('\n')
 	if err != nil {
 		return "", err
@@ -163,7 +190,8 @@ func (r *RESPDecoder) Error() (string, error) {
 	return string(buf[1 : l-2]), nil
 }
 
-func (r *RESPDecoder) SimpleString() (string, error) {
+//SimpleString parses a RESP simplestring
+func (r *Decoder) SimpleString() (string, error) {
 	buf, err := r.r.ReadBytes('\n')
 	if err != nil {
 		return "", err
@@ -180,7 +208,9 @@ func (r *RESPDecoder) SimpleString() (string, error) {
 	}
 	return string(buf[1 : l-2]), nil
 }
-func (r *RESPDecoder) BulkString() (string, error) {
+
+//BulkString parses a RESP bulkstring
+func (r *Decoder) BulkString() (string, error) {
 	hdr, err := r.r.ReadBytes('\n')
 	if err != nil {
 		return "", err
@@ -209,7 +239,8 @@ func (r *RESPDecoder) BulkString() (string, error) {
 	return string(body[:len(body)-2]), nil
 }
 
-func (r *RESPDecoder) Array() (int, error) {
+//Array parses a RESP array
+func (r *Decoder) Array() (int, error) {
 	hdr, err := r.r.ReadBytes('\n')
 	if err != nil {
 		return -1, err
@@ -231,7 +262,8 @@ func (r *RESPDecoder) Array() (int, error) {
 	return remain, nil
 }
 
-func (r *RESPDecoder) Integer() (int64, error) {
+//Integer parses a RESP integer
+func (r *Decoder) Integer() (int64, error) {
 	val, err := r.r.ReadBytes('\n')
 	if err != nil {
 		return -1, err

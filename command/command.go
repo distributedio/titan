@@ -10,7 +10,8 @@ import (
 	"github.com/shafreeck/retry"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
 // Context is the runtime context of a command
@@ -23,49 +24,41 @@ type Context struct {
 	*context.Context
 }
 
-const (
-	BitMaxOffset = 232
-	BitValueZero = 0
-	BitValueOne  = 1
-
-	MaxRangeInteger = 2<<29 - 1
-)
-
 // Command is a redis command implementation
 type Command func(ctx *Context)
 
-// OnCommit return by TxnCommand and will be called after a transaction commit
+// OnCommit returns by TxnCommand and will be called after a transaction being committed
 type OnCommit func()
 
-// SimpleString reply simple string when commit
+// SimpleString replies a simplestring when commit
 func SimpleString(w io.Writer, s string) OnCommit {
 	return func() {
 		resp.ReplySimpleString(w, s)
 	}
 }
 
-// BulkString reply bulk string when commit
+// BulkString replies a bulkstring when commit
 func BulkString(w io.Writer, s string) OnCommit {
 	return func() {
 		resp.ReplyBulkString(w, s)
 	}
 }
 
-// NullBulkString reply null bulk string when commit
+// NullBulkString replies a null bulkstring when commit
 func NullBulkString(w io.Writer) OnCommit {
 	return func() {
 		resp.ReplyNullBulkString(w)
 	}
 }
 
-// Integer reply integer when commit
+// Integer replies in integer when commit
 func Integer(w io.Writer, v int64) OnCommit {
 	return func() {
 		resp.ReplyInteger(w, v)
 	}
 }
 
-// BytesArray reply [][]byte when commit
+// BytesArray replies a [][]byte when commit
 func BytesArray(w io.Writer, a [][]byte) OnCommit {
 	return func() {
 		resp.ReplyArray(w, len(a))
@@ -120,13 +113,13 @@ func Call(ctx *Context) {
 		return
 	}
 
-	cmdInfo, ok := commands[ctx.Name]
+	cmdInfoCommand, ok := commands[ctx.Name]
 	if !ok {
 		resp.ReplyError(ctx.Out, ErrUnKnownCommand(ctx.Name))
 		return
 	}
 	argc := len(ctx.Args) + 1 // include the command name
-	arity := cmdInfo.Cons.Arity
+	arity := cmdInfoCommand.Cons.Arity
 
 	if arity > 0 && argc != arity {
 		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name))
@@ -153,14 +146,14 @@ func Call(ctx *Context) {
 
 	feedMonitors(ctx)
 	start := time.Now()
-	cmdInfo.Proc(ctx)
+	cmdInfoCommand.Proc(ctx)
 	cost := time.Since(start)
 
-	cmdInfo.Stat.Calls++
-	cmdInfo.Stat.Microseconds += cost.Nanoseconds() / int64(1000)
+	cmdInfoCommand.Stat.Calls++
+	cmdInfoCommand.Stat.Microseconds += cost.Nanoseconds() / int64(1000)
 }
 
-// TxnCall call command with transaction, it is used with multi/exec
+// TxnCall calls a command with transaction, it is used with multi/exec
 func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	name := strings.ToLower(ctx.Name)
 	cmd, ok := txnCommands[name]
@@ -171,34 +164,52 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return cmd(ctx, txn)
 }
 
-// AutoCommit commit to database after run a txn command
+// AutoCommit commits to database after run a txn command
 func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
 		retry.Ensure(ctx, func() error {
+			mt := metrics.GetMetrics()
 			txn, err := ctx.Client.DB.Begin()
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+string(err.Error()))
 				return err
 			}
 
 			onCommit, err := cmd(ctx, txn)
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
 				txn.Rollback()
 				return err
 			}
 
+			start := time.Now()
+			mtFunc := func() {
+				cost := time.Since(start).Seconds()
+				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			}
 			if err := txn.Commit(ctx); err != nil {
+
 				txn.Rollback()
+				if db.IsConflictError(err) {
+					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				}
 				if db.IsRetryableError(err) {
+					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mtFunc()
 					return retry.Retriable(err)
 				}
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				mtFunc()
 				return err
 			}
+
 			if onCommit != nil {
 				onCommit()
 			}
+			mtFunc()
 			return nil
 		})
 	}
@@ -225,24 +236,27 @@ func feedMonitors(ctx *Context) {
 	})
 }
 
-// Executor execute any command
+// Executor executes a command
 type Executor struct {
 	txnCommands map[string]TxnCommand
-	commands    map[string]CommandInfo
+	commands    map[string]Desc
 }
 
-// NewExecutor new a Executor object
+// NewExecutor news a Executor
 func NewExecutor() *Executor {
 	return &Executor{txnCommands: txnCommands, commands: commands}
 }
 
 // Execute a command
 func (e *Executor) Execute(ctx *Context) {
+	start := time.Now()
 	Call(ctx)
+	cost := time.Since(start).Seconds()
+	metrics.GetMetrics().CommandCallHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 }
 
-// CommandInfo combines command procedure, constraint and statistics
-type CommandInfo struct {
+// Desc describes a command with constraints
+type Desc struct {
 	Proc Command
 	Stat Statistic
 	Cons Constraint

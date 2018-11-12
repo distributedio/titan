@@ -6,11 +6,11 @@ import (
 	"net"
 	"strings"
 	"time"
-	"go.uber.org/zap"
 
 	"gitlab.meitu.com/platform/thanos/command"
 	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"go.uber.org/zap"
 )
 
 type client struct {

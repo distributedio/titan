@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"log"
 	"strings"
+	"time"
 
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
 // Multi starts a transaction which will block subsequent commands until 'exec'
@@ -60,8 +63,18 @@ func Exec(ctx *Context) {
 		onCommits[i] = onCommit
 		outputs[i] = out
 	}
+	start := time.Now()
+	mt := metrics.GetMetrics()
+	defer func() {
+		cost := time.Since(start).Seconds()
+		mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+	}()
 	err = txn.Commit(ctx)
 	if err != nil {
+		if db.IsConflictError(err) {
+			mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+		}
+		mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 		// TODO log err message
 		log.Println(err)
 		resp.ReplyArray(ctx.Out, 0)

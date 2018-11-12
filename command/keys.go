@@ -8,13 +8,17 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 )
 
-// scan iter max count
-const ScanMaxCount = 255
-const defaultScanCount = 10
+const (
+	//ScanMaxCount is the max limitation of a single scan
+	ScanMaxCount = 255
+	// defautlScanCout is used when no hints being supplied by clients
+	defaultScanCount = 10
+)
 
+// Delete removes the specified keys. A key is ignored if it does not exist
 func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
@@ -28,7 +32,7 @@ func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//Exists check if the given keys exist
+// Exists returns if key exists
 func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
@@ -42,7 +46,7 @@ func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//Expire
+// Expire sets a timeout on key
 func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -61,7 +65,7 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//ExpireAt
+// ExpireAt sets an absolute timestamp to expire on key
 func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -85,7 +89,7 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//Persist
+// Persist removes the existing timeout on key, turning the key from volatile to persistent
 func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -98,7 +102,7 @@ func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//PExpire
+// PExpire works exactly like expire but the time to live of the key is specified in milliseconds instead of seconds
 func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -117,7 +121,8 @@ func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-//PExpireAt
+// PExpireAt has the same effect and semantic as expireAt,
+// but the Unix time at which the key will expire is specified in milliseconds instead of seconds
 func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -138,7 +143,7 @@ func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//TTL
+// TTL returns the remaining time to live of a key that has a timeout
 func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	now := db.Now()
@@ -156,7 +161,8 @@ func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, ttl), nil
 }
 
-//PTTL
+// PTTL likes TTL this command returns the remaining time to live of a key that has an expire set,
+// with the sole difference that TTL returns the amount of remaining time in seconds while PTTL returns it in milliseconds
 func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	now := db.Now()
@@ -178,7 +184,7 @@ func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-//Object
+// Object inspects the internals of Redis Objects
 func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	subCmd := strings.ToLower(ctx.Args[0])
@@ -216,7 +222,7 @@ func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return nil, cmdErr
 }
 
-//Type
+// Type returns the string representation of the type of the value stored at key
 func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	obj, err := txn.Object(key)
@@ -230,7 +236,7 @@ func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, obj.Type.String()), nil
 }
 
-//Keys
+// Keys returns all keys matching pattern
 func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	list := make([][]byte, 0)
 	pattern := []byte(ctx.Args[0])
@@ -251,11 +257,11 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, list), nil
 }
 
-//Scan
+// Scan incrementally iterates the key space
 func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
 		start   []byte
-		end     []byte = []byte("0")
+		end            = []byte("0")
 		count   uint64 = defaultScanCount
 		pattern []byte
 		prefix  []byte
@@ -331,7 +337,7 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-// RandomKey return a random key from the currently selected database
+// RandomKey returns a random key from the currently selected database
 func RandomKey(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key, err := kv.RandomKey()

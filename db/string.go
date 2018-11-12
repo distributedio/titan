@@ -4,17 +4,23 @@ import (
 	"strconv"
 )
 
+//StringMeta string meta msg
 type StringMeta struct {
 	Object
 	Value []byte
 }
 
+//String object operate tikv
 type String struct {
 	Meta StringMeta
 	key  []byte
 	txn  *Transaction
 }
 
+//GetString return string object ,
+// if key is exist , object load meta
+// otherwise object is null if key is not exist and err is not found
+// otherwise  return err
 func GetString(txn *Transaction, key []byte) (*String, error) {
 	str := &String{txn: txn, key: key}
 	now := Now()
@@ -52,7 +58,7 @@ func NewString(txn *Transaction, key []byte) *String {
 	return str
 }
 
-//Gets the value information for the key from db
+//Get the value information for the key from db
 func (s *String) Get() ([]byte, error) {
 	if !s.Exist() {
 		return nil, ErrKeyNotFound
@@ -60,6 +66,9 @@ func (s *String) Get() ([]byte, error) {
 	return s.Meta.Value, nil
 }
 
+//Set set the string value of a key
+//the num of expire slice is not zero and expire[0] is not zero ,the key add exprie queue
+//otherwise the delete expire queue
 func (s *String) Set(val []byte, expire ...int64) error {
 	timestamp := Now()
 	mkey := MetaKey(s.txn.db, s.key)
@@ -70,7 +79,7 @@ func (s *String) Set(val []byte, expire ...int64) error {
 			return err
 		}
 	} else {
-		//可能key不存在过期,因此不关系返回的错误
+		//maybe key is not expire queue,so unExpireAt will return err,but it is not relationship
 		unExpireAt(s.txn.t, mkey, s.Meta.ExpireAt)
 		s.Meta.ExpireAt = 0
 	}
@@ -91,6 +100,7 @@ func (s *String) Exist() bool {
 	return true
 }
 
+//Append append a value to key
 func (s *String) Append(value []byte) (int, error) {
 	s.Meta.Value = append(s.Meta.Value, value...)
 	s.Meta.ExpireAt = 0
@@ -100,6 +110,7 @@ func (s *String) Append(value []byte) (int, error) {
 	return len(s.Meta.Value), nil
 }
 
+//GetSet return old value ,value replace old value
 func (s *String) GetSet(value []byte) ([]byte, error) {
 	v := s.Meta.Value
 	if err := s.Set(value); err != nil {
@@ -108,6 +119,7 @@ func (s *String) GetSet(value []byte) ([]byte, error) {
 	return v, nil
 }
 
+//GetRange return string from the absolute of start to the absolute of end
 func (s *String) GetRange(start, end int) []byte {
 	vlen := len(s.Meta.Value)
 	if end < 0 {
@@ -128,6 +140,7 @@ func (s *String) GetRange(start, end int) []byte {
 	return s.Meta.Value[start:][:end+1]
 }
 
+<<<<<<< HEAD
 //SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func (s *String) SetRange(offset int64, value []byte) ([]byte, error) {
 	val := s.Meta.Value
@@ -140,8 +153,22 @@ func (s *String) SetRange(offset int64, value []byte) ([]byte, error) {
 	}
 
 	return val, nil
+=======
+//SetRange TODO bug
+func (s *String) SetRange(offset int64, value []byte) error {
+	/*
+		vlen := len(value)
+		if vlen < offset+len(ctx.Args[2]) {
+			value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
+		}
+		copy(value[offset:], ctx.Args[2])
+	*/
+	return s.Set(value)
+>>>>>>> dev
 }
 
+//Incr increment the integer value by the given amount
+// the old value  must be integer
 func (s *String) Incr(delta int64) (int64, error) {
 	value := s.Meta.Value
 	if value != nil {
@@ -160,6 +187,8 @@ func (s *String) Incr(delta int64) (int64, error) {
 
 }
 
+//Incrf increment the float value by the given amount
+// the old value  must be float
 func (s *String) Incrf(delta float64) (float64, error) {
 	value := s.Meta.Value
 	if value != nil {
@@ -177,12 +206,14 @@ func (s *String) Incrf(delta float64) (float64, error) {
 	return delta, nil
 }
 
+//encode because of the value is small size , value and meta decode together
 func (s *String) encode() []byte {
 	b := EncodeObject(&s.Meta.Object)
 	b = append(b, s.Meta.Value...)
 	return b
 }
 
+//decode if obj has been existed , stop parse
 func (s *String) decode(b []byte) error {
 	obj, err := DecodeObject(b)
 	if err != nil {

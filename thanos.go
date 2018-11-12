@@ -10,20 +10,20 @@ import (
 	"go.uber.org/zap"
 )
 
-//Server thanos server object
+//Server implements the redis prototol server
 type Server struct {
 	servCtx *context.ServerContext
 	lis     net.Listener
 	idgen   func() int64
 }
 
-//New create server object
+//New a server instance
 func New(ctx *context.ServerContext) *Server {
 	// id generator starts from 1(the first client's id is 2, the same as redis)
 	return &Server{servCtx: ctx, idgen: GetClientID()}
 }
 
-//Serve lisen fd , recv client connection ,leave connection to a separate goroutine
+//Serve the redis requests
 func (s *Server) Serve(lis net.Listener) error {
 	zap.L().Info("thanos server start", zap.String("addr", lis.Addr().String()))
 	s.servCtx.StartAt = time.Now()
@@ -57,7 +57,7 @@ func (s *Server) Serve(lis net.Listener) error {
 	return nil
 }
 
-// ListenAndServe start serve through addr
+// ListenAndServe serves on a specified address
 func (s *Server) ListenAndServe(addr string) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -66,13 +66,13 @@ func (s *Server) ListenAndServe(addr string) error {
 	return s.Serve(lis)
 }
 
-//Stop close serve fd
+//Stop the server
 func (s *Server) Stop() error {
 	zap.L().Info("titan serve stop", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }
 
-//GracefulStop TODO close client connections gracefully
+//GracefulStop the server, TODO close clients connections first
 func (s *Server) GracefulStop() error {
 	zap.L().Info("titan serve graceful", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()

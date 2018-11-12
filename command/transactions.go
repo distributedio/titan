@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 	"gitlab.meitu.com/platform/thanos/metrics"
-	"gitlab.meitu.com/platform/thanos/resp"
 )
 
 // Multi starts a transaction which will block subsequent commands until 'exec'
 func Multi(ctx *Context) {
 	ctx.Client.Multi = true
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Exec all the commands queued in client
@@ -116,7 +116,7 @@ func Watch(ctx *Context) {
 		return
 	}
 	ctx.Client.Txn = txn
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Discard flushes all previously queued commands in a transaction and restores the connection state to normal
@@ -128,7 +128,7 @@ func Discard(ctx *Context) {
 	}
 	ctx.Client.Commands = nil
 	ctx.Client.Multi = false
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Unwatch flushes all the previously watched keys for a transaction
@@ -137,5 +137,5 @@ func Unwatch(ctx *Context) {
 		ctx.Client.Txn.Rollback()
 		ctx.Client.Txn = nil
 	}
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }

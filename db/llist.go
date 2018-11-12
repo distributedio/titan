@@ -30,7 +30,7 @@ type LList struct {
 	txn              *Transaction
 }
 
-//GetLList
+//GetLList returns a list
 func GetLList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (List, error) {
 	l := &LList{
 		txn:        txn,
@@ -44,7 +44,7 @@ func GetLList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (List, 
 	return l, nil
 }
 
-//NewList
+//NewLList creates a new list
 func NewLList(txn *Transaction, key []byte) (List, error) {
 	ts := Now()
 	metaKey := MetaKey(txn.db, key)
@@ -60,8 +60,8 @@ func NewLList(txn *Transaction, key []byte) (List, error) {
 		LListMeta: LListMeta{
 			Object: obj,
 			Len:    0,
-			Lindex: initIndex,
-			Rindex: initIndex,
+			Lindex: 0,
+			Rindex: 0,
 		},
 		txn:        txn,
 		rawMetaKey: metaKey,
@@ -72,7 +72,7 @@ func NewLList(txn *Transaction, key []byte) (List, error) {
 
 }
 
-// Marshal encode meta data into byte slice
+// Marshal encodes meta data into byte slice
 func (l *LListMeta) Marshal() []byte {
 	b := EncodeObject(&l.Object)
 	meta := make([]byte, 32)
@@ -82,7 +82,7 @@ func (l *LListMeta) Marshal() []byte {
 	return append(b, meta...)
 }
 
-// Unmarshal parse meta data into meta field
+// Unmarshal parses meta data into meta field
 func (l *LListMeta) Unmarshal(obj *Object, b []byte) (err error) {
 	if len(b[ObjectEncodingLength:]) != 32 {
 		return ErrInvalidLength
@@ -95,16 +95,16 @@ func (l *LListMeta) Unmarshal(obj *Object, b []byte) (err error) {
 	return nil
 }
 
-// Length return list length
+// Length returns length of the list
 func (l *LList) Length() int64 { return l.LListMeta.Len }
 
-// LPush add new element to the left
+// LPush adds new elements to the left
 // 1. calculate index
 // 2. encode object and call kv
 // 3. modify the new index in meta
 func (l *LList) LPush(data ...[]byte) (err error) {
 	for i := range data {
-		l.Lindex -= 1
+		l.Lindex--
 		if err = l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(l.Lindex)...), data[i]); err != nil {
 			return err
 		}
@@ -116,10 +116,10 @@ func (l *LList) LPush(data ...[]byte) (err error) {
 	return l.txn.t.Set(l.rawMetaKey, l.LListMeta.Marshal())
 }
 
-// RPush push data into right side of list
+// RPush pushes elements into right side of list
 func (l *LList) RPush(data ...[]byte) (err error) {
 	for i := range data {
-		l.Rindex += 1
+		l.Rindex++
 		if err = l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(l.Rindex)...), data[i]); err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func (l *LList) Set(n int64, data []byte) error {
 	return l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(realidx)...), data)
 }
 
-// Insert
+// Insert value in the list stored at key either before or after the reference value pivot
 // 1. pivot berfore/ pivot/ next --> real indexs
 func (l *LList) Insert(pivot, v []byte, before bool) error {
 	idxs, err := l.indexValue(pivot)
@@ -177,7 +177,7 @@ func (l *LList) Insert(pivot, v []byte, before bool) error {
 	return l.txn.t.Set(l.rawMetaKey, l.LListMeta.Marshal())
 }
 
-// Lindex return the value at index
+// Index returns the element at index n in the list stored at key
 func (l *LList) Index(n int64) (data []byte, err error) {
 	if n < 0 {
 		n = l.Len + n
@@ -192,12 +192,7 @@ func (l *LList) Index(n int64) (data []byte, err error) {
 	return val, nil
 }
 
-// push do txn.Set index with data
-func (l *LList) push(idx float64, data []byte) (err error) {
-	return l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(idx)...), data)
-}
-
-// LPop return and delete the left most element
+// LPop returns and deletes the left most element
 // 0. calculate data key
 // 1. iterate to last value
 // 2. get the key and call kv delete
@@ -240,10 +235,9 @@ func (l *LList) LPop() (data []byte, err error) {
 	return val, l.txn.t.Set(l.rawMetaKey, l.LListMeta.Marshal())
 }
 
-// RPop return and delete the right most element
+// RPop returns and deletes the right most element
 func (l *LList) RPop() ([]byte, error) {
 	if l.Len == 0 {
-		//XXX should delete this ?
 		return nil, ErrKeyNotFound
 	}
 	// rightKey: {DB.ns}:{DB.id}:D:{linedx}
@@ -279,7 +273,7 @@ func (l *LList) RPop() ([]byte, error) {
 	return val, l.txn.t.Set(l.rawMetaKey, l.LListMeta.Marshal())
 }
 
-// Range return the elements in [left, right]
+// Range returns the elements in [left, right]
 func (l *LList) Range(left, right int64) (value [][]byte, err error) {
 	if right < 0 {
 		if right = l.Len + right; right < 0 {
@@ -299,6 +293,7 @@ func (l *LList) Range(left, right int64) (value [][]byte, err error) {
 	return v, err
 }
 
+// LTrim an existing list so that it will contain only the specified range of elements specified
 func (l *LList) LTrim(start int64, stop int64) error {
 	if start < 0 {
 		if start = l.Len + start; start < 0 {
@@ -441,6 +436,7 @@ func (l *LList) index(n int64) (realindex float64, value []byte, err error) {
 	return idxs[0], vals[0], nil
 }
 
+// LRem removes the first count occurrences of elements equal to value from the list stored at key
 func (l *LList) LRem(v []byte, n int64) (int, error) {
 	idxs, err := l.indexValueN(v, n)
 	if err != nil {
@@ -594,8 +590,7 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 	return realidxs, values, nil
 }
 
-//TODO
-//maybe expire or is null
+// Exist checks if a list exists
 func (l *LList) Exist() bool {
 	if l.rawDataKeyPrefix == nil {
 		return false

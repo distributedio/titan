@@ -10,5 +10,5 @@ func MockDB() *DB {
 		panic(err)
 	}
 	redis := &RedisStore{store}
-	return &DB{Namespace: "ns", ID: IDDB(1), kv: redis}
+	return &DB{Namespace: "ns", ID: DBID(1), kv: redis}
 }

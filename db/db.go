@@ -19,61 +19,63 @@ import (
 var (
 	// ErrTypeMismatch indicates object type of key is not as expect
 	ErrTypeMismatch = errors.New("type mismatch")
+
 	// ErrKeyNotFound key not exist
 	ErrKeyNotFound = errors.New("key not found")
 
-	//ErrInteger valeu is not interge
+	// ErrInteger valeu is not interge
 	ErrInteger = errors.New("value is not an integer or out of range")
 
 	// ErrPrecision list index reach precision limitatin
 	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
 
-	//ErrOutOfRange index/offset out of range
+	// ErrOutOfRange index/offset out of range
 	ErrOutOfRange = errors.New("error index/offset out of range")
 
-	//ErrInvalidLength data length is invalid for unmarshaler"
+	// ErrInvalidLength data length is invalid for unmarshaler"
 	ErrInvalidLength = errors.New("error data length is invalid for unmarshaler")
 
-	//ErrEncodingMismatch object encoding type
+	// ErrEncodingMismatch object encoding type
 	ErrEncodingMismatch = errors.New("error object encoding type")
 
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
+
 	// IsRetryableError returns true if the error is temporary and can be retried
 	IsRetryableError = store.IsRetryableError
-	//IsconflictError return true if the error is conflict
+
+	// IsConflictError return true if the error is conflict
 	IsConflictError = store.IsConflictError
 
-	//sysNamespace default namespace
+	// sysNamespace default namespace
 	sysNamespace = "$sys"
 
-	//sysDatabaseID default db id
+	// sysDatabaseID default db id
 	sysDatabaseID = 0
 )
 
-//Iterator  store.Iterator
+// Iterator store.Iterator
 type Iterator store.Iterator
 
-//IDDB byte
-type IDDB byte
+// DBID is the redis database ID
+type DBID byte
 
-//String return the string type of IDDB
-func (id IDDB) String() string {
+// String returns the string format of DBID
+func (id DBID) String() string {
 	return fmt.Sprintf("%03d", id)
 }
 
-//Bytes IDDB return []byte
-func (id IDDB) Bytes() []byte {
+// Bytes DBID returns a byte slice
+func (id DBID) Bytes() []byte {
 	return []byte(id.String())
 }
 
-//toIDDB the type []byte of id change  the type DBID of id
-func toIDDB(v []byte) IDDB {
+func toDBID(v []byte) DBID {
 	id, _ := strconv.Atoi(string(v))
-	return IDDB(id)
+	return DBID(id)
 }
 
-// BatchGetValues issue batch requests to get values
+// BatchGetValues issues batch requests to get values
 func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 	kvs, err := store.BatchGetValues(txn.t, keys)
 	if err != nil {
@@ -89,17 +91,16 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 // DB is a redis compatible data structure storage
 type DB struct {
 	Namespace string
-	ID        IDDB
+	ID        DBID
 	kv        *RedisStore
 }
 
-//RedisStore encapsulation store.Storage
+// RedisStore wraps store.Storage
 type RedisStore struct {
 	store.Storage
 }
 
-//Open open store connect
-//start gc and expire zt change
+// Open a storage instance
 func Open(conf *conf.Tikv) (*RedisStore, error) {
 	s, err := store.Open(conf.PdAddrs)
 	if err != nil {
@@ -114,17 +115,17 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	return rds, nil
 }
 
-//DB return DB object
+// DB returns a DB object with sepcific ID
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: IDDB(id), kv: rds}
+	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
 }
 
-//Close close store connect
+// Close the storage instance
 func (rds *RedisStore) Close() error {
 	return rds.Close()
 }
 
-// Transaction is the interface of store tranaction
+// Transaction supplies transaction for data structures
 type Transaction struct {
 	t  store.Transaction
 	db *DB
@@ -139,6 +140,16 @@ func (db *DB) Begin() (*Transaction, error) {
 	return &Transaction{t: txn, db: db}, nil
 }
 
+// Prefix returns the prefix of a DB object
+func (db *DB) Prefix() []byte {
+	var prefix []byte
+	prefix = append(prefix, []byte(db.Namespace)...)
+	prefix = append(prefix, ':')
+	prefix = append(prefix, db.ID.Bytes()...)
+	prefix = append(prefix, ':')
+	return prefix
+}
+
 // Commit a transaction
 func (txn *Transaction) Commit(ctx context.Context) error {
 	return txn.t.Commit(ctx)
@@ -149,34 +160,22 @@ func (txn *Transaction) Rollback() error {
 	return txn.t.Rollback()
 }
 
-// List return a list object, a null list is created if the key dose not exist.
+// List return a lists object, a new list is created if the key dose not exist.
 func (txn *Transaction) List(key []byte) (List, error) {
 	return GetList(txn, key)
 }
 
-// NewList return a list new object
+// NewList returns a new list object
 func (txn *Transaction) NewList(key []byte, count int) (List, error) {
 	return NewList(txn, key, count)
 }
 
-/*
-// List return a list object, a new list is created if the key dose not exist.
-func (txn *Transaction) ZList(key []byte) (*ZList, error) {
-	return GetZList(txn, key)
-}
-
-// List return a list new object
-func (txn *Transaction) NewZList(key []byte) (*ZList, error) {
-	return GetZList(txn, key)
-}
-*/
-
-// String return a string object,but the object is unsafe, maybe the object is expire,or not exist
+// String returns a string object, but the object is unsafe, maybe the object is expire,or not exist
 func (txn *Transaction) String(key []byte) (*String, error) {
 	return GetString(txn, key)
 }
 
-// Strings return a slice strings and the strings is created  object
+// Strings returns a slice of String
 func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	sobjs := make([]*String, len(keys))
 	tkeys := make([][]byte, len(keys))
@@ -191,8 +190,9 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 		obj := txn.NewString(key)
 		if data, ok := mdata[string(key)]; ok {
 			if err := obj.decode(data); err != nil {
-				//TODO log
-				//log
+				zap.L().Error("strings decode failed",
+					zap.ByteString("key", key),
+					zap.Error(err))
 			}
 		}
 		sobjs[i] = obj
@@ -200,17 +200,17 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	return sobjs, nil
 }
 
-//NewString  return a new string object
+// NewString returns a new string object
 func (txn *Transaction) NewString(key []byte) *String {
 	return NewString(txn, key)
 }
 
-//Kv return a kv object
+// Kv returns a kv object
 func (txn *Transaction) Kv() *Kv {
 	return GetKv(txn)
 }
 
-//Hash return a hash object
+// Hash returns a hash object
 func (txn *Transaction) Hash(key []byte) (*Hash, error) {
 	return GetHash(txn, key)
 }
@@ -225,7 +225,7 @@ func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
 }
 
-//MetaKey key to metakey
+// MetaKey build to metakey from a redis key
 func MetaKey(db *DB, key []byte) []byte {
 	var mkey []byte
 	mkey = append(mkey, []byte(db.Namespace)...)
@@ -236,7 +236,7 @@ func MetaKey(db *DB, key []byte) []byte {
 	return mkey
 }
 
-//DataKey to tikv data key
+// DataKey builds a datakey from a redis key
 func DataKey(db *DB, key []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, []byte(db.Namespace)...)
@@ -247,17 +247,6 @@ func DataKey(db *DB, key []byte) []byte {
 	return dkey
 }
 
-//PrefixDB to db prefix
-func PrefixDB(db *DB) []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(db.Namespace)...)
-	prefix = append(prefix, ':')
-	prefix = append(prefix, db.ID.Bytes()...)
-	prefix = append(prefix, ':')
-	return prefix
-}
-
-//Leader Option
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)
@@ -274,13 +263,22 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 	val, err := txn.Get(key)
 	if err != nil {
 		if !IsErrNotFound(err) {
-			zap.L().Error("query leader message faild", zap.Error(err))
+			zap.L().Error("query leader message faild",
+				zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 
-		zap.L().Debug("no leader now, create new lease")
+		zap.L().Debug("no leader now, create new lease",
+			zap.ByteString("key", key),
+			zap.ByteString("id", id))
+
 		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("create lease failed", zap.Error(err))
+			zap.L().Error("create lease failed",
+				zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 
@@ -291,9 +289,11 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 	ts := int64(binary.BigEndian.Uint64(val[16:]))
 
 	if time.Now().Unix() > ts {
-		zap.L().Error("lease expire, create new lease")
 		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("create lease failed", zap.Error(err))
+			zap.L().Error("create lease failed",
+				zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 		return true, nil
@@ -301,7 +301,11 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 
 	if bytes.Equal(curID, id) {
 		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("flush lease failed", zap.Error(err))
+			zap.L().Error("flush lease failed",
+				zap.ByteString("key", key),
+				zap.ByteString("curid", curID),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 		return true, nil
@@ -324,7 +328,9 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 	for {
 		txn, err := db.Begin()
 		if err != nil {
-			zap.L().Error("transection begin failed", zap.Error(err))
+			zap.L().Error("transection begin failed",
+				zap.ByteString("leader", leader),
+				zap.Error(err))
 			continue
 		}
 

@@ -1,16 +1,11 @@
 package db
 
-const (
-	initIndex = 0x0
-)
-
-//TODO conf
 var (
 	// ListZipThreshould create the zlist type of list if count key > ListZipThreshould
 	ListZipThreshould = 100
 )
 
-//List interface
+// List defines the list interface
 type List interface {
 	Index(n int64) (data []byte, err error)
 	Insert(pivot, v []byte, before bool) error
@@ -27,7 +22,7 @@ type List interface {
 	Destory() error
 }
 
-// GetList generate List object
+// GetList returns a List object
 // if key is zip return zlist otherwise return llist
 // if key is not found, return null object but return error nil
 func GetList(txn *Transaction, key []byte) (List, error) {

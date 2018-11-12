@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// RedisError defines redis protocol error
+// RedisError defines the redis protocol error
 type RedisError error
 
 const (
@@ -16,29 +16,23 @@ const (
 )
 
 var (
-	// OK is the simple string "OK" return to client
+	// OK is the simple string "OK" returned to client
 	OK = "OK"
-
-	// Empty is the simple string "EMPTY" return to client
-	Empty = "Empty"
 
 	// Queued is the simple string "QUEUED" return to client
 	Queued = "QUEUED"
 
 	// ErrProtocol invalid request
-	ErrProtocol = errors.New("ERR invalid request")
+	// ErrProtocol = errors.New("ERR invalid request")
 
-	// ErrUnAuth Authentication required
-	ErrUnAuth = errors.New("ERR Authentication required")
+	// ErrNoAuth authentication required
+	ErrNoAuth = errors.New("NOAUTH Authentication required")
 
 	// ErrAuthInvalid invalid password
 	ErrAuthInvalid = errors.New("ERR invalid password")
 
 	// ErrAuthUnSet Client sent AUTH, but no password is set
 	ErrAuthUnSet = errors.New("ERR Client sent AUTH, but no password is set")
-
-	// ErrUnImplement this command is un implement
-	ErrUnImplement = errors.New("ERR this command is un implement")
 
 	// ErrInvalidDB invalid DB index
 	ErrInvalidDB = errors.New("ERR invalid DB index")
@@ -80,17 +74,24 @@ var (
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
 
 	// ErrTypeMismatch Operation against a key holding the wrong kind of value
-	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
-	//ErrEmptyArray error
+	ErrTypeMismatch = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+
+	// ErrEmptyArray error
 	ErrEmptyArray = errors.New("EmptyArray error")
+
+	//ErrExec exec without multi
+	ErrExec = errors.New("ERR EXEC without MULTI")
+
+	//ErrDiscard without multi
+	ErrDiscard = errors.New("ERR DISCARD without MULTI")
 )
 
 //ErrUnKnownCommand return RedisError of the cmd
-func ErrUnKnownCommand(cmd string) string {
-	return fmt.Sprintf(UnKnownCommandStr, cmd)
+func ErrUnKnownCommand(cmd string) error {
+	return fmt.Errorf(UnKnownCommandStr, cmd)
 }
 
 // ErrWrongArgs return RedisError of the cmd
-func ErrWrongArgs(cmd string) string {
-	return fmt.Sprintf(WrongArgs, cmd)
+func ErrWrongArgs(cmd string) error {
+	return fmt.Errorf(WrongArgs, cmd)
 }

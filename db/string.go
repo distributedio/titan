@@ -211,7 +211,7 @@ func (s *String) decode(b []byte) error {
 	}
 
 	s.Meta.Object = *obj
-	if len(b) > ObjectEncodingLength {
+	if len(b) > ObjectEncodingLength && s.Meta.Type == ObjectString {
 		s.Meta.Value = b[ObjectEncodingLength:]
 	}
 	return nil

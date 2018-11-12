@@ -25,6 +25,7 @@ var (
 	expireMetakeyOffset   = expireTimestampOffset + 8 /*sizeof(int64)*/ + len(":")
 )
 
+// IsExpired judge object expire through now
 func IsExpired(obj *Object, now int64) bool {
 	if obj.ExpireAt == 0 || obj.ExpireAt > now {
 		return false
@@ -70,6 +71,7 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 	return nil
 }
 
+// StartExpire get leader from db
 func StartExpire(db *DB) error {
 	ticker := time.NewTicker(expireTick)
 	defer ticker.Stop()

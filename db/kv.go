@@ -157,7 +157,7 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 
 // FlushDB clear current db. FIXME one txn is limited for number of entries
 func (kv *Kv) FlushDB() error {
-	prefix := DBPrefix(kv.txn.db)
+	prefix := PrefixDB(kv.txn.db)
 	txn := kv.txn.t
 
 	iter, err := txn.Seek(prefix)

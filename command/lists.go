@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/resp"
 )
 
 // LPush insert an entry to the head of the list
@@ -15,14 +14,19 @@ func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	// number of args should be checked by caller
 	key := []byte(args[0])
-
 	lst, err := txn.List(key)
-
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if !lst.Exist() {
+		lst, err = txn.NewList(key, len(args)-1)
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
 	}
 
 	for _, val := range args[1:] {
@@ -30,7 +34,7 @@ func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return nil, errors.New("ERR " + err.Error())
 		}
 	}
-	return SimpleString(ctx.Out, "OK"), nil
+	return Integer(ctx.Out, lst.Length()), nil
 }
 
 // LPop removes and returns the first element of the list stored at key
@@ -44,16 +48,17 @@ func LPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
+	if !lst.Exist() {
+		return NullBulkString(ctx.Out), nil
+	}
+
 	val, err := lst.LPop()
 	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return NullBulkString(ctx.Out), nil
-		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return BulkString(ctx.Out, string(val)), nil
@@ -64,28 +69,29 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	args := ctx.Args
 	key := []byte(args[0])
 
-	start, err := strconv.Atoi(args[1])
+	start, err := strconv.ParseInt(string(args[1]), 10, 64)
 	if err != nil {
-		return nil, errors.New("ERR value is not an integer or out of range")
+		return nil, ErrInteger
 	}
-	stop, err := strconv.Atoi(args[2])
+	stop, err := strconv.ParseInt(string(args[2]), 10, 64)
 	if err != nil {
-		return nil, errors.New("ERR value is not an integer or out of range")
+		return nil, ErrInteger
 	}
 
 	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	if lst == nil {
-		resp.ReplyArray(ctx.Out, 0)
-		return nil, nil
+
+	if !lst.Exist() {
+		//TODO bug
+		return BytesArray(ctx.Out, nil), nil
 	}
 
-	items, err := lst.Range(int64(start), int64(stop))
+	items, err := lst.Range(start, stop)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -112,18 +118,22 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
-			return nil, errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
+			return nil, ErrTypeMismatch
 		}
-		return nil, errors.New("ERR syntax error")
+		return nil, ErrSyntax
+	}
+
+	if !lst.Exist() {
+		return Integer(ctx.Out, 0), nil
 	}
 
 	err = lst.Insert(pivot, value, after)
 	if err != nil {
 		if err == db.ErrPrecision {
+			//TODO check
 			return nil, err
 		}
-		return nil, errors.New("ERR syntax error")
+		return nil, ErrSyntax
 	}
-	length := lst.Length()
-	return Integer(ctx.Out, int64(length)), nil
+	return Integer(ctx.Out, lst.Length()), nil
 }

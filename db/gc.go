@@ -134,6 +134,9 @@ func doGC(db *DB, limit int64) error {
 	return nil
 }
 
+// StartGC start gc
+//1.获取leader许可
+//2.leader 执行清理任务
 func StartGC(db *DB) {
 	ticker := time.Tick(gcInterval * time.Second)
 	for _ = range ticker {

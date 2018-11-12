@@ -51,23 +51,23 @@ var (
 //Iterator  store.Iterator
 type Iterator store.Iterator
 
-//DBID byte
-type DBID byte
+//IDDB byte
+type IDDB byte
 
-//String return the string type of DBID
-func (id DBID) String() string {
+//String return the string type of IDDB
+func (id IDDB) String() string {
 	return fmt.Sprintf("%03d", id)
 }
 
-//Bytes DBID return []byte
-func (id DBID) Bytes() []byte {
+//Bytes IDDB return []byte
+func (id IDDB) Bytes() []byte {
 	return []byte(id.String())
 }
 
-//toDBID the type []byte of id change  the type DBID of id
-func toDBID(v []byte) DBID {
+//toIDDB the type []byte of id change  the type DBID of id
+func toIDDB(v []byte) IDDB {
 	id, _ := strconv.Atoi(string(v))
-	return DBID(id)
+	return IDDB(id)
 }
 
 // BatchGetValues issue batch requests to get values
@@ -86,7 +86,7 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 // DB is a redis compatible data structure storage
 type DB struct {
 	Namespace string
-	ID        DBID
+	ID        IDDB
 	kv        *RedisStore
 }
 
@@ -113,7 +113,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 
 //DB return DB object
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
+	return &DB{Namespace: namesapce, ID: IDDB(id), kv: rds}
 }
 
 //Close close store connect
@@ -146,15 +146,27 @@ func (txn *Transaction) Rollback() error {
 	return txn.t.Rollback()
 }
 
-// List return a list object, a new list is created if the key dose not exist.
-func (txn *Transaction) List(key []byte) (*LList, error) {
-	return GetLList(txn, key)
+// List return a list object, a null list is created if the key dose not exist.
+func (txn *Transaction) List(key []byte) (List, error) {
+	return GetList(txn, key)
 }
 
+// NewList return a list new object
+func (txn *Transaction) NewList(key []byte, count int) (List, error) {
+	return NewList(txn, key, count)
+}
+
+/*
 // List return a list object, a new list is created if the key dose not exist.
 func (txn *Transaction) ZList(key []byte) (*ZList, error) {
 	return GetZList(txn, key)
 }
+
+// List return a list new object
+func (txn *Transaction) NewZList(key []byte) (*ZList, error) {
+	return GetZList(txn, key)
+}
+*/
 
 // String return a string object,but the object is unsafe, maybe the object is expire,or not exist
 func (txn *Transaction) String(key []byte) (*String, error) {
@@ -221,7 +233,7 @@ func MetaKey(db *DB, key []byte) []byte {
 	return mkey
 }
 
-//DateKey to tikv data key
+//DataKey to tikv data key
 func DataKey(db *DB, key []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, []byte(db.Namespace)...)
@@ -232,8 +244,8 @@ func DataKey(db *DB, key []byte) []byte {
 	return dkey
 }
 
-//DBPrefix to db prefix
-func DBPrefix(db *DB) []byte {
+//PrefixDB to db prefix
+func PrefixDB(db *DB) []byte {
 	var prefix []byte
 	prefix = append(prefix, []byte(db.Namespace)...)
 	prefix = append(prefix, ':')

@@ -190,8 +190,9 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 		obj := txn.NewString(key)
 		if data, ok := mdata[string(key)]; ok {
 			if err := obj.decode(data); err != nil {
-				//TODO log
-				//log
+				zap.L().Error("strings decode failed",
+					zap.ByteString("key", key),
+					zap.Error(err))
 			}
 		}
 		sobjs[i] = obj
@@ -262,13 +263,22 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 	val, err := txn.Get(key)
 	if err != nil {
 		if !IsErrNotFound(err) {
-			zap.L().Error("query leader message faild", zap.Error(err))
+			zap.L().Error("query leader message faild",
+				zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 
-		zap.L().Debug("no leader now, create new lease")
+		zap.L().Debug("no leader now, create new lease",
+			zap.ByteString("key", key),
+			zap.ByteString("id", id))
+
 		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("create lease failed", zap.Error(err))
+			zap.L().Error("create lease failed",
+				zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 
@@ -279,9 +289,11 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 	ts := int64(binary.BigEndian.Uint64(val[16:]))
 
 	if time.Now().Unix() > ts {
-		zap.L().Error("lease expire, create new lease")
 		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("create lease failed", zap.Error(err))
+			zap.L().Error("create lease failed",
+				zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 		return true, nil
@@ -289,7 +301,11 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 
 	if bytes.Equal(curID, id) {
 		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("flush lease failed", zap.Error(err))
+			zap.L().Error("flush lease failed",
+				zap.ByteString("key", key),
+				zap.ByteString("curid", curID),
+				zap.ByteString("id", id),
+				zap.Error(err))
 			return false, err
 		}
 		return true, nil
@@ -312,7 +328,9 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 	for {
 		txn, err := db.Begin()
 		if err != nil {
-			zap.L().Error("transection begin failed", zap.Error(err))
+			zap.L().Error("transection begin failed",
+				zap.ByteString("leader", leader),
+				zap.Error(err))
 			continue
 		}
 

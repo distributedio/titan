@@ -37,7 +37,7 @@ func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-// LPushx return ErrNotFound on key not found instead of create new list object
+// LPushx prepend a value to a list, only if the list exists
 func LPushx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -86,7 +86,7 @@ func LPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(val)), nil
 }
 
-// LRange returns the specified elements of the list stored at key
+// LRange get a range of elements from a list
 func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	args := ctx.Args
 	key := []byte(args[0])
@@ -120,7 +120,7 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, items), nil
 }
 
-// LInsert inserts value in the list stored at key either before or after the reference value pivot
+// LInsert insert an element before or after another element in a list
 func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 
@@ -156,7 +156,7 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-//LIndex get the value through index
+//LIndex get an element from a list by its index
 func LIndex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	n, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
@@ -185,7 +185,7 @@ func LIndex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(val)), nil
 }
 
-//LLen get the list len
+//LLen get the length of a list
 func LLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -203,7 +203,7 @@ func LLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-//LRem removes the value element from the list stored in the key that was previously counted
+//LRem remove elements from a list
 func LRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	n, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
@@ -228,7 +228,7 @@ func LRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(count)), nil
 }
 
-//LTrim trim all values outside the start and end
+//LTrim trim a list to the specified range
 func LTrim(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	start, err := strconv.ParseInt(ctx.Args[1], 10, 64)
@@ -258,7 +258,7 @@ func LTrim(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-//LSet Sets the list element at index to value
+//LSet set the value of an element in a list by its index
 func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -285,7 +285,7 @@ func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, "OK"), nil
 }
 
-//RPop removes and returns the last element of the list stored at key
+//RPop remove and get the last element in a list
 func RPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -306,7 +306,7 @@ func RPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(val)), nil
 }
 
-// RPopLPush return the value rpop from src and push into dest
+// RPopLPush remove the last element in a list, prepend it to another list and return it
 func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	listsrc, err := txn.List([]byte(ctx.Args[0]))
 	if err != nil {
@@ -345,7 +345,7 @@ func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(val)), nil
 }
 
-// RPush push values into list from right
+// RPush append one or multiple values to a list
 func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)
@@ -370,7 +370,7 @@ func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, lst.Length()), nil
 }
 
-// RPushx return ErrNotFound on key not found instead of create new list object
+// RPushx append a value to a list, only if the list exists
 func RPushx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	lst, err := txn.List(key)

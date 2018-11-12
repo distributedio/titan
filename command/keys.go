@@ -17,7 +17,7 @@ const (
 	defaultScanCount = 10
 )
 
-//Delete a key
+//Delete delete a key
 func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
@@ -31,7 +31,7 @@ func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//Exists check if the given keys exist
+//Exists determine if a key exists
 func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))

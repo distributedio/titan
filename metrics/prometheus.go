@@ -12,6 +12,7 @@ import (
 //MetricsType object type
 type metricsType int
 
+//metrics type
 const (
 	ConnectionOnlineType metricsType = iota
 	ZTInfoType

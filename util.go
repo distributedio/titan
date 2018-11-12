@@ -31,6 +31,7 @@ func PrintVersionInfo() {
 	fmt.Println("Golang compiler Version: ", context.GolangVersion)
 }
 
+//GetClientID start with 1 and assign clientID incrementally
 func GetClientID() func() int64 {
 	var id int64 = 1
 	return func() int64 {
@@ -38,4 +39,5 @@ func GetClientID() func() int64 {
 	}
 }
 
+//GenerateTraceID traceid of the production order
 func GenerateTraceID() string { return uuid.NewV4().String() }

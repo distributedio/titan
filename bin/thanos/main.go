@@ -86,7 +86,7 @@ func main() {
 	}
 }
 
-//Logger zap logger
+//GlobalLogger zap logger
 func GlobalLogger(level, name string, write io.Writer) error {
 	var lv = zap.NewAtomicLevel()
 	switch level {
@@ -103,7 +103,7 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	case "fatal":
 		lv.SetLevel(zap.FatalLevel)
 	default:
-		return fmt.Errorf("unknown log level(%s)\n", level)
+		return fmt.Errorf("unknown log level(%s)", level)
 	}
 	timeEncoder := func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Local().Format("2006-01-02 15:04:05.999999999"))
@@ -158,7 +158,7 @@ func TikvLogrus(path, level, pattern string, compress bool) error {
 	case "fatal":
 		logrus.SetLevel(logrus.FatalLevel)
 	default:
-		return fmt.Errorf("unknown log level(%s)\n", level)
+		return fmt.Errorf("unknown log level(%s)", level)
 	}
 	return nil
 }

@@ -11,10 +11,13 @@ import (
 	"gitlab.meitu.com/platform/thanos/resp"
 )
 
-// scan iter max count
-const ScanMaxCount = 255
-const defaultScanCount = 10
+const (
+	//ScanMaxCount scan iter max count
+	ScanMaxCount     = 255
+	defaultScanCount = 10
+)
 
+//Delete delete a key
 func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
@@ -28,7 +31,7 @@ func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//Exists check if the given keys exist
+//Exists determine if a key exists
 func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	keys := make([][]byte, len(ctx.Args))
@@ -42,7 +45,7 @@ func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, c), nil
 }
 
-//Expire
+//Expire set a key  time to live in second
 func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -61,7 +64,7 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//ExpireAt
+//ExpireAt set the expirtion for a key as a UNIX timestamp
 func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -85,7 +88,7 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//Persist
+//Persist remove the expirtion key
 func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -98,7 +101,7 @@ func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//PExpire
+//PExpire set a key time to live in millisecond
 func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -117,7 +120,7 @@ func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-//PExpireAt
+//PExpireAt set the expirtion for a key as a UNIX timestamp specifid in millisecond
 func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
@@ -138,7 +141,7 @@ func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 1), nil
 }
 
-//TTL
+//TTL get the time to live in second
 func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	now := db.Now()
@@ -156,7 +159,7 @@ func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, ttl), nil
 }
 
-//PTTL
+//PTTL get the time to live in millisecond
 func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	now := db.Now()
@@ -178,7 +181,7 @@ func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-//Object
+//Object inspect the internals of Redis Objects
 func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	subCmd := strings.ToLower(ctx.Args[0])
@@ -216,7 +219,7 @@ func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return nil, cmdErr
 }
 
-//Type
+//Type determine the type stored t key
 func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	obj, err := txn.Object(key)
@@ -230,7 +233,7 @@ func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, obj.Type.String()), nil
 }
 
-//Keys
+//Keys find all keys matchs th given pattern
 func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	list := make([][]byte, 0)
 	pattern := []byte(ctx.Args[0])
@@ -251,11 +254,11 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, list), nil
 }
 
-//Scan
+//Scan incrementally iterate the key space
 func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
 		start   []byte
-		end     []byte = []byte("0")
+		end            = []byte("0")
 		count   uint64 = defaultScanCount
 		pattern []byte
 		prefix  []byte

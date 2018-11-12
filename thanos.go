@@ -10,12 +10,14 @@ import (
 	"go.uber.org/zap"
 )
 
+//Server thanos server object
 type Server struct {
 	servCtx *context.ServerContext
 	lis     net.Listener
 	idgen   func() int64
 }
 
+//New create server object
 func New(ctx *context.ServerContext) *Server {
 	// id generator starts from 1(the first client's id is 2, the same as redis)
 	return &Server{servCtx: ctx, idgen: GetClientID()}
@@ -55,6 +57,7 @@ func (s *Server) Serve(lis net.Listener) error {
 	return nil
 }
 
+// ListenAndServe start serve through addr
 func (s *Server) ListenAndServe(addr string) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -63,12 +66,13 @@ func (s *Server) ListenAndServe(addr string) error {
 	return s.Serve(lis)
 }
 
+//Stop close serve fd
 func (s *Server) Stop() error {
 	zap.L().Info("titan serve stop", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }
 
-//TODO close client connections gracefully
+//GracefulStop TODO close client connections gracefully
 func (s *Server) GracefulStop() error {
 	zap.L().Info("titan serve graceful", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()

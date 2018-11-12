@@ -8,10 +8,17 @@ import (
 	"github.com/pingcap/tidb/store/tikv"
 )
 
-type Storage kv.Storage
-type Transaction kv.Transaction
-type Iterator kv.Iterator
+//type rename tidb kv type
+type (
+	// Storage defines the interface for storage.
+	Storage kv.Storage
+	// Transaction defines the interface for operations inside a Transaction.
+	Transaction kv.Transaction
+	// Iterator is the interface for a iterator on KV store.
+	Iterator kv.Iterator
+)
 
+//Open create tikv db ,create fake db if addr contains mockaddr
 func Open(addrs string) (r Storage, e error) {
 	if strings.Contains(addrs, MockAddr) {
 		return MockOpen(addrs)
@@ -19,10 +26,12 @@ func Open(addrs string) (r Storage, e error) {
 	return tikv.Driver{}.Open(addrs)
 }
 
+// IsErrNotFound checks if err is a kind of NotFound error.
 func IsErrNotFound(err error) bool {
 	return kv.IsErrNotFound(err)
 }
 
+// IsRetryableError checks if err is a kind of RetryableError error.
 func IsRetryableError(err error) bool {
 	return kv.IsRetryableError(err)
 }
@@ -36,6 +45,7 @@ func RunInNewTxn(store Storage, retryable bool, f func(txn kv.Transaction) error
 	return kv.RunInNewTxn(store, retryable, f)
 }
 
+// LockKeys tries to lock the entries with the keys in KV store.
 func LockKeys(txn Transaction, keys [][]byte) error {
 	kvKeys := make([]kv.Key, len(keys))
 	for i := range keys {

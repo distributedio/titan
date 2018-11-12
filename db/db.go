@@ -22,12 +22,19 @@ var (
 	// ErrKeyNotFound key not exist
 	ErrKeyNotFound = errors.New("key not found")
 
-	//ErrInteger
+	//ErrInteger valeu is not interge
 	ErrInteger = errors.New("value is not an integer or out of range")
+
 	// ErrPrecision list index reach precision limitatin
-	ErrPrecision        = errors.New("list reaches precision limitation, rebalance now")
-	ErrOutOfRange       = errors.New("error index/offset out of range")
-	ErrInvalidLength    = errors.New("error data length is invalid for unmarshaler")
+	ErrPrecision = errors.New("list reaches precision limitation, rebalance now")
+
+	//ErrOutOfRange index/offset out of range
+	ErrOutOfRange = errors.New("error index/offset out of range")
+
+	//ErrInvalidLength data length is invalid for unmarshaler"
+	ErrInvalidLength = errors.New("error data length is invalid for unmarshaler")
+
+	//ErrEncodingMismatch object encoding type
 	ErrEncodingMismatch = errors.New("error object encoding type")
 
 	// IsErrNotFound returns true if the key is not found, otherwise return false
@@ -37,23 +44,33 @@ var (
 	//IsconflictError return true if the error is conflict
 	IsConflictError = store.IsConflictError
 
-	sysNamespace  = "$sys"
+	//sysNamespace default namespace
+	sysNamespace = "$sys"
+
+	//sysDatabaseID default db id
 	sysDatabaseID = 0
 )
 
+//Iterator  store.Iterator
 type Iterator store.Iterator
 
-type DBID byte
+//IDDB byte
+type IDDB byte
 
-func (id DBID) String() string {
+//String return the string type of IDDB
+func (id IDDB) String() string {
 	return fmt.Sprintf("%03d", id)
 }
-func (id DBID) Bytes() []byte {
+
+//Bytes IDDB return []byte
+func (id IDDB) Bytes() []byte {
 	return []byte(id.String())
 }
-func toDBID(v []byte) DBID {
+
+//toIDDB the type []byte of id change  the type DBID of id
+func toIDDB(v []byte) IDDB {
 	id, _ := strconv.Atoi(string(v))
-	return DBID(id)
+	return IDDB(id)
 }
 
 // BatchGetValues issue batch requests to get values
@@ -72,14 +89,17 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 // DB is a redis compatible data structure storage
 type DB struct {
 	Namespace string
-	ID        DBID
+	ID        IDDB
 	kv        *RedisStore
 }
 
+//RedisStore encapsulation store.Storage
 type RedisStore struct {
 	store.Storage
 }
 
+//Open open store connect
+//start gc and expire zt change
 func Open(conf *conf.Tikv) (*RedisStore, error) {
 	s, err := store.Open(conf.PdAddrs)
 	if err != nil {
@@ -94,10 +114,12 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	return rds, nil
 }
 
+//DB return DB object
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
+	return &DB{Namespace: namesapce, ID: IDDB(id), kv: rds}
 }
 
+//Close close store connect
 func (rds *RedisStore) Close() error {
 	return rds.Close()
 }
@@ -127,23 +149,34 @@ func (txn *Transaction) Rollback() error {
 	return txn.t.Rollback()
 }
 
-// List return a list object, a new list is created if the key dose not exist.
-func (txn *Transaction) List(key []byte) (*LList, error) {
-	return GetLList(txn, key)
+// List return a list object, a null list is created if the key dose not exist.
+func (txn *Transaction) List(key []byte) (List, error) {
+	return GetList(txn, key)
 }
 
+// NewList return a list new object
+func (txn *Transaction) NewList(key []byte, count int) (List, error) {
+	return NewList(txn, key, count)
+}
+
+/*
 // List return a list object, a new list is created if the key dose not exist.
 func (txn *Transaction) ZList(key []byte) (*ZList, error) {
 	return GetZList(txn, key)
 }
 
-// String return a string object
-//TODO 获得一个string 对象 ，但是可能是不安全 ，string 可能过期了
+// List return a list new object
+func (txn *Transaction) NewZList(key []byte) (*ZList, error) {
+	return GetZList(txn, key)
+}
+*/
+
+// String return a string object,but the object is unsafe, maybe the object is expire,or not exist
 func (txn *Transaction) String(key []byte) (*String, error) {
 	return GetString(txn, key)
 }
 
-// BatchGetValues issue batch requests to get values
+// Strings return a slice strings and the strings is created  object
 func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	sobjs := make([]*String, len(keys))
 	tkeys := make([][]byte, len(keys))
@@ -167,15 +200,17 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	return sobjs, nil
 }
 
-// String return a string object
+//NewString  return a new string object
 func (txn *Transaction) NewString(key []byte) *String {
 	return NewString(txn, key)
 }
 
+//Kv return a kv object
 func (txn *Transaction) Kv() *Kv {
 	return GetKv(txn)
 }
 
+//Hash return a hash object
 func (txn *Transaction) Hash(key []byte) (*Hash, error) {
 	return GetHash(txn, key)
 }
@@ -190,6 +225,7 @@ func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
 }
 
+//MetaKey key to metakey
 func MetaKey(db *DB, key []byte) []byte {
 	var mkey []byte
 	mkey = append(mkey, []byte(db.Namespace)...)
@@ -199,6 +235,8 @@ func MetaKey(db *DB, key []byte) []byte {
 	mkey = append(mkey, key...)
 	return mkey
 }
+
+//DataKey to tikv data key
 func DataKey(db *DB, key []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, []byte(db.Namespace)...)
@@ -208,7 +246,9 @@ func DataKey(db *DB, key []byte) []byte {
 	dkey = append(dkey, key...)
 	return dkey
 }
-func DBPrefix(db *DB) []byte {
+
+//PrefixDB to db prefix
+func PrefixDB(db *DB) []byte {
 	var prefix []byte
 	prefix = append(prefix, []byte(db.Namespace)...)
 	prefix = append(prefix, ':')
@@ -218,7 +258,6 @@ func DBPrefix(db *DB) []byte {
 }
 
 //Leader Option
-
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)

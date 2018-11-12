@@ -9,6 +9,12 @@ import (
 	"gitlab.meitu.com/platform/thanos/encoding/resp"
 )
 
+var (
+
+	//MaxRangeInteger max index in setrange comman
+	MaxRangeInteger = 2<<29 - 1
+)
+
 // Get the value of key
 func Get(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := ctx.Args[0]
@@ -343,7 +349,6 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-<<<<<<< HEAD
 //Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	offset, err := strconv.Atoi(string(ctx.Args[1]))
@@ -378,9 +383,7 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 }
 
-=======
 // Incr increments the integer value of a key  by one
->>>>>>> dev
 func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)

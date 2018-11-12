@@ -140,7 +140,6 @@ func (s *String) GetRange(start, end int) []byte {
 	return s.Meta.Value[start:][:end+1]
 }
 
-<<<<<<< HEAD
 //SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func (s *String) SetRange(offset int64, value []byte) ([]byte, error) {
 	val := s.Meta.Value
@@ -153,18 +152,6 @@ func (s *String) SetRange(offset int64, value []byte) ([]byte, error) {
 	}
 
 	return val, nil
-=======
-//SetRange TODO bug
-func (s *String) SetRange(offset int64, value []byte) error {
-	/*
-		vlen := len(value)
-		if vlen < offset+len(ctx.Args[2]) {
-			value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
-		}
-		copy(value[offset:], ctx.Args[2])
-	*/
-	return s.Set(value)
->>>>>>> dev
 }
 
 //Incr increment the integer value by the given amount

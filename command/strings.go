@@ -358,39 +358,27 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if offset < 0 || offset > MaxRangeInteger {
 		return nil, ErrMaximum
 	}
-	/*
-	   127.0.0.1:6379> set key "hello world"
-	   OK
-	   127.0.0.1:6379> get key
-	   "hello world"
-	   127.0.0.1:6379> SETRANGE key 6 "redis"
-	   (integer) 11
-	   127.0.0.1:6379> get key
-	   "hello redis"
-	   127.0.0.1:6379> SETRANGE key 15 "value"
-	   (integer) 20
-	   127.0.0.1:6379> get key
-	   "hello redis\x00\x00\x00\x00value"
-	   127.0.0.1:6379> SETRANGE keys 3 "redis"
-	   (integer) 8
-	   127.0.0.1:6379> get key
-	   "hello redis\x00\x00\x00\x00value"
-	   127.0.0.1:6379> get keys
-	   "\x00\x00\x00redis"
-	*/
 	//Non-existing keys are considered as empty strings, so this command will make sure it holds a string large enough to be able to set value at offset.
 	if !str.Exist() {
-
-		return Integer(ctx.Out, int64(len(value)+offset)), nil
+		str = txn.NewString(key)
+		val := make([]byte, 0)
+		value, _ := str.SetRange(val, int64(offset), []byte(ctx.Args[2]))
+		return Integer(ctx.Out, int64(len(value))), nil
 	}
-
 	// If the offset is larger than the current length of the string at key, the string is padded with zero-bytes to make offset fit.
-	vlen := len(value)
-	if vlen < offset+len(ctx.Args[2]) {
-		value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
+	value, err := str.Get()
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return nil, err
+		}
+		return nil, errors.New("ERR " + err.Error())
 	}
-	copy(value[offset:], ctx.Args[2])
+	value, err = str.SetRange(value, int64(offset), []byte(ctx.Args[2]))
+	if err != nil {
+		return nil, err
+	}
 	return Integer(ctx.Out, int64(len(value))), nil
+
 }
 
 func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {

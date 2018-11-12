@@ -1,6 +1,7 @@
 package autotest
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -76,6 +77,19 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LrangeEqual(t, "key-list", 99, 100)
 	ac.el.LpopEqual(t, "key-list")
 	ac.el.LpopEqual(t, "key-list-l")
+
+	var key []string
+	for i := 0; i < 4000; i++ {
+		num := strconv.Itoa(i)
+		key = append(key, "v", num)
+	}
+	ac.el.LpushEqual(t, "zkey-list")
+	ac.el.LlenEqual(t, "zkey-list")
+	ac.el.LsetEqual(t, "zkey-list", 3, "v0")
+	ac.el.LindexEqual(t, "zkey-list", 3)
+	ac.el.LrangeEqual(t, "zkey-list", 0, 10)
+	ac.el.LrangeEqual(t, "zkey-list", 99, 100)
+	ac.el.LpopEqual(t, "zkey-list")
 }
 
 //KeyCase check key case

@@ -142,7 +142,7 @@ func doGC(db *DB, limit int64) error {
 //2.leader 执行清理任务
 func StartGC(db *DB) {
 	ticker := time.Tick(gcInterval * time.Second)
-	for _ = range ticker {
+	for range ticker {
 		isLeader, err := isLeader(db, sysGCLeader, sysGCLeaseFlushInterval)
 		if err != nil {
 			zap.L().Error("[GC] check GC leader failed", zap.Error(err))

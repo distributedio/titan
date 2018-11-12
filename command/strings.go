@@ -107,7 +107,7 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err := s.Set(value, unit); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return SimpleString(ctx.Out, "OK"), nil
+	return SimpleString(ctx.Out, OK), nil
 }
 
 // MGet returns the values of all specified key
@@ -147,7 +147,7 @@ func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return nil, err
 		}
 	}
-	return SimpleString(ctx.Out, "OK"), nil
+	return SimpleString(ctx.Out, OK), nil
 }
 
 // MSetNx et multiple keys to multiple values,only if none of the keys exist
@@ -314,7 +314,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	return SimpleString(ctx.Out, "OK"), nil
+	return SimpleString(ctx.Out, OK), nil
 }
 
 // PSetEx set the value and expiration in milliseconds of a key
@@ -340,7 +340,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	return SimpleString(ctx.Out, "OK"), nil
+	return SimpleString(ctx.Out, OK), nil
 }
 
 // Incr increments the integer value of a key  by one

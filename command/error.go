@@ -23,7 +23,7 @@ var (
 	Queued = "QUEUED"
 
 	// ErrProtocol invalid request
-	ErrProtocol = errors.New("ERR invalid request")
+	// ErrProtocol = errors.New("ERR invalid request")
 
 	// ErrNoAuth authentication required
 	ErrNoAuth = errors.New("NOAUTH Authentication required")
@@ -78,14 +78,20 @@ var (
 
 	// ErrEmptyArray error
 	ErrEmptyArray = errors.New("EmptyArray error")
+
+	//ErrExec exec without multi
+	ErrExec = errors.New("ERR EXEC without MULTI")
+
+	//ErrDiscard without multi
+	ErrDiscard = errors.New("ERR DISCARD without MULTI")
 )
 
 //ErrUnKnownCommand return RedisError of the cmd
-func ErrUnKnownCommand(cmd string) string {
-	return fmt.Sprintf(UnKnownCommandStr, cmd)
+func ErrUnKnownCommand(cmd string) error {
+	return fmt.Errorf(UnKnownCommandStr, cmd)
 }
 
 // ErrWrongArgs return RedisError of the cmd
-func ErrWrongArgs(cmd string) string {
-	return fmt.Sprintf(WrongArgs, cmd)
+func ErrWrongArgs(cmd string) error {
+	return fmt.Errorf(WrongArgs, cmd)
 }

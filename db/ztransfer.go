@@ -165,7 +165,7 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 	}
 	iter, err := txn.t.Seek(prefix)
 	if err != nil {
-		zap.L().Error("[ZT] error in seek", zap.Error(err))
+		zap.L().Error("[ZT] error in seek", zap.ByteString("prefix", prefix), zap.Error(err))
 		return toZTKey(nil), err
 	}
 
@@ -199,7 +199,9 @@ func StartZT(db *DB, conf *conf.ZT) {
 	for _ = range tick {
 		isLeader, err := isLeader(db, sysZTLeader, time.Duration(sysZTLeaderFlushInterval))
 		if err != nil {
-			zap.L().Error("[ZT] check ZT leader failed", zap.Error(err))
+			zap.L().Error("[ZT] check ZT leader failed",
+				zap.Int64("dbid", int64(db.ID)),
+				zap.Error(err))
 			continue
 		}
 		if !isLeader {
@@ -208,7 +210,10 @@ func StartZT(db *DB, conf *conf.ZT) {
 		}
 
 		if prefix, err = runZT(db, prefix, tick); err != nil {
-			zap.L().Error("[ZT] error in run ZT", zap.Error(err))
+			zap.L().Error("[ZT] error in run ZT",
+				zap.Int64("dbid", int64(db.ID)),
+				zap.ByteString("prefix", prefix),
+				zap.Error(err))
 			continue
 		}
 	}

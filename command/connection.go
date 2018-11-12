@@ -26,7 +26,7 @@ func Auth(ctx *Context) {
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(string(namespace)).Inc()
 	ctx.Client.Namespace = string(namespace)
 	ctx.Client.Authenticated = true
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Echo the given string
@@ -58,13 +58,13 @@ func Select(ctx *Context) {
 	}
 	namespace := ctx.Client.Namespace
 	ctx.Client.DB = ctx.Server.Store.DB(namespace, idx)
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Quit asks the server to close the connection
 func Quit(ctx *Context) {
 	close(ctx.Client.Done)
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // SwapDB swaps two Redis databases

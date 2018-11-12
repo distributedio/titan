@@ -290,13 +290,13 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 		}
 
 		isLeader, err := checkLeader(txn.t, leader, UUID(), interval)
-		defer func() {
+		mtFunc := func() {
 			if isLeader {
 				metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(1)
 				return
 			}
 			metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(0)
-		}()
+		}
 
 		if err != nil {
 			txn.Rollback()
@@ -306,6 +306,7 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 					continue
 				}
 			}
+			mtFunc()
 			return isLeader, err
 		}
 
@@ -317,8 +318,10 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 					continue
 				}
 			}
+			mtFunc()
 			return isLeader, err
 		}
+		mtFunc()
 		return isLeader, err
 	}
 }

@@ -184,27 +184,31 @@ func AutoCommit(cmd TxnCommand) Command {
 			}
 
 			start := time.Now()
-			defer func() {
+			mtFunc := func() {
 				cost := time.Since(start).Seconds()
 				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
-			}()
+			}
 			if err := txn.Commit(ctx); err != nil {
+
 				txn.Rollback()
 				if db.IsConflictError(err) {
 					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				}
 				if db.IsRetryableError(err) {
 					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mtFunc()
 					return retry.Retriable(err)
 				}
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				mtFunc()
 				return err
 			}
 
 			if onCommit != nil {
 				onCommit()
 			}
+			mtFunc()
 			return nil
 		})
 	}

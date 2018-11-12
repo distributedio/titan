@@ -317,7 +317,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
-	str, err := txn.String([]byte(key))
+	str, err := txn.String(key)
 	if err != nil && err != db.ErrTypeMismatch {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -339,12 +339,10 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-/*
 //setrange key offset value
-TODO bug
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -360,11 +358,33 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if offset < 0 || offset > MaxRangeInteger {
 		return nil, ErrMaximum
 	}
-
+	/*
+	   127.0.0.1:6379> set key "hello world"
+	   OK
+	   127.0.0.1:6379> get key
+	   "hello world"
+	   127.0.0.1:6379> SETRANGE key 6 "redis"
+	   (integer) 11
+	   127.0.0.1:6379> get key
+	   "hello redis"
+	   127.0.0.1:6379> SETRANGE key 15 "value"
+	   (integer) 20
+	   127.0.0.1:6379> get key
+	   "hello redis\x00\x00\x00\x00value"
+	   127.0.0.1:6379> SETRANGE keys 3 "redis"
+	   (integer) 8
+	   127.0.0.1:6379> get key
+	   "hello redis\x00\x00\x00\x00value"
+	   127.0.0.1:6379> get keys
+	   "\x00\x00\x00redis"
+	*/
+	//Non-existing keys are considered as empty strings, so this command will make sure it holds a string large enough to be able to set value at offset.
 	if !str.Exist() {
-		return NullBulkString(ctx.Out), nil
+
+		return Integer(ctx.Out, int64(len(value)+offset)), nil
 	}
 
+	// If the offset is larger than the current length of the string at key, the string is padded with zero-bytes to make offset fit.
 	vlen := len(value)
 	if vlen < offset+len(ctx.Args[2]) {
 		value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
@@ -372,7 +392,6 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	copy(value[offset:], ctx.Args[2])
 	return Integer(ctx.Out, int64(len(value))), nil
 }
-*/
 
 func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])

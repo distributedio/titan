@@ -362,8 +362,8 @@ func Info(ctx *Context) {
 	lines = append(lines, "arch_bits:"+runtime.GOARCH)
 	lines = append(lines, "go_version:"+context.GolangVersion)
 	lines = append(lines, "process_id:"+strconv.Itoa(os.Getpid()))
-	lines = append(lines, "uptime_in_seconds:"+strconv.FormatInt(ctx.Server.StartAt.Unix(), 10))
-	lines = append(lines, "uptime_in_days:"+strconv.FormatInt(ctx.Server.StartAt.Unix()/86400, 10))
+	lines = append(lines, "uptime_in_seconds:"+strconv.FormatInt(int64(time.Since(ctx.Server.StartAt)/time.Second), 10))
+	lines = append(lines, "uptime_in_days:"+strconv.FormatInt(int64(time.Since(ctx.Server.StartAt)/time.Second/86400), 10))
 	lines = append(lines, "executable:"+exe)
 
 	lines = append(lines, "# Clients")

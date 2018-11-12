@@ -10,8 +10,7 @@ import (
 )
 
 var (
-
-	//MaxRangeInteger max index in setrange comman
+	//MaxRangeInteger max index in setrange command
 	MaxRangeInteger = 2<<29 - 1
 )
 
@@ -349,7 +348,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-//Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
+//SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	offset, err := strconv.Atoi(string(ctx.Args[1]))
 	if err != nil {

@@ -74,7 +74,7 @@ var (
 	ErrMultiNested = errors.New("ERR MULTI calls can not be nested")
 
 	// ErrTypeMismatch Operation against a key holding the wrong kind of value
-	ErrTypeMismatch = errors.New(" WRONGTYPE Operation against a key holding the wrong kind of value")
+	ErrTypeMismatch = errors.New("WRONGTYPE Operation against a key holding the wrong kind of value")
 
 	// ErrEmptyArray error
 	ErrEmptyArray = errors.New("EmptyArray error")

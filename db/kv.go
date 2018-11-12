@@ -74,17 +74,6 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 			if err := kv.txn.Destory(obj, keys[i]); err != nil {
 				continue
 			}
-			if obj.Type != ObjectString && len(obj.ID) > 0 {
-				if err = gc(kv.txn.t, DataKey(kv.txn.db, obj.ID)); err != nil {
-					return count, err
-				}
-			}
-
-			if obj.ExpireAt > now {
-				if err := unExpireAt(kv.txn.t, metaKeys[i], obj.ExpireAt); err != nil {
-					return count, err
-				}
-			}
 			count++
 		}
 	}

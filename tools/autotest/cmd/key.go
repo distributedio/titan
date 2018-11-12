@@ -66,6 +66,19 @@ func (ek *ExampleKey) TTLEqualErr(t *testing.T, errValue string, args ...interfa
 	assert.EqualError(t, err, errValue)
 }
 
+//PTTLEqual verify that the return value of the ttl key operation is correct
+func (ek *ExampleKey) PTTLEqual(t *testing.T, key string, expectReply int) {
+	reply, err := redis.Int(ek.conn.Do("ttl", key))
+	assert.Equal(t, expectReply, reply)
+	assert.NoError(t, err)
+}
+
+//PTTLEqualErr verify that the return error value of the ttl key operation is correct
+func (ek *ExampleKey) PTTLEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ek.conn.Do("ttl", args...)
+	assert.EqualError(t, err, errValue)
+}
+
 //Info TODO
 func (ek *ExampleKey) Info(t *testing.T, key string, expectReply interface{}) {
 
@@ -121,5 +134,74 @@ func (ek *ExampleKey) ExpireEqual(t *testing.T, key string, value, expectValue i
 //ExpireEqualErr verify that the err return value of the expire key operation is correct
 func (ek *ExampleKey) ExpireEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := ek.conn.Do("expire", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+//ExpireAtEqual verify that the return value of the expire key operation is correct
+func (ek *ExampleKey) ExpireAtEqual(t *testing.T, key string, value, expectValue int) {
+	reply, err := redis.Int(ek.conn.Do("expireat", key, value))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+//AtExpireEqualErr verify that the err return value of the expire key operation is correct
+func (ek *ExampleKey) ExpireAtEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ek.conn.Do("expireat", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+//PExpireEqual verify that the return value of the expire key operation is correct
+func (ek *ExampleKey) PExpireEqual(t *testing.T, key string, value, expectValue int) {
+	reply, err := redis.Int(ek.conn.Do("expire", key, value))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+//PExpireEqualErr verify that the err return value of the expire key operation is correct
+func (ek *ExampleKey) PExpireEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ek.conn.Do("pexpire", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+//ExpireAtEqual verify that the return value of the expire key operation is correct
+func (ek *ExampleKey) PExpireAtEqual(t *testing.T, key string, value, expectValue int) {
+	reply, err := redis.Int(ek.conn.Do("pexpireat", key, value))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+//PExpireEqualAtErr verify that the err return value of the expire key operation is correct
+func (ek *ExampleKey) PExpireAtEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ek.conn.Do("pexpireat", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+func (ek *ExampleKey) TypeEqual(t *testing.T, key string, expectValue interface{}) {
+	reply, err := redis.Int(ek.conn.Do("type", key))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+func (ek *ExampleKey) TypeEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := redis.Int(ek.conn.Do("type", args...))
+	assert.EqualError(t, err, errValue)
+}
+
+func (ek *ExampleKey) KeysEqual(t *testing.T, key string, expectValue interface{}) {
+}
+
+func (ek *ExampleKey) KeysEqualErr(t *testing.T, errValue string, expectValue interface{}) {
+}
+
+func (ek *ExampleKey) ObjectEqual(t *testing.T, key string, expectValue interface{}) {
+	reply, err := redis.Int(ek.conn.Do("object", "encoding", key))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+func (ek *ExampleKey) ObjectEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	tmp := []interface{}{"encoding"}
+	tmp = append(tmp, args...)
+	_, err := redis.Int(ek.conn.Do("object", tmp...))
 	assert.EqualError(t, err, errValue)
 }

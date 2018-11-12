@@ -67,14 +67,14 @@ func Exec(ctx *Context) {
 	mt := metrics.GetMetrics()
 	defer func() {
 		cost := time.Since(start).Seconds()
-		mt.TransactionCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+		mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 	}()
 	err = txn.Commit(ctx)
 	if err != nil {
 		if db.IsConflictError(err) {
-			mt.TransactionConflictGauageVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+			mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 		}
-		mt.TransactionFailureGaugeVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+		mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 		// TODO log err message
 		log.Println(err)
 		resp.ReplyArray(ctx.Out, 0)

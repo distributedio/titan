@@ -43,7 +43,7 @@ func (s *Server) Serve(lis net.Listener) error {
 			zap.Int64("clientid", cliCtx.ID), zap.String("namespace", cliCtx.Namespace))
 
 		go func(cli *client, conn net.Conn) {
-			metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(cli.cliCtx.Namespace).Dec()
+			metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(cli.cliCtx.Namespace).Inc()
 			if err := cli.serve(conn); err != nil {
 				zap.L().Error("serve conn failed", zap.String("addr", cli.cliCtx.RemoteAddr),
 					zap.Int64("clientid", cliCtx.ID), zap.Error(err))

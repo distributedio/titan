@@ -20,11 +20,11 @@ func TestMetrics(t *testing.T) {
 
 	gm.ConnectionOnlineGaugeVec.WithLabelValues(defaultLabel).Inc()
 
-	gm.TransactionConflictGauageVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
-	gm.TransactionConflictGauageVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
-	gm.TransactionRetryGaugeVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
-	gm.TransactionFailureGaugeVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
-	gm.TransactionCommitHistogramVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
+	gm.TxnConflictsCounterVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
+	gm.TxnConflictsCounterVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
+	gm.TxnRetriesCounterVec.WithLabelValues(defaultLabel, defaultlabel).Inc()
+	gm.TxnFailuresCounterVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
+	gm.TxnCommitHistogramVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
 	gm.CommandCallHistogramVec.WithLabelValues(defaultLabel, defaultlabel).Desc()
 
 	gm.LRangeSeekHistogram.Desc()

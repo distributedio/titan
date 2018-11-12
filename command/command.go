@@ -167,35 +167,37 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
 		retry.Ensure(ctx, func() error {
+			mt := metrics.GetMetrics()
 			txn, err := ctx.Client.DB.Begin()
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+string(err.Error()))
 				return err
 			}
 
 			onCommit, err := cmd(ctx, txn)
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
 				txn.Rollback()
 				return err
 			}
 
 			start := time.Now()
-			mt := metrics.GetMetrics()
 			defer func() {
 				cost := time.Since(start).Seconds()
-				mt.TransactionCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			}()
 			if err := txn.Commit(ctx); err != nil {
 				txn.Rollback()
 				if db.IsConflictError(err) {
-					mt.TransactionConflictGauageVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				}
 				if db.IsRetryableError(err) {
-					mt.TransactionRetryGaugeVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 					return retry.Retriable(err)
 				}
-				mt.TransactionFailureGaugeVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
 				return err
 			}

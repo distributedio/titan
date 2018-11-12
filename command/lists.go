@@ -8,7 +8,7 @@ import (
 	"gitlab.meitu.com/platform/thanos/db"
 )
 
-// LPush insert an entry to the head of the list
+// LPush inserts an entry to the head of the list
 func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	args := ctx.Args
 

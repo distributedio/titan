@@ -44,7 +44,7 @@ var (
 	//IsconflictError return true if the error is conflict
 	IsConflictError = store.IsConflictError
 
-	//sysNamespace default namespace
+	// sysNamespace default namespace
 	sysNamespace = "$sys"
 
 	//sysDatabaseID default db id
@@ -54,23 +54,23 @@ var (
 //Iterator  store.Iterator
 type Iterator store.Iterator
 
-//IDDB byte
-type IDDB byte
+//DBID byte
+type DBID byte
 
-//String return the string type of IDDB
-func (id IDDB) String() string {
+//String return the string type of DBID
+func (id DBID) String() string {
 	return fmt.Sprintf("%03d", id)
 }
 
-//Bytes IDDB return []byte
-func (id IDDB) Bytes() []byte {
+//Bytes DBID return []byte
+func (id DBID) Bytes() []byte {
 	return []byte(id.String())
 }
 
-//toIDDB the type []byte of id change  the type DBID of id
-func toIDDB(v []byte) IDDB {
+//toDBID the type []byte of id change  the type DBID of id
+func toDBID(v []byte) DBID {
 	id, _ := strconv.Atoi(string(v))
-	return IDDB(id)
+	return DBID(id)
 }
 
 // BatchGetValues issue batch requests to get values
@@ -89,7 +89,7 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 // DB is a redis compatible data structure storage
 type DB struct {
 	Namespace string
-	ID        IDDB
+	ID        DBID
 	kv        *RedisStore
 }
 
@@ -116,7 +116,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 
 //DB return DB object
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: IDDB(id), kv: rds}
+	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
 }
 
 //Close close store connect
@@ -236,7 +236,7 @@ func MetaKey(db *DB, key []byte) []byte {
 	return mkey
 }
 
-//DataKey to tikv data key
+// DateKey to tikv data key
 func DataKey(db *DB, key []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, []byte(db.Namespace)...)
@@ -247,8 +247,8 @@ func DataKey(db *DB, key []byte) []byte {
 	return dkey
 }
 
-//PrefixDB to db prefix
-func PrefixDB(db *DB) []byte {
+//DBPrefix to db prefix
+func DBPrefix(db *DB) []byte {
 	var prefix []byte
 	prefix = append(prefix, []byte(db.Namespace)...)
 	prefix = append(prefix, ':')
@@ -257,7 +257,6 @@ func PrefixDB(db *DB) []byte {
 	return prefix
 }
 
-//Leader Option
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)

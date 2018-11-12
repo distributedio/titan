@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 )
 
 // Get the value of key
@@ -111,7 +111,6 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 }
 
 // MGet returns the values of all specified key
-// use BatchGetRequest to gain performance
 func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	count := len(ctx.Args)
 	values := make([][]byte, count)
@@ -151,7 +150,7 @@ func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-//MSetNx et multiple keys to multiple values,only if none of the keys exist
+// MSetNx et multiple keys to multiple values,only if none of the keys exist
 func MSetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	args := ctx.Args
@@ -192,7 +191,7 @@ func Strlen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(v)), nil
 }
 
-//Append a value to a key
+// Append a value to a key
 func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	value := []byte(ctx.Args[1])
@@ -215,7 +214,7 @@ func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(llen)), nil
 }
 
-//GetSet set the string value of a key and return its old value
+// GetSet sets the string value of a key and return its old value
 func GetSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	v := []byte(ctx.Args[1])
@@ -237,7 +236,7 @@ func GetSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(value)), nil
 }
 
-//GetRange increment the integer value of a keys by the given amount
+// GetRange increments the integer value of a keys by the given amount
 func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := ctx.Args[0]
 	str, err := txn.String([]byte(key))
@@ -269,7 +268,7 @@ func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BulkString(ctx.Out, string(value)), nil
 }
 
-//SetNx set the value of a key ,only if the key does not exist
+// SetNx sets the value of a key ,only if the key does not exist
 func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
@@ -292,7 +291,7 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(1)), nil
 }
 
-//SetEx set the value and expiration of a key KEY_NAME TIMEOUT VALUE
+// SetEx sets the value and expiration of a key KEY_NAME TIMEOUT VALUE
 func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
@@ -318,7 +317,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-//PSetEx set the value and expiration in milliseconds of a key
+// PSetEx set the value and expiration in milliseconds of a key
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
@@ -344,42 +343,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-/*
-//setrange key offset value overwrite part of a string at key starting at the specified offset
-TODO bug
-func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[0]
-	str, err := txn.String([]byte(key))
-	if err != nil {
-		if err == db.ErrTypeMismatch {
-			return nil, ErrTypeMismatch
-		}
-		return nil, errors.New("ERR " + err.Error())
-	}
-
-	offset, err := strconv.Atoi(string(ctx.Args[1]))
-	if err != nil {
-		return nil, ErrInteger
-	}
-
-	if offset < 0 || offset > MaxRangeInteger {
-		return nil, ErrMaximum
-	}
-
-	if !str.Exist() {
-		return NullBulkString(ctx.Out), nil
-	}
-
-	vlen := len(value)
-	if vlen < offset+len(ctx.Args[2]) {
-		value = append(value, make([]byte, len(ctx.Args[2])+offset-vlen)...)
-	}
-	copy(value[offset:], ctx.Args[2])
-	return Integer(ctx.Out, int64(len(value))), nil
-}
-*/
-
-//Incr increment the integer value of a key  by one
+// Incr increments the integer value of a key  by one
 func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)
@@ -399,7 +363,7 @@ func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(delta)), nil
 }
 
-//IncrBy increment the integer value of a key by the given amount
+// IncrBy increments the integer value of a key by the given amount
 func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)
@@ -425,7 +389,7 @@ func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(delta)), nil
 }
 
-//IncrByFloat increment the float value of a key by the given amount
+// IncrByFloat increments the float value of a key by the given amount
 func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String([]byte(key))
@@ -451,7 +415,7 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
 }
 
-//Decr decrement the intege value of a key by one
+// Decr decrements the integer value of a key by one
 func Decr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)
@@ -472,7 +436,7 @@ func Decr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(delta)), nil
 }
 
-//DecrBy decrement the intege value of a key by the given number
+// DecrBy decrements the integer value of a key by the given number
 func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)

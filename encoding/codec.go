@@ -1,6 +1,6 @@
-package resp
+package thanos
 
-//Encoder encode RESP interface
+// Encoder defines the interface of a RESP encoder
 type Encoder interface {
 	Error(s string) error
 	SimpleString(s string) error
@@ -10,7 +10,7 @@ type Encoder interface {
 	Array(size int) error
 }
 
-//Decoder decoder RESP interface
+//Decoder defines the interface of a RESP decoder
 type Decoder interface {
 	Error() (string, error)
 	SimpleString() (string, error)

@@ -20,7 +20,7 @@ func logVersionInfo() {
 	zap.L().Info("Server info", zap.String("Golang compiler Version", context.GolangVersion))
 }
 
-// PrintVersionInfo print the server version info
+// PrintVersionInfo prints the server version info
 func PrintVersionInfo() {
 	fmt.Println("Welcome to Titan.")
 	fmt.Println("Release Version: ", context.ReleaseVersion)
@@ -31,7 +31,7 @@ func PrintVersionInfo() {
 	fmt.Println("Golang compiler Version: ", context.GolangVersion)
 }
 
-//GetClientID start with 1 and assign clientID incrementally
+//GetClientID starts with 1 and allocates clientID incrementally
 func GetClientID() func() int64 {
 	var id int64 = 1
 	return func() int64 {
@@ -39,5 +39,5 @@ func GetClientID() func() int64 {
 	}
 }
 
-//GenerateTraceID traceid of the production order
+//GenerateTraceID grenerates a traceid for once a request
 func GenerateTraceID() string { return uuid.NewV4().String() }

@@ -9,7 +9,7 @@ func TestArray(t *testing.T) {
 	s := "*1\r\n$5\r\nhello\r\nabc"
 	r := bytes.NewBufferString(s)
 	t.Log(r.Len())
-	d := NewDecoderRESP(r)
+	d := NewDecoder(r)
 	size, err := d.Array()
 	if err != nil {
 		t.Fatal(err)

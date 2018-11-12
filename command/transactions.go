@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
 	"gitlab.meitu.com/platform/thanos/metrics"
-	"gitlab.meitu.com/platform/thanos/resp"
 )
 
 // Multi starts a transaction which will block subsequent commands until 'exec'

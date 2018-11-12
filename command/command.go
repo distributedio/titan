@@ -84,16 +84,20 @@ type TxnCommand func(ctx *Context, txn *db.Transaction) (OnCommit, error)
 
 // Call a command
 func Call(ctx *Context) {
-	name := strings.ToLower(ctx.Name)
+	ctx.Name = strings.ToLower(ctx.Name)
 
-	if name != "auth" &&
+	if ctx.Name != "auth" &&
 		ctx.Server.RequirePass != "" &&
 		ctx.Client.Authenticated == false {
 		resp.ReplyError(ctx.Out, "NOAUTH Authentication required.")
 		return
 	}
 	// Exec all queued commands if this is an exec command
-	if name == "exec" {
+	if ctx.Name == "exec" {
+		if len(ctx.Args) != 0 {
+			resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name))
+			return
+		}
 		// Exec must begin with multi
 		if !ctx.Client.Multi {
 			resp.ReplyError(ctx.Out, "ERR EXEC without MULTI")
@@ -105,7 +109,7 @@ func Call(ctx *Context) {
 		return
 	}
 	// Discard all queued commands and return
-	if name == "discard" {
+	if ctx.Name == "discard" {
 		if !ctx.Client.Multi {
 			resp.ReplyError(ctx.Out, "ERR DISCARD without MULTI")
 			return
@@ -116,25 +120,30 @@ func Call(ctx *Context) {
 		return
 	}
 
-	cmdInfoCommand, ok := commands[name]
+	cmdInfo, ok := commands[ctx.Name]
 	if !ok {
-		resp.ReplyError(ctx.Out, "ERR unknown command '"+ctx.Name+"'")
+		resp.ReplyError(ctx.Out, ErrUnKnownCommand(ctx.Name))
 		return
 	}
 	argc := len(ctx.Args) + 1 // include the command name
-	arity := cmdInfoCommand.Cons.Arity
+	arity := cmdInfo.Cons.Arity
+
 	if arity > 0 && argc != arity {
-		resp.ReplyError(ctx.Out, "ERR wrong number of arguments for '"+ctx.Name+"' command")
+		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name))
 		return
 	}
 
 	if arity < 0 && argc < -arity {
-		resp.ReplyError(ctx.Out, "ERR wrong number of arguments for '"+ctx.Name+"' command")
+		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name))
 		return
 	}
 
 	// We now in a multi block, queue the command and return
 	if ctx.Client.Multi {
+		if ctx.Name == "multi" {
+			resp.ReplyError(ctx.Out, ErrMultiNested.Error())
+			return
+		}
 		commands := ctx.Client.Commands
 		commands = append(commands, &context.Command{Name: ctx.Name, Args: ctx.Args})
 		ctx.Client.Commands = commands
@@ -156,7 +165,7 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	name := strings.ToLower(ctx.Name)
 	cmd, ok := txnCommands[name]
 	if !ok {
-		return nil, errors.New("ERR unknown command '" + ctx.Name + "'")
+		return nil, errors.New(ErrUnKnownCommand(ctx.Name))
 	}
 	feedMonitors(ctx)
 	return cmd(ctx, txn)

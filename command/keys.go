@@ -326,7 +326,10 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return func() {
 		resp.ReplyArray(ctx.Out, 2)
 		resp.ReplyBulkString(ctx.Out, string(end))
-		BytesArray(ctx.Out, list)()
+		resp.ReplyArray(ctx.Out, len(list))
+		for i := range list {
+			resp.ReplyBulkString(ctx.Out, string(list[i]))
+		}
 	}, nil
 
 }

@@ -86,11 +86,11 @@ var (
 )
 
 //ErrUnKnownCommand return RedisError of the cmd
-func ErrUnKnownCommand(cmd string) error {
-	return fmt.Errorf(UnKnownCommandStr, cmd)
+func ErrUnKnownCommand(cmd string) string {
+	return fmt.Sprintf(UnKnownCommandStr, cmd)
 }
 
 // ErrWrongArgs return RedisError of the cmd
-func ErrWrongArgs(cmd string) error {
-	return fmt.Errorf(WrongArgs, cmd)
+func ErrWrongArgs(cmd string) string {
+	return fmt.Sprintf(WrongArgs, cmd)
 }

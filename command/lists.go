@@ -91,11 +91,11 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	args := ctx.Args
 	key := []byte(args[0])
 
-	start, err := strconv.ParseInt(string(args[1]), 10, 64)
+	start, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
-	stop, err := strconv.ParseInt(string(args[2]), 10, 64)
+	stop, err := strconv.ParseInt(args[2], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -109,13 +109,15 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if !lst.Exist() {
-		//TODO bug
-		return BytesArray(ctx.Out, nil), nil
+		return BulkString(ctx.Out, "empty list or set"), nil
 	}
 
 	items, err := lst.Range(start, stop)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
+	}
+	if len(items) == 0 {
+		return BulkString(ctx.Out, "empty list or set"), nil
 	}
 	return BytesArray(ctx.Out, items), nil
 }
@@ -221,7 +223,7 @@ func LRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if !lst.Exist() {
 		return Integer(ctx.Out, 0), nil
 	}
-	count, err := lst.LRem([]byte(ctx.Args[1]), n)
+	count, err := lst.LRem([]byte(ctx.Args[2]), n)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -282,7 +284,7 @@ func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return BulkString(ctx.Out, "OK"), nil
+	return SimpleString(ctx.Out, "OK"), nil
 }
 
 //RPop remove and get the last element in a list
@@ -334,7 +336,7 @@ func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if !listdst.Exist() {
-		listdst, err = txn.NewList([]byte(ctx.Args[1]), len(ctx.Args)-1)
+		listdst, err = txn.NewList([]byte(ctx.Args[0]), len(ctx.Args)-1)
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
@@ -357,13 +359,13 @@ func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if !lst.Exist() {
-		lst, err = txn.NewList([]byte(ctx.Args[1]), len(ctx.Args)-1)
+		lst, err = txn.NewList([]byte(ctx.Args[0]), len(ctx.Args)-1)
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
 	}
 	for _, val := range ctx.Args[1:] {
-		if err := lst.LPush([]byte(val)); err != nil {
+		if err := lst.RPush([]byte(val)); err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
 	}

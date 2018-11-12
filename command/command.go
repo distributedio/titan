@@ -120,13 +120,13 @@ func Call(ctx *Context) {
 		return
 	}
 
-	cmdInfo, ok := commands[ctx.Name]
+	cmdInfoCommand, ok := commands[ctx.Name]
 	if !ok {
 		resp.ReplyError(ctx.Out, ErrUnKnownCommand(ctx.Name))
 		return
 	}
 	argc := len(ctx.Args) + 1 // include the command name
-	arity := cmdInfo.Cons.Arity
+	arity := cmdInfoCommand.Cons.Arity
 
 	if arity > 0 && argc != arity {
 		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name))

@@ -27,6 +27,11 @@ func IsRetryableError(err error) bool {
 	return kv.IsRetryableError(err)
 }
 
+func IsConflictError(err error) bool {
+	return kv.ErrLockConflict.Equal(err)
+
+}
+
 func RunInNewTxn(store Storage, retryable bool, f func(txn kv.Transaction) error) error {
 	return kv.RunInNewTxn(store, retryable, f)
 }

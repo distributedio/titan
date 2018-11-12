@@ -3,6 +3,7 @@ package command
 import (
 	"strconv"
 
+	"gitlab.meitu.com/platform/thanos/metrics"
 	"gitlab.meitu.com/platform/thanos/resp"
 )
 
@@ -21,6 +22,8 @@ func Auth(ctx *Context) {
 		resp.ReplyError(ctx.Out, "ERR invalid password")
 	}
 	ctx.Client.Authenticated = true
+	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(ctx.Client.Namespace).Dec()
+	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(string(namespace)).Inc()
 	ctx.Client.Namespace = string(namespace)
 	ctx.Client.Authenticated = true
 	resp.ReplySimpleString(ctx.Out, "OK")

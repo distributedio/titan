@@ -110,6 +110,7 @@ func (obj *Object) String() string {
 		UUIDString(obj.ID), obj.Type, obj.Encoding, obj.CreatedAt, obj.UpdatedAt, obj.ExpireAt)
 }
 
+// Object new object thougth key
 func (txn *Transaction) Object(key []byte) (*Object, error) {
 	obj := &Object{}
 	mkey := MetaKey(txn.db, key)

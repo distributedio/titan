@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/encoding/resp"
 )
 
 // Get the value of key
@@ -126,7 +125,7 @@ func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	for i, str := range strs {
 		if str == nil || !str.Exist() {
-			resp.ReplyNullBulkString(ctx.Out)
+			values[i] = nil
 			continue
 		}
 		values[i], _ = str.Get()

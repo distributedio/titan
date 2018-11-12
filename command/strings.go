@@ -339,9 +339,18 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-//setrange key offset value
+//Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	offset, err := strconv.Atoi(string(ctx.Args[1]))
+	if err != nil {
+		return nil, ErrInteger
+	}
+
 	key := []byte(ctx.Args[0])
+	if offset < 0 || offset > MaxRangeInteger {
+		return nil, ErrMaximum
+	}
+
 	str, err := txn.String(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -350,34 +359,17 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	offset, err := strconv.Atoi(string(ctx.Args[1]))
-	if err != nil {
-		return nil, ErrInteger
-	}
-
-	if offset < 0 || offset > MaxRangeInteger {
-		return nil, ErrMaximum
-	}
 	//Non-existing keys are considered as empty strings, so this command will make sure it holds a string large enough to be able to set value at offset.
 	if !str.Exist() {
 		str = txn.NewString(key)
-		val := make([]byte, 0)
-		value, _ := str.SetRange(val, int64(offset), []byte(ctx.Args[2]))
-		return Integer(ctx.Out, int64(len(value))), nil
 	}
+
 	// If the offset is larger than the current length of the string at key, the string is padded with zero-bytes to make offset fit.
-	value, err := str.Get()
+	val, err := str.SetRange(int64(offset), []byte(ctx.Args[2]))
 	if err != nil {
-		if err == db.ErrKeyNotFound {
-			return nil, err
-		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	value, err = str.SetRange(value, int64(offset), []byte(ctx.Args[2]))
-	if err != nil {
-		return nil, err
-	}
-	return Integer(ctx.Out, int64(len(value))), nil
+	return Integer(ctx.Out, int64(len(val))), nil
 
 }
 

@@ -361,7 +361,6 @@ func TestStringSetRange(t *testing.T) {
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), ErrMaximum.Error())
 }
-
 func TestStringIncr(t *testing.T) {
 	args := make([]string, 1)
 	args[0] = "incr"

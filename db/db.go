@@ -191,7 +191,7 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 		obj := txn.NewString(key)
 		if data, ok := mdata[string(key)]; ok {
 			if err := obj.decode(data); err != nil {
-				zap.L().Warn("strings decode failed",
+				zap.L().Error("strings decode failed",
 					zap.ByteString("key", key),
 					zap.Error(err))
 			}

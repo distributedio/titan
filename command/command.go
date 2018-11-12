@@ -83,31 +83,16 @@ func Call(ctx *Context) {
 		ctx.Server.RequirePass != "" &&
 		ctx.Client.Authenticated == false {
 		resp.ReplyError(ctx.Out, ErrNoAuth.Error())
-		zap.L().Error("reject client connect",
-			zap.Int64("clientid", ctx.Client.ID),
-			zap.String("command", ctx.Name),
-			zap.String("traceid", ctx.TraceID),
-			zap.Error(ErrNoAuth))
 		return
 	}
 	// Exec all queued commands if this is an exec command
 	if ctx.Name == "exec" {
 		if len(ctx.Args) != 0 {
-			zap.L().Error("command wrong args",
-				zap.Int64("clientid", ctx.Client.ID),
-				zap.String("command", ctx.Name),
-				zap.String("traceid", ctx.TraceID),
-				zap.Error(ErrWrongArgs(ctx.Name)))
 			resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
 			return
 		}
 		// Exec must begin with multi
 		if !ctx.Client.Multi {
-			zap.L().Error("command exec failed",
-				zap.Int64("clientid", ctx.Client.ID),
-				zap.String("command", ctx.Name),
-				zap.String("traceid", ctx.TraceID),
-				zap.Error(ErrExec))
 			resp.ReplyError(ctx.Out, ErrExec.Error())
 			return
 		}
@@ -119,11 +104,6 @@ func Call(ctx *Context) {
 	// Discard all queued commands and return
 	if ctx.Name == "discard" {
 		if !ctx.Client.Multi {
-			zap.L().Error("command discard failed",
-				zap.Int64("clientid", ctx.Client.ID),
-				zap.String("command", ctx.Name),
-				zap.String("traceid", ctx.TraceID),
-				zap.Error(ErrDiscard))
 			resp.ReplyError(ctx.Out, ErrDiscard.Error())
 			return
 		}
@@ -135,11 +115,6 @@ func Call(ctx *Context) {
 
 	cmdInfoCommand, ok := commands[ctx.Name]
 	if !ok {
-		zap.L().Error("command is not found",
-			zap.Int64("clientid", ctx.Client.ID),
-			zap.String("command", ctx.Name),
-			zap.String("traceid", ctx.TraceID),
-			zap.Error(ErrUnKnownCommand(ctx.Name)))
 		resp.ReplyError(ctx.Out, ErrUnKnownCommand(ctx.Name).Error())
 		return
 	}
@@ -147,21 +122,11 @@ func Call(ctx *Context) {
 	arity := cmdInfoCommand.Cons.Arity
 
 	if arity > 0 && argc != arity {
-		zap.L().Error("command wrong args",
-			zap.Int64("clientid", ctx.Client.ID),
-			zap.String("command", ctx.Name),
-			zap.String("traceid", ctx.TraceID),
-			zap.Error(ErrWrongArgs(ctx.Name)))
 		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
 		return
 	}
 
 	if arity < 0 && argc < -arity {
-		zap.L().Error("command wrong args",
-			zap.Int64("clientid", ctx.Client.ID),
-			zap.String("command", ctx.Name),
-			zap.String("traceid", ctx.TraceID),
-			zap.Error(ErrWrongArgs(ctx.Name)))
 		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
 		return
 	}
@@ -169,11 +134,6 @@ func Call(ctx *Context) {
 	// We now in a multi block, queue the command and return
 	if ctx.Client.Multi {
 		if ctx.Name == "multi" {
-			zap.L().Error("command multi failed",
-				zap.Int64("clientid", ctx.Client.ID),
-				zap.String("command", ctx.Name),
-				zap.String("traceid", ctx.TraceID),
-				zap.Error(ErrMultiNested))
 			resp.ReplyError(ctx.Out, ErrMultiNested.Error())
 			return
 		}

@@ -196,7 +196,7 @@ func StartZT(db *DB, conf *conf.ZT) {
 	// check leader and fill the channel
 	prefix := toZTKey(nil)
 	tick := time.Tick(conf.Interval)
-	for _ = range tick {
+	for range tick {
 		isLeader, err := isLeader(db, sysZTLeader, time.Duration(sysZTLeaderFlushInterval))
 		if err != nil {
 			zap.L().Error("[ZT] check ZT leader failed", zap.Error(err))

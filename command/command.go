@@ -10,6 +10,7 @@ import (
 	"github.com/shafreeck/retry"
 	"gitlab.meitu.com/platform/thanos/context"
 	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/metrics"
 	"gitlab.meitu.com/platform/thanos/resp"
 )
 
@@ -175,30 +176,48 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
 		retry.Ensure(ctx, func() error {
+			mt := metrics.GetMetrics()
 			txn, err := ctx.Client.DB.Begin()
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+string(err.Error()))
 				return err
 			}
 
 			onCommit, err := cmd(ctx, txn)
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
 				txn.Rollback()
 				return err
 			}
 
+			start := time.Now()
+			mtFunc := func() {
+				cost := time.Since(start).Seconds()
+				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			}
 			if err := txn.Commit(ctx); err != nil {
+
 				txn.Rollback()
+				if db.IsConflictError(err) {
+					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				}
 				if db.IsRetryableError(err) {
+					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mtFunc()
 					return retry.Retriable(err)
 				}
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				mtFunc()
 				return err
 			}
+
 			if onCommit != nil {
 				onCommit()
 			}
+			mtFunc()
 			return nil
 		})
 	}
@@ -238,7 +257,10 @@ func NewExecutor() *Executor {
 
 // Execute a command
 func (e *Executor) Execute(ctx *Context) {
+	start := time.Now()
 	Call(ctx)
+	cost := time.Since(start).Seconds()
+	metrics.GetMetrics().CommandCallHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 }
 
 // InfoCommand combines command procedure, constraint and statistics

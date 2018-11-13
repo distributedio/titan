@@ -137,7 +137,6 @@ func (txn *Transaction) Object(key []byte) (*Object, error) {
 func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	mkey := MetaKey(txn.db, key)
 	dkey := DataKey(txn.db, obj.ID)
-	now := Now()
 	if err := txn.t.Delete(mkey); err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 
 	}
 
-	if obj.ExpireAt > now {
+	if obj.ExpireAt > 0 {
 		if err := unExpireAt(txn.t, mkey, obj.ExpireAt); err != nil {
 			return err
 		}

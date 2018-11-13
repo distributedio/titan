@@ -69,8 +69,8 @@ pd-addrs = "tikv://172.16.201.74:2379"
 #type:        string
 #rules:       nonempty
 #description: the default log path
-#default:     logs/tikv.log
-#path = "logs/tikv.log"
+#default:     logs/tikv
+#path = "logs/tikv"
 
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
@@ -98,13 +98,13 @@ pd-addrs = "tikv://172.16.201.74:2379"
 
 #type:        string
 #description: the default log path
-#default:     logs/titan.log
-#path = "logs/titan.log"
+#default:     logs/titan
+#path = "logs/titan"
 
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-level = "debug"
+#level = "debug"
 
 #type:        bool
 #rules:       boolean

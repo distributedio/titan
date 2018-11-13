@@ -25,12 +25,19 @@ type List interface {
 // GetList returns a List object
 // if key is zip return zlist otherwise return llist
 // if key is not found, return null object but return error nil
-func GetList(txn *Transaction, key []byte) (List, error) {
+func GetList(txn *Transaction, key []byte, count int) (List, error) {
+	var lst List
+	if count < ListZipThreshould {
+		lst = NewLList(txn, key)
+	} else {
+		lst = NewZList(txn, key)
+	}
+
 	metaKey := MetaKey(txn.db, key)
 	val, err := txn.t.Get(metaKey)
 	if err != nil {
 		if IsErrNotFound(err) { // error NotFound
-			return &LList{}, nil
+			return lst, nil
 		}
 		return nil, err
 	}
@@ -44,7 +51,7 @@ func GetList(txn *Transaction, key []byte) (List, error) {
 	}
 
 	if IsExpired(obj, Now()) {
-		return &LList{}, nil
+		return lst, nil
 	}
 
 	if obj.Encoding == ObjectEncodingLinkedlist {
@@ -53,13 +60,4 @@ func GetList(txn *Transaction, key []byte) (List, error) {
 		return GetZList(txn, metaKey, obj, val)
 	}
 	return nil, ErrEncodingMismatch
-}
-
-//NewList create new list object
-func NewList(txn *Transaction, key []byte, count int) (List, error) {
-	if count < ListZipThreshould {
-		return NewLList(txn, key)
-	}
-	return NewZList(txn, key)
-
 }

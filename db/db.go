@@ -161,13 +161,8 @@ func (txn *Transaction) Rollback() error {
 }
 
 // List return a lists object, a new list is created if the key dose not exist.
-func (txn *Transaction) List(key []byte) (List, error) {
-	return GetList(txn, key)
-}
-
-// NewList returns a new list object
-func (txn *Transaction) NewList(key []byte, count int) (List, error) {
-	return NewList(txn, key, count)
+func (txn *Transaction) List(key []byte, count int) (List, error) {
+	return GetList(txn, key, count)
 }
 
 // String returns a string object, but the object is unsafe, maybe the object is expire,or not exist

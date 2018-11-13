@@ -110,7 +110,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
-	//go StartZT(sysdb, conf)
+	//go StartZT(sysdb, &conf.ZT)
 
 	return rds, nil
 }
@@ -160,9 +160,24 @@ func (txn *Transaction) Rollback() error {
 	return txn.t.Rollback()
 }
 
+// listOption for get a list
+type listOption struct {
+	useZip bool
+}
+
+// ListOption customize how to get a list
+type ListOption func(o *listOption)
+
+// UseZip will create a ziplist if set when the key is missing
+func UseZip() ListOption {
+	return func(o *listOption) {
+		o.useZip = true
+	}
+}
+
 // List return a lists object, a new list is created if the key dose not exist.
-func (txn *Transaction) List(key []byte, count int) (List, error) {
-	return GetList(txn, key, count)
+func (txn *Transaction) List(key []byte, opts ...ListOption) (List, error) {
+	return GetList(txn, key, opts...)
 }
 
 // String returns a string object, but the object is unsafe, maybe the object is expire,or not exist

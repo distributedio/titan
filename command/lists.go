@@ -8,13 +8,24 @@ import (
 	"gitlab.meitu.com/platform/titan/db"
 )
 
+var (
+	// ListZipThreshold indicates to create a ziplist when it is exceeded to push elements
+	ListZipThreshold = 100
+)
+
 // LPush inserts an entry to the head of the list
 func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	args := ctx.Args
 
-	// number of args should be checked by caller
+	// Create a ziplist if lpush with too much items
+	var opts []db.ListOption
+	if len(args[1:]) > ListZipThreshold {
+		opts = append(opts, db.UseZip())
+	}
+
+	// Number of args should be checked by caller
 	key := []byte(args[0])
-	lst, err := txn.List(key, len(args)-1)
+	lst, err := txn.List(key, opts...)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -33,7 +44,7 @@ func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // LPushx prepend a value to a list, only if the list exists
 func LPushx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -59,7 +70,7 @@ func LPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	// number of args should be checked by caller
 	key := []byte(args[0])
 
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -93,7 +104,7 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, ErrInteger
 	}
 
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -132,7 +143,7 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	pivot := []byte(ctx.Args[2])
 	value := []byte(ctx.Args[3])
 
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -159,7 +170,7 @@ func LIndex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, ErrInteger
 	}
 
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -183,7 +194,7 @@ func LIndex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 //LLen get the length of a list
 func LLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -205,7 +216,7 @@ func LRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -234,7 +245,7 @@ func LTrim(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -256,7 +267,7 @@ func LTrim(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 //LSet set the value of an element in a list by its index
 func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -283,7 +294,7 @@ func LSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 //RPop remove and get the last element in a list
 func RPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -303,7 +314,7 @@ func RPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // RPopLPush remove the last element in a list, prepend it to another list and return it
 func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	listsrc, err := txn.List([]byte(ctx.Args[0]), 0)
+	listsrc, err := txn.List([]byte(ctx.Args[0]))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -320,7 +331,7 @@ func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	// create dst list on not exist
-	listdst, err := txn.List([]byte(ctx.Args[1]), len(ctx.Args)-1)
+	listdst, err := txn.List([]byte(ctx.Args[1]))
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -335,8 +346,16 @@ func RPopLPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // RPush append one or multiple values to a list
 func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(ctx.Args[0])
-	lst, err := txn.List(key, len(ctx.Args)-1)
+	args := ctx.Args
+	key := []byte(args[0])
+
+	// Create a ziplist if lpush with too much items
+	var opts []db.ListOption
+	if len(args[1:]) > ListZipThreshold {
+		opts = append(opts, db.UseZip())
+	}
+
+	lst, err := txn.List(key, opts...)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch
@@ -344,7 +363,7 @@ func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	for _, val := range ctx.Args[1:] {
+	for _, val := range args[1:] {
 		if err := lst.RPush([]byte(val)); err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
@@ -355,7 +374,7 @@ func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // RPushx append a value to a list, only if the list exists
 func RPushx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	lst, err := txn.List(key, 0)
+	lst, err := txn.List(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
 			return nil, ErrTypeMismatch

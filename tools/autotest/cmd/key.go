@@ -205,3 +205,16 @@ func (ek *ExampleKey) ObjectEqualErr(t *testing.T, errValue string, args ...inte
 	_, err := redis.String(ek.conn.Do("object", tmp...))
 	assert.EqualError(t, err, errValue)
 }
+
+//Persist verify that the return value of the expire key operation is correct
+func (ek *ExampleKey) PersistEqual(t *testing.T, key string, expectValue int) {
+	reply, err := redis.Int(ek.conn.Do("persist", key))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+//PersistEqualAtErr verify that the err return value of the expire key operation is correct
+func (ek *ExampleKey) PersistEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ek.conn.Do("persist", args...)
+	assert.EqualError(t, err, errValue)
+}

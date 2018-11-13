@@ -128,7 +128,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.PExpireEqual(t, "key-set", 1, 0)
 	ac.ek.PExpireEqual(t, "key-set", 0, 0)
 
-	at := time.Now().Unix() + 2
+	at := time.Now().Unix() + 1
 	var key []string
 	for i := 0; i < 4000; i++ {
 		num := strconv.Itoa(i)
@@ -138,18 +138,25 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.TypeEqual(t, "zkey-listx", "list")
 	ac.ek.ObjectEqual(t, "zkey-listx", "ziplist")
 	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 1)
 	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 0)
 
 	//test PExpire
-	at = (time.Now().Unix() + 2) * 1000
+	at = (time.Now().Unix() + 1) * 1000
 	ac.el.LpushEqual(t, "key-setz", "value")
 	ac.ek.TypeEqual(t, "key-setz", "list")
 	ac.ek.ObjectEqual(t, "key-setz", "linkedlist")
 	ac.ek.PExpireAtEqual(t, "key-setz", int(at), 1)
-	ac.ek.TTLEqual(t, "key-setz", 1)
-	time.Sleep(time.Second * 2)
+	ac.ek.TTLEqual(t, "key-setz", 0)
+	time.Sleep(time.Second * 1)
 	ac.ek.PExpireAtEqual(t, "key-setz", int(at), 0)
+
+	at = time.Now().Unix() + 1
+	ac.es.SetEqual(t, "zkey-listx", "value")
+	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
+	ac.ek.PersistEqual(t, "zkey-listx", 1)
+	time.Sleep(time.Second * 1)
+	ac.ek.PersistEqual(t, "zkey-listx", 1)
 }
 
 //SystemCase check system case

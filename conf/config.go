@@ -2,8 +2,8 @@ package conf
 
 import "time"
 
-//Thanos configuration center
-type Thanos struct {
+//Titan configuration center
+type Titan struct {
 	Server      Server     `cfg:"server"`
 	Status      Status     `cfg:"status"`
 	TikvLog     TikvLogger `cfg:"tikv-logger"`

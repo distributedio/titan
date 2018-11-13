@@ -20,7 +20,7 @@ func GetZList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (*ZList
 }
 
 //NewZList create new list object ,the key is not checked for presence
-func NewZList(txn *Transaction, key []byte) (List, error) {
+func NewZList(txn *Transaction, key []byte) List {
 	metaKey := MetaKey(txn.db, key)
 	ts := Now()
 	obj := Object{
@@ -37,11 +37,7 @@ func NewZList(txn *Transaction, key []byte) (List, error) {
 		rawMetaKey: metaKey,
 		txn:        txn,
 	}
-	b, err := l.Marshal()
-	if err != nil {
-		return nil, err
-	}
-	return l, txn.t.Set(metaKey, b)
+	return l
 }
 
 // ZList ZListMeta defined zip list, with only objectMeta info.

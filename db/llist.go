@@ -45,13 +45,13 @@ func GetLList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (List, 
 }
 
 //NewLList creates a new list
-func NewLList(txn *Transaction, key []byte) (List, error) {
-	ts := Now()
+func NewLList(txn *Transaction, key []byte) List {
+	now := Now()
 	metaKey := MetaKey(txn.db, key)
 	obj := Object{
 		ExpireAt:  0,
-		CreatedAt: ts,
-		UpdatedAt: ts,
+		CreatedAt: now,
+		UpdatedAt: now,
 		Type:      ObjectList,
 		ID:        UUID(),
 		Encoding:  ObjectEncodingLinkedlist,
@@ -68,7 +68,7 @@ func NewLList(txn *Transaction, key []byte) (List, error) {
 	}
 	l.rawDataKeyPrefix = DataKey(txn.db, l.Object.ID)
 	l.rawDataKeyPrefix = append(l.rawDataKeyPrefix, []byte(Separator)...)
-	return l, txn.t.Set(metaKey, l.Marshal())
+	return l
 
 }
 
@@ -592,7 +592,7 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 
 // Exist checks if a list exists
 func (l *LList) Exist() bool {
-	if l.rawDataKeyPrefix == nil {
+	if l.Len == 0 {
 		return false
 	}
 	return true

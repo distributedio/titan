@@ -261,7 +261,7 @@ func TestStringSet(t *testing.T) {
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), "OK")
 	EqualGet(t, key, "value", nil)
-	EqualMGet(t, []string{key}, []string{"value"}, nil)
+	// EqualMGet(t, []string{key}, []string{"value"}, nil)
 }
 
 func TestStringSetEx(t *testing.T) {

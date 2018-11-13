@@ -89,12 +89,12 @@ Visit [Thanos](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=29745
 - [x] linsert
 - [x] lindex
 - [x] llen
-- [x] lrem
 - [x] lset
-- [x] ltrim
 - [x] lpush
 - [x] lpop
 - [x] lpushhx
+- [ ] ltrim
+- [ ] lrem
 - [ ] rpop
 - [ ] rpoplpush
 - [ ] rpush

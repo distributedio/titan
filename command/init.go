@@ -14,13 +14,9 @@ func init() {
 		"lpush":   LPush,
 		"lpushx":  LPushx,
 		"lrange":  LRange,
-		//"lrem":      LRem,
-		"lset": LSet,
-		//"ltrim":     LTrim,
-		//"rpop":      RPop,
-		//"rpoplpush": RPopLPush,
-		"rpush":  RPush,
-		"rpushx": RPushx,
+		"lset":    LSet,
+		"rpush":   RPush,
+		"rpushx":  RPushx,
 
 		// strings
 		"get":      Get,
@@ -109,13 +105,9 @@ func init() {
 		"lpush":   Desc{Proc: AutoCommit(LPush), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
 		"lpushx":  Desc{Proc: AutoCommit(LPushx), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
 		"lrange":  Desc{Proc: AutoCommit(LRange), Cons: Constraint{4, flags("r"), 1, 1, 1}},
-		//"lrem":      Desc{Proc: AutoCommit(LRem), Cons: Constraint{4, flags("w"), 1, 1, 1}},
-		"lset": Desc{Proc: AutoCommit(LSet), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
-		//"ltrim":     Desc{Proc: AutoCommit(LTrim), Cons: Constraint{4, flags("w"), 1, 1, 1}},
-		//"rpop":      Desc{Proc: AutoCommit(RPop), Cons: Constraint{2, flags("wF"), 1, 1, 1}},
-		//"rpoplpush": Desc{Proc: AutoCommit(RPopLPush), Cons: Constraint{4, flags("wms"), 1, 2, 1}},
-		"rpush":  Desc{Proc: AutoCommit(RPush), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
-		"rpushx": Desc{Proc: AutoCommit(RPushx), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"lset":    Desc{Proc: AutoCommit(LSet), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
+		"rpush":   Desc{Proc: AutoCommit(RPush), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"rpushx":  Desc{Proc: AutoCommit(RPushx), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
 
 		// strings
 		"get":         Desc{Proc: AutoCommit(Get), Cons: Constraint{2, flags("rF"), 1, 1, 1}},

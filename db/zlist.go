@@ -8,72 +8,56 @@ import (
 )
 
 // GetZList generate List objectm with auto reation, if zip is true, zipped list will be choose
-func GetZList(txn *Transaction, metaKey []byte) (*ZList, error) {
-	ts := Now()
-	val, err := txn.t.Get(metaKey)
-	if err != nil {
-		if IsErrNotFound(err) { // error NotFound
-			obj := Object{
-				ExpireAt:  0,
-				CreatedAt: ts,
-				UpdatedAt: ts,
-				Type:      ObjectList,
-				ID:        UUID(),
-				Encoding:  ObjectEncodingLinkedlist,
-			}
-			obj.Encoding = ObjectEncodingZiplist
-			l := &ZList{
-				Object:     obj,
-				value:      pb.Zlistvalue{},
-				rawMetaKey: metaKey,
-				txn:        txn,
-			}
-
-			if b, err := l.Marshal(); err != nil {
-				return nil, err
-			} else {
-				if err := txn.t.Set(metaKey, b); err != nil {
-					return nil, err
-				}
-				//PutZList(txn, metaKey)
-				return l, nil
-			}
-		}
+func GetZList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (*ZList, error) {
+	l := &ZList{
+		rawMetaKey: metaKey,
+		txn:        txn,
+	}
+	if err := l.Unmarshal(obj, val); err != nil {
 		return nil, err
 	}
-
-	// exist
-	obj, err := DecodeObject(val)
-	if err != nil {
-		return nil, err
-	}
-	if obj.Type != ObjectList {
-		return nil, ErrTypeMismatch
-	}
-	if IsExpired(obj, ts) {
-		return nil, ErrKeyNotFound
-	}
-	if obj.Encoding == ObjectEncodingZiplist {
-		// found last zlist object
-		l := &ZList{
-			rawMetaKey: metaKey,
-			txn:        txn,
-		}
-		if err = l.Unmarshal(obj, val); err != nil {
-			return nil, err
-		}
-		return l, nil
-	} else {
-		return nil, ErrEncodingMismatch
-	}
+	return l, nil
 }
 
-// ZListMeta defined zip list, with only objectMeta info.
+//NewZList create new list object ,the key is not checked for presence
+func NewZList(txn *Transaction, key []byte) (List, error) {
+	metaKey := MetaKey(txn.db, key)
+	ts := Now()
+	obj := Object{
+		ExpireAt:  0,
+		CreatedAt: ts,
+		UpdatedAt: ts,
+		Type:      ObjectList,
+		ID:        UUID(),
+		Encoding:  ObjectEncodingZiplist,
+	}
+	l := &ZList{
+		Object:     obj,
+		value:      pb.Zlistvalue{},
+		rawMetaKey: metaKey,
+		txn:        txn,
+	}
+	b, err := l.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	return l, txn.t.Set(metaKey, b)
+}
+
+// ZList ZListMeta defined zip list, with only objectMeta info.
 type ZList struct {
 	Object
 	rawMetaKey []byte
 	value      pb.Zlistvalue //[][]byte
 	txn        *Transaction
+}
+
+//Exist if zlist is  effective return true ,otherwise return false
+func (l *ZList) Exist() bool {
+	if l.value.V == nil {
+		return false
+	}
+	return true
 }
 
 // Marshal encode zlist into byte slice
@@ -88,11 +72,11 @@ func (l *ZList) Marshal() ([]byte, error) {
 
 // zlistCommit try to marshal zlist values and then do set
 func (l *ZList) zlistCommit() error {
-	if b, err := l.Marshal(); err != nil {
+	b, err := l.Marshal()
+	if err != nil {
 		return err
-	} else {
-		return l.txn.t.Set(l.rawMetaKey, b)
 	}
+	return l.txn.t.Set(l.rawMetaKey, b)
 }
 
 // Unmarshal parse meta data into meta field
@@ -107,7 +91,7 @@ func (l *ZList) Unmarshal(obj *Object, b []byte) (err error) {
 // Length return z list length
 func (l *ZList) Length() int64 { return int64(len(l.value.V)) }
 
-// ZLPush append new elements to the object values
+//LPush append new elements to the object values
 func (l *ZList) LPush(data ...[]byte) (err error) {
 	cv := make([][]byte, len(data), len(data)+len(l.value.V))
 
@@ -153,7 +137,7 @@ func (l *ZList) Insert(pivot, v []byte, before bool) error {
 	}
 
 	if !before {
-		index += 1
+		index++
 	}
 
 	cv := make([][]byte, len(l.value.V)+1, len(l.value.V)+1)
@@ -165,7 +149,7 @@ func (l *ZList) Insert(pivot, v []byte, before bool) error {
 	return l.zlistCommit()
 }
 
-// Lindex return the value at index
+//Index return the value at index
 func (l *ZList) Index(n int64) (data []byte, err error) {
 	if n < 0 {
 		n += int64(len(l.value.V))
@@ -221,6 +205,7 @@ func (l *ZList) Range(left, right int64) (value [][]byte, err error) {
 	return l.value.V[left : right+1], nil
 }
 
+// LTrim get keys from start index to stop index
 func (l *ZList) LTrim(start int64, stop int64) error {
 	if start < 0 {
 		if start = int64(len(l.value.V)) + start; start < 0 {
@@ -242,6 +227,7 @@ func (l *ZList) LTrim(start int64, stop int64) error {
 	return l.zlistCommit()
 }
 
+// LRem begin delete the count of n key from v
 func (l *ZList) LRem(v []byte, n int64) (int, error) {
 	cv := make([][]byte, len(l.value.V), len(l.value.V))
 	count := 0
@@ -302,8 +288,8 @@ func (l *ZList) TransferToLList(dbns []byte, dbid byte, key []byte) (*LList, err
 				Encoding:  ObjectEncodingLinkedlist,
 			},
 			Len:    0,
-			Lindex: initIndex,
-			Rindex: initIndex,
+			Lindex: 0,
+			Rindex: 0,
 		},
 		txn:        l.txn,
 		rawMetaKey: l.rawMetaKey,

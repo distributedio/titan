@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"gitlab.meitu.com/platform/thanos/db/store"
+
 	"go.uber.org/zap"
 )
 
@@ -23,6 +25,7 @@ var (
 	expireMetakeyOffset   = expireTimestampOffset + 8 /*sizeof(int64)*/ + len(":")
 )
 
+// IsExpired judge object expire through now
 func IsExpired(obj *Object, now int64) bool {
 	if obj.ExpireAt == 0 || obj.ExpireAt > now {
 		return false
@@ -39,43 +42,47 @@ func expireKey(key []byte, ts int64) []byte {
 	return buf
 }
 
-func expireAt(txn *Transaction, mkey []byte, objID []byte, old int64, new int64) error {
-	oldKey := expireKey(mkey, old)
-	newKey := expireKey(mkey, new)
+func expireAt(txn store.Transaction, mkey []byte, objID []byte, oldAt int64, newAt int64) error {
+	oldKey := expireKey(mkey, oldAt)
+	newKey := expireKey(mkey, newAt)
 
-	if old > 0 {
-		if err := txn.t.Delete(oldKey); err != nil {
+	if oldAt > 0 {
+		if err := txn.Delete(oldKey); err != nil {
 			return err
 		}
 	}
 
-	if new > 0 {
-		if err := txn.t.Set(newKey, objID); err != nil {
+	if newAt > 0 {
+		if err := txn.Set(newKey, objID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func unExpireAt(txn *Transaction, mkey []byte, expireAt int64) error {
+func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
+	if expireAt == 0 {
+		return nil
+	}
 	oldKey := expireKey(mkey, expireAt)
-	if err := txn.t.Delete(oldKey); err != nil {
+	if err := txn.Delete(oldKey); err != nil {
 		return err
 	}
 	return nil
 }
 
+// StartExpire get leader from db
 func StartExpire(db *DB) error {
 	ticker := time.NewTicker(expireTick)
 	defer ticker.Stop()
-	for _ = range ticker.C {
+	for range ticker.C {
 		isLeader, err := isLeader(db, sysExpireLeader, time.Duration(sysExpireLeaderFlushInterval))
 		if err != nil {
-			zap.L().Error("check expire leader failed", zap.Error(err))
+			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
 			continue
 		}
 		if !isLeader {
-			zap.L().Debug("not expire leader")
+			zap.L().Debug("[Expire] not expire leader")
 			continue
 		}
 		runExpire(db)
@@ -103,12 +110,12 @@ func toTikvDataKey(namespace []byte, id byte, key []byte) []byte {
 func runExpire(db *DB) {
 	txn, err := db.Begin()
 	if err != nil {
-		zap.L().Error("transection begin failed", zap.Error(err))
+		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
 		return
 	}
 	iter, err := txn.t.Seek(expireKeyPrefix)
 	if err != nil {
-		zap.L().Error("seek failed", zap.Error(err))
+		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
 		txn.Rollback()
 		return
 	}
@@ -125,29 +132,40 @@ func runExpire(db *DB) {
 			break
 		}
 
-		zap.L().Debug("expire", zap.String("key", string(rawkey)))
+		zap.L().Debug("[Expire] delete metakey", zap.ByteString("mkey", mkey), zap.String("key", string(rawkey)))
 		// Delete object meta
 		if err := txn.t.Delete(mkey); err != nil {
-			zap.L().Error("delete failed", zap.Error(err))
+			zap.L().Error("[Expire] delete failed",
+				zap.ByteString("key", rawkey),
+				zap.Error(err))
 			txn.Rollback()
 			return
 		}
 		// Gc it if it is a complext data structure, the value of string is: []byte{'0'}
 		if len(objID) > 1 {
 			if err := gc(txn.t, toTikvDataKey(namespace, dbid, objID)); err != nil {
-				zap.L().Error("gc failed", zap.Error(err))
+				zap.L().Error("[Expire] gc failed",
+					zap.ByteString("key", rawkey),
+					zap.ByteString("namepace", namespace),
+					zap.Int64("dbid", int64(dbid)),
+					zap.ByteString("objid", objID),
+					zap.Error(err))
 				txn.Rollback()
 				return
 			}
 		}
 		// Remove from expire list
 		if err := txn.t.Delete(iter.Key()); err != nil {
-			zap.L().Error("delete failed", zap.Error(err))
+			zap.L().Error("[Expire] delete failed",
+				zap.ByteString("key", rawkey),
+				zap.Error(err))
 			txn.Rollback()
 			return
 		}
 		if err := iter.Next(); err != nil {
-			zap.L().Error("next failed", zap.Error(err))
+			zap.L().Error("[Expire] next failed",
+				zap.ByteString("key", rawkey),
+				zap.Error(err))
 			txn.Rollback()
 			return
 		}
@@ -156,6 +174,6 @@ func runExpire(db *DB) {
 
 	if err := txn.Commit(context.Background()); err != nil {
 		txn.Rollback()
-		zap.L().Error("commit failed", zap.Error(err))
+		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}
 }

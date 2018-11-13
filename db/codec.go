@@ -6,6 +6,7 @@ import (
 	"math"
 )
 
+// EncodeObject encode the object to binary
 func EncodeObject(obj *Object) []byte {
 	b := make([]byte, 42, 42)
 	copy(b, obj.ID[:16])
@@ -16,6 +17,7 @@ func EncodeObject(obj *Object) []byte {
 	return b
 }
 
+// DecodeObject decode the object from binary
 func DecodeObject(b []byte) (obj *Object, err error) {
 	if len(b) < ObjectEncodingLength {
 		return nil, ErrInvalidLength
@@ -32,6 +34,7 @@ func DecodeObject(b []byte) (obj *Object, err error) {
 	return obj, nil
 }
 
+// EncodeInt64  encode the int64 object to binary
 func EncodeInt64(v int64) []byte {
 	var buf bytes.Buffer
 
@@ -39,11 +42,14 @@ func EncodeInt64(v int64) []byte {
 	binary.Write(&buf, binary.BigEndian, -v)
 	return buf.Bytes()
 }
+
+// DecodeInt64 decode the int64 object from binary
 func DecodeInt64(b []byte) int64 {
 	v := int64(binary.BigEndian.Uint64(b))
 	return -v
 }
 
+// EncodeFloat64 encode the float64 object to binary
 func EncodeFloat64(v float64) []byte {
 	var buf bytes.Buffer
 	// keep the same pattern of 0.0 and -0.0
@@ -59,6 +65,7 @@ func EncodeFloat64(v float64) []byte {
 	return buf.Bytes()
 }
 
+// DecodeFloat64 decode the float64 object from binary
 func DecodeFloat64(d []byte) float64 {
 	vi := int64(binary.BigEndian.Uint64(d))
 	if vi == 0 {

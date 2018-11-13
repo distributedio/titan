@@ -2,6 +2,7 @@ package conf
 
 import "time"
 
+//Thanos configuration center
 type Thanos struct {
 	Server      Server     `cfg:"server"`
 	Status      Status     `cfg:"status"`
@@ -10,7 +11,7 @@ type Thanos struct {
 	PIDFileName string     `cfg:"pid-filename; thanos.pid; ; the file name to record connd PID"`
 }
 
-// Config is the config of titan server
+//Server config is the config of thanos server
 type Server struct {
 	Tikv          Tikv   `cfg:"tikv"`
 	Auth          string `cfg:"auth;;;client connetion auth"`
@@ -18,11 +19,13 @@ type Server struct {
 	MaxConnection int64  `cfg:"max-connection;1000;numeric;client connection count"`
 }
 
+//Tikv config is the config of tikv sdk
 type Tikv struct {
 	PdAddrs string `cfg:"pd-addrs;required; nonempty;pd address in tidb"`
 	ZT      ZT     `cfg:"zt"`
 }
 
+//ZT config is the config of zlist
 type ZT struct {
 	Wrokers    int           `cfg:"workers;5;numeric;parallel workers count"`
 	BatchCount int           `cfg:"batch;10;numeric;object transfer limitation per-transection"`
@@ -30,6 +33,7 @@ type ZT struct {
 	Interval   time.Duration `cfg:"interval;1000ms; ;Queue fill interval in milsecond"`
 }
 
+//Logger config is the config of default zap log
 type Logger struct {
 	Name       string `cfg:"name; thanos; ; the default logger name"`
 	Path       string `cfg:"path; logs/thanos.log; ; the default log path"`
@@ -38,6 +42,7 @@ type Logger struct {
 	TimeRotate string `cfg:"time-rotate; 0 0 0 * * *; ; log time rotate pattern(s m h D M W)"`
 }
 
+//TikvLogger config is the config of tikv log
 type TikvLogger struct {
 	Path       string `cfg:"path; logs/tikv.log;nonempty ; the default log path"`
 	Level      string `cfg:"level; info; ; log level(debug, info, warn, error, panic, fatal)"`
@@ -45,6 +50,7 @@ type TikvLogger struct {
 	TimeRotate string `cfg:"time-rotate; 0 0 0 * * *; ; log time rotate pattern(s m h D M W)"`
 }
 
+//Status config is the config of exported server
 type Status struct {
 	Listen string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
 }

@@ -38,6 +38,12 @@ func ContextTest(name string, args ...string) *Context {
 	}
 }
 
+func CallTest(name string, args ...string) *bytes.Buffer {
+	ctx := ContextTest(name, args...)
+	Call(ctx)
+	return ctx.Out.(*bytes.Buffer)
+}
+
 func ctxString(buf io.Writer) string {
 	return buf.(*bytes.Buffer).String()
 }

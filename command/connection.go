@@ -3,10 +3,11 @@ package command
 import (
 	"strconv"
 
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
-// Auth verify the client
+// Auth verifies the client
 func Auth(ctx *Context) {
 	args := ctx.Args
 	serverauth := []byte(ctx.Server.RequirePass)
@@ -21,9 +22,11 @@ func Auth(ctx *Context) {
 		resp.ReplyError(ctx.Out, "ERR invalid password")
 	}
 	ctx.Client.Authenticated = true
+	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(ctx.Client.Namespace).Dec()
+	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(string(namespace)).Inc()
 	ctx.Client.Namespace = string(namespace)
 	ctx.Client.Authenticated = true
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Echo the given string
@@ -55,13 +58,13 @@ func Select(ctx *Context) {
 	}
 	namespace := ctx.Client.Namespace
 	ctx.Client.DB = ctx.Server.Store.DB(namespace, idx)
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Quit asks the server to close the connection
 func Quit(ctx *Context) {
 	close(ctx.Client.Done)
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // SwapDB swaps two Redis databases

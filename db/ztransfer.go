@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"gitlab.meitu.com/platform/thanos/conf"
-	//	"gitlab.meitu.com/platform/titan/monitor"
+	"gitlab.meitu.com/platform/thanos/metrics"
 	"go.uber.org/zap"
 )
 
@@ -115,8 +115,8 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 			zap.L().Error("[ZT] error in commit transfer", zap.Error(err))
 			txn.Rollback()
 		} else {
-			//monitor.WithLabelCounter(monitor.ZTInfoType, "zlist").Add(float64(batchCount))
-			//monitor.WithLabelCounter(monitor.ZTInfoType, "keys").Add(float64(sum))
+			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("zlist").Add(float64(batchCount))
+			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("key").Add(float64(sum))
 			zap.L().Debug("[ZT] transfer zlist succeed", zap.Int("count", batchCount), zap.Int("n", sum))
 		}
 		txnstart = false
@@ -165,7 +165,7 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 	}
 	iter, err := txn.t.Seek(prefix)
 	if err != nil {
-		zap.L().Error("[ZT] error in seek", zap.Error(err))
+		zap.L().Error("[ZT] error in seek", zap.ByteString("prefix", prefix), zap.Error(err))
 		return toZTKey(nil), err
 	}
 
@@ -196,10 +196,12 @@ func StartZT(db *DB, conf *conf.ZT) {
 	// check leader and fill the channel
 	prefix := toZTKey(nil)
 	tick := time.Tick(conf.Interval)
-	for _ = range tick {
+	for range tick {
 		isLeader, err := isLeader(db, sysZTLeader, time.Duration(sysZTLeaderFlushInterval))
 		if err != nil {
-			zap.L().Error("[ZT] check ZT leader failed", zap.Error(err))
+			zap.L().Error("[ZT] check ZT leader failed",
+				zap.Int64("dbid", int64(db.ID)),
+				zap.Error(err))
 			continue
 		}
 		if !isLeader {
@@ -208,7 +210,10 @@ func StartZT(db *DB, conf *conf.ZT) {
 		}
 
 		if prefix, err = runZT(db, prefix, tick); err != nil {
-			zap.L().Error("[ZT] error in run ZT", zap.Error(err))
+			zap.L().Error("[ZT] error in run ZT",
+				zap.Int64("dbid", int64(db.ID)),
+				zap.ByteString("prefix", prefix),
+				zap.Error(err))
 			continue
 		}
 	}

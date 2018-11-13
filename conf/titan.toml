@@ -6,6 +6,7 @@
 [server]
 
 #type:        string
+#description: client connetion auth
 auth = ""
 
 #type:        string
@@ -26,7 +27,7 @@ auth = ""
 #rules:       nonempty
 #description: pd address in tidb
 #required
-pd-addrs = ""
+pd-addrs = "tikv://172.16.201.74:2379"
 
 [server.tikv.zt]
 
@@ -69,23 +70,23 @@ pd-addrs = ""
 #rules:       nonempty
 #description: the default log path
 #default:     logs/tikv.log
-#log-path = "logs/tikv.log"
+#path = "logs/tikv.log"
 
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-#log-level = "info"
+#level = "info"
 
 #type:        bool
 #rules:       boolean
 #description: true for enabling log compress
 #default:     false
-#log-compress = false
+#compress = false
 
 #type:        string
 #description: log time rotate pattern(s m h D M W)
 #default:     0 0 0 * * *
-#log-time-rotate = "0 0 0 * * *"
+#time-rotate = "0 0 0 * * *"
 
 
 [logger]
@@ -93,26 +94,25 @@ pd-addrs = ""
 #type:        string
 #description: the default logger name
 #default:     titan
-#log-name = "titan"
+#name = "titan"
 
 #type:        string
 #description: the default log path
 #default:     logs/titan.log
-#log-path = "logs/titan.log"
+#path = "logs/titan.log"
 
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-#log-level = "info"
+level = "debug"
 
 #type:        bool
 #rules:       boolean
 #description: true for enabling log compress
 #default:     false
-#log-compress = false
+#compress = false
 
 #type:        string
 #description: log time rotate pattern(s m h D M W)
 #default:     0 0 0 * * *
-#log-time-rotate = "0 0 0 * * *"
-
+#time-rotate = "0 0 0 * * *"

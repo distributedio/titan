@@ -25,6 +25,7 @@ func Auth(ctx *Context) {
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(ctx.Client.Namespace).Dec()
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(string(namespace)).Inc()
 	ctx.Client.Namespace = string(namespace)
+	ctx.Client.DB.Namespace = string(namespace)
 	ctx.Client.Authenticated = true
 	resp.ReplySimpleString(ctx.Out, OK)
 }

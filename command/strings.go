@@ -84,29 +84,29 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		unit = ui * unit
 	}
 
-	s, err := txn.String(key)
-	if err != nil && err != db.ErrKeyNotFound && err != ErrTypeMismatch {
+	obj, err := txn.Object(key)
+	if err != nil && err != db.ErrKeyNotFound {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
 	//xx
 	if flag == 2 {
-		if !s.Exist() {
+		if err == db.ErrKeyNotFound {
 			return NullBulkString(ctx.Out), nil
 		}
 	}
-
 	//nx
 	if flag == 1 {
-		if s.Exist() {
+		if err != db.ErrKeyNotFound {
 			return NullBulkString(ctx.Out), nil
 		}
 	}
 
-	if err == db.ErrTypeMismatch {
-		txn.Destory(&s.Meta.Object, key)
+	if err != db.ErrKeyNotFound && obj.Type != db.ObjectString {
+		txn.Destory(obj, key)
 	}
 
+	s := db.NewString(txn, key)
 	if err := s.Set(value, unit); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -154,6 +154,7 @@ func MSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 }
 
 // MSetNx et multiple keys to multiple values,only if none of the keys exist
+//TODO bug
 func MSetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	argc := len(ctx.Args)
 	args := ctx.Args
@@ -293,21 +294,21 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
-	str, err := txn.String(key)
-	if err != nil && err != db.ErrTypeMismatch {
+	obj, err := txn.Object(key)
+	if err != nil && err != db.ErrKeyNotFound {
 		return nil, errors.New("ERR " + err.Error())
 	}
-
-	if err == db.ErrTypeMismatch {
-		txn.Destory(&str.Meta.Object, key)
+	if err != db.ErrKeyNotFound && obj.Type != db.ObjectString {
+		txn.Destory(obj, key)
 	}
 
+	s := db.NewString(txn, key)
 	ui, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
 	unit := ui * int64(time.Second)
-	if err := str.Set([]byte(ctx.Args[2]), unit); err != nil {
+	if err := s.Set([]byte(ctx.Args[2]), unit); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -318,21 +319,22 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
-	str, err := txn.String(key)
-	if err != nil && err != db.ErrTypeMismatch {
+	obj, err := txn.Object(key)
+	if err != nil && err != db.ErrKeyNotFound {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	if err == db.ErrTypeMismatch {
-		txn.Destory(&str.Meta.Object, key)
+	if err != db.ErrKeyNotFound && obj.Type != db.ObjectString {
+		txn.Destory(obj, key)
 	}
 
+	s := db.NewString(txn, key)
 	ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
 	unit := ui * uint64(time.Microsecond)
-	if err := str.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
+	if err := s.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
 

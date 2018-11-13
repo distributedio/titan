@@ -253,11 +253,15 @@ func TestStringSetThree(t *testing.T) {
 }
 
 func TestStringSet(t *testing.T) {
+
 	args := make([]string, 2)
 	key := "set"
 	args[0] = key
 	args[1] = "value"
-	ctx := ContextTest("set", args...)
+	ctx := ContextTest("lpush", args...)
+	Call(ctx)
+
+	ctx = ContextTest("set", args...)
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), "OK")
 	EqualGet(t, key, "value", nil)

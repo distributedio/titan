@@ -36,7 +36,7 @@ func main() {
 		return
 	}
 
-	config := &conf.Thanos{}
+	config := &conf.Titan{}
 	if err := configo.Load(confPath, config); err != nil {
 		fmt.Printf("unmarshal config file failed, %s\n", err)
 		os.Exit(1)

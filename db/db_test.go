@@ -19,5 +19,6 @@ func TestMain(m *testing.M) {
 		ID:        1,
 		kv:        &RedisStore{store},
 	}
+
 	os.Exit(m.Run())
 }

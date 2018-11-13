@@ -1,4 +1,4 @@
-PROJECT_NAME := thanos
+PROJECT_NAME := titan
 PKG := gitlab.meitu.com/platform/$(PROJECT_NAME)
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GITHASH := $(shell git rev-parse --short HEAD)
@@ -21,10 +21,10 @@ coverage:
 	go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
 
 build:
-	go build -ldflags '$(LDFLAGS)' -o thanos ./bin/thanos/
+	go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/
 
 clean:
-	rm -f ./thanos
+	rm -f ./titan
 
 cleanvendor:
 	find vendor \( -type f -or -type l \)  -not -name "*.go" -not -name "LICENSE" -not -name "*.s" -not -name "PATENTS" | xargs -I {} rm {}

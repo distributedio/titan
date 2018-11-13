@@ -10,7 +10,7 @@ import (
 
 const (
 	//promethus default namespace
-	namespace = "thanos"
+	namespace = "titan"
 
 	//promethues default label key
 	command   = "command"
@@ -152,7 +152,7 @@ func init() {
 		[]string{labelName},
 	)
 
-	http.Handle("/thanos/metrics", prometheus.Handler())
+	http.Handle("/titan/metrics", prometheus.Handler())
 }
 
 //GetMetrics return metrics object

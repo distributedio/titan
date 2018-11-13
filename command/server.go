@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/db"
+	"gitlab.meitu.com/platform/titan/encoding/resp"
 )
 
 const sysAdminNamespace = "$sys.admin"
 
-// Monitor streams back every command processed by the Thanos server
+// Monitor streams back every command processed by the Titan server
 func Monitor(ctx *Context) {
 	ctx.Server.Monitors.Store(ctx.Client.RemoteAddr, ctx)
 	resp.ReplySimpleString(ctx.Out, "OK")
@@ -209,7 +209,7 @@ func Client(ctx *Context) {
 
 }
 
-// Debug the thanos server
+// Debug the titan server
 func Debug(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	switch strings.ToLower(ctx.Args[0]) {
 	case "object":
@@ -369,9 +369,9 @@ func Info(ctx *Context) {
 
 	var lines []string
 	lines = append(lines, "# Server")
-	lines = append(lines, "thanos_version:"+context.ReleaseVersion)
-	lines = append(lines, "thanos_git_sha1:"+context.GitHash)
-	lines = append(lines, "thanos_build_id:"+context.BuildTS)
+	lines = append(lines, "titan_version:"+context.ReleaseVersion)
+	lines = append(lines, "titan_git_sha1:"+context.GitHash)
+	lines = append(lines, "titan_build_id:"+context.BuildTS)
 	lines = append(lines, "os:"+runtime.GOOS)
 	lines = append(lines, "arch_bits:"+runtime.GOARCH)
 	lines = append(lines, "go_version:"+context.GolangVersion)

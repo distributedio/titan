@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/titan/db"
 )
 
 // LPush inserts an entry to the head of the list

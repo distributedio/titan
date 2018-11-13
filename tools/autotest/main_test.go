@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/tools/integration"
+	"gitlab.meitu.com/platform/titan/tools/integration"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	integration.SetAuth("thanos")
+	integration.SetAuth("titan")
 	go integration.Start()
 	time.Sleep(time.Second)
 	at = NewAutoClient()

@@ -1,7 +1,7 @@
 #type:        string
 #description: the file name to record connd PID
-#default:     thanos.pid
-#pid-filename = "thanos.pid"
+#default:     titan.pid
+#pid-filename = "titan.pid"
 
 [server]
 
@@ -92,13 +92,13 @@ pd-addrs = ""
 
 #type:        string
 #description: the default logger name
-#default:     thanos
-#log-name = "thanos"
+#default:     titan
+#log-name = "titan"
 
 #type:        string
 #description: the default log path
-#default:     logs/thanos.log
-#log-path = "logs/thanos.log"
+#default:     logs/titan.log
+#log-path = "logs/titan.log"
 
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)

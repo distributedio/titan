@@ -1,4 +1,4 @@
-package thanos
+package encoding
 
 // Encoder defines the interface of a RESP encoder
 type Encoder interface {

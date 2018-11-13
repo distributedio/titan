@@ -1,7 +1,7 @@
 package command
 
 import (
-	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/titan/db"
 )
 
 // SAdd adds the specified members to the set stored at key

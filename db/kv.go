@@ -5,7 +5,7 @@ import (
 	"log"
 	"math/rand"
 
-	"gitlab.meitu.com/platform/thanos/db/store"
+	"gitlab.meitu.com/platform/titan/db/store"
 )
 
 // Kv supplies key releated operations

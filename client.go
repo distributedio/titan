@@ -1,4 +1,4 @@
-package thanos
+package titan
 
 import (
 	"bufio"
@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/command"
-	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"gitlab.meitu.com/platform/titan/command"
+	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/encoding/resp"
 	"go.uber.org/zap"
 )
 

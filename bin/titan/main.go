@@ -16,11 +16,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"gitlab.meitu.com/platform/thanos"
-	"gitlab.meitu.com/platform/thanos/conf"
-	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/metrics"
+	"gitlab.meitu.com/platform/titan"
+	"gitlab.meitu.com/platform/titan/conf"
+	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/db"
+	"gitlab.meitu.com/platform/titan/metrics"
 )
 
 func main() {
@@ -28,11 +28,11 @@ func main() {
 	var confPath string
 
 	flag.BoolVar(&showVersion, "v", false, "Show Version")
-	flag.StringVar(&confPath, "c", "conf/thanos.toml", "conf file path")
+	flag.StringVar(&confPath, "c", "conf/titan.toml", "conf file path")
 	flag.Parse()
 
 	if showVersion {
-		thanos.PrintVersionInfo()
+		titan.PrintVersionInfo()
 		return
 	}
 
@@ -67,14 +67,14 @@ func main() {
 
 	svr := metrics.NewServer(&config.Status)
 
-	serv := thanos.New(&context.ServerContext{
+	serv := titan.New(&context.ServerContext{
 		RequirePass: config.Server.Auth,
 		Store:       store,
 	})
 
 	cont := continuous.New(continuous.LoggerOutput(writer), continuous.PidFile(config.PIDFileName))
 	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}); err != nil {
-		zap.L().Fatal("add thanos server failed:", zap.Error(err))
+		zap.L().Fatal("add titan server failed:", zap.Error(err))
 	}
 
 	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}); err != nil {
@@ -132,7 +132,7 @@ func GlobalLogger(level, name string, write io.Writer) error {
 	log := logger.With(zap.Int("PID", os.Getpid()))
 	zap.ReplaceGlobals(log)
 	//http change log level
-	http.Handle("/thanos/log/level", lv)
+	http.Handle("/titan/log/level", lv)
 
 	return nil
 }

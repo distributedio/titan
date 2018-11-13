@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/context"
+	"gitlab.meitu.com/platform/titan/context"
 )
 
 func TestInfo(t *testing.T) {

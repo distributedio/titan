@@ -1,1 +1,1 @@
-# Deploy thanos
+# Deploy titan

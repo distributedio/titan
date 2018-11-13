@@ -5,14 +5,14 @@ import (
 	"log"
 	"net"
 
-	"gitlab.meitu.com/platform/thanos"
-	"gitlab.meitu.com/platform/thanos/conf"
-	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/titan"
+	"gitlab.meitu.com/platform/titan/conf"
+	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/db"
 )
 
 var (
-	svr *thanos.Server
+	svr *titan.Server
 	cfg = &conf.Server{
 		Listen:        ServerAddr,
 		MaxConnection: 10000,
@@ -43,7 +43,7 @@ func Start() {
 		log.Fatalln(err)
 	}
 
-	svr = thanos.New(&context.ServerContext{
+	svr = titan.New(&context.ServerContext{
 		RequirePass: cfg.Auth,
 		Store:       store,
 	})

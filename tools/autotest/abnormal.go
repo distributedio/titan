@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/gomodule/redigo/redis"
-	"gitlab.meitu.com/platform/thanos/tools/autotest/cmd"
+	"gitlab.meitu.com/platform/titan/tools/autotest/cmd"
 )
 
 //Abnormal check error message

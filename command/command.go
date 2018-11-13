@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/shafreeck/retry"
-	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/encoding/resp"
-	"gitlab.meitu.com/platform/thanos/metrics"
+	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/db"
+	"gitlab.meitu.com/platform/titan/encoding/resp"
+	"gitlab.meitu.com/platform/titan/metrics"
 	"go.uber.org/zap"
 )
 

@@ -1,11 +1,11 @@
-package thanos
+package titan
 
 import (
 	"fmt"
 	"sync/atomic"
 
 	"github.com/twinj/uuid"
-	"gitlab.meitu.com/platform/thanos/context"
+	"gitlab.meitu.com/platform/titan/context"
 
 	"go.uber.org/zap"
 )

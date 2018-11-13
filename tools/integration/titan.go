@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 
+	"go.uber.org/zap"
+
 	"gitlab.meitu.com/platform/titan"
 	"gitlab.meitu.com/platform/titan/conf"
 	"gitlab.meitu.com/platform/titan/context"
@@ -37,6 +39,7 @@ func SetAuth(auth string) {
 //1.open db
 //2.start server fd
 func Start() {
+	zap.ReplaceGlobals(zap.NewNop())
 	var err error
 	store, err := db.Open(&cfg.Tikv)
 	if err != nil {

@@ -77,7 +77,7 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	at := int64(time.Second * time.Duration(timestamp))
 	if at <= 0 {
-		at = db.Now() - 1
+		at = 1
 	}
 
 	if err := kv.ExpireAt(key, at); err != nil {
@@ -133,7 +133,7 @@ func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	at := int64(time.Millisecond * time.Duration(ms))
 	if at <= 0 {
-		at = db.Now()
+		at = 1
 	}
 	if err := kv.ExpireAt(key, at); err != nil {
 		if err == db.ErrKeyNotFound {

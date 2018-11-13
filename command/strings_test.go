@@ -316,32 +316,51 @@ func TestStringPSetEx(t *testing.T) {
 	ctx = ContextTest("psetex", args...)
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), ErrInteger.Error())
+
 }
 
-/*
-func TestStringRange(t *testing.T) {
+func TestStringSetRange(t *testing.T) {
 	args := make([]string, 3)
-	key := "range"
+	key := "setrange"
 	args[0] = key
-	args[1] = "10"
+	args[1] = "3"
 	args[2] = value
 
 	ctx := ContextTest("setrange", args...)
 	Call(ctx)
-	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(len(args[2])+10))
+	assert.Contains(t, ctxString(ctx.Out), "8")
+	ctx = ContextTest("get", key)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), value)
 
+	args[1] = "1"
+	args[2] = "lll"
 	ctx = ContextTest("setrange", args...)
 	Call(ctx)
-	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(len(args[2])+10))
+	assert.Contains(t, ctxString(ctx.Out), "8")
+	ctx = ContextTest("get", key)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "lllalue")
 
-	args[1] = "1073741824"
+	args[1] = "10"
+	args[2] = value
 	ctx = ContextTest("setrange", args...)
 	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "15")
+	ctx = ContextTest("get", key)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "\x00lllalue\x00\x00value")
 
-	// assert.Contains(t, ctxString(ctx.Out), ErrMai
+	args[1] = "s"
+	ctx = ContextTest("setrange", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrInteger.Error())
+
+	args[1] = "-2"
+	ctx = ContextTest("setrange", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), ErrMaximum.Error())
 }
-*/
-
 func TestStringIncr(t *testing.T) {
 	args := make([]string, 1)
 	args[0] = "incr"

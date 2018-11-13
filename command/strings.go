@@ -8,6 +8,11 @@ import (
 	"gitlab.meitu.com/platform/thanos/db"
 )
 
+var (
+	//MaxRangeInteger max index in setrange command
+	MaxRangeInteger = 2<<29 - 1
+)
+
 // Get the value of key
 func Get(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := ctx.Args[0]
@@ -320,7 +325,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
-	str, err := txn.String([]byte(key))
+	str, err := txn.String(key)
 	if err != nil && err != db.ErrTypeMismatch {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -340,6 +345,40 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	return SimpleString(ctx.Out, OK), nil
+}
+
+//SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
+func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	offset, err := strconv.Atoi(string(ctx.Args[1]))
+	if err != nil {
+		return nil, ErrInteger
+	}
+
+	key := []byte(ctx.Args[0])
+	if offset < 0 || offset > MaxRangeInteger {
+		return nil, ErrMaximum
+	}
+
+	str, err := txn.String(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	//Non-existing keys are considered as empty strings, so this command will make sure it holds a string large enough to be able to set value at offset.
+	if !str.Exist() {
+		str = txn.NewString(key)
+	}
+
+	// If the offset is larger than the current length of the string at key, the string is padded with zero-bytes to make offset fit.
+	val, err := str.SetRange(int64(offset), []byte(ctx.Args[2]))
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(len(val))), nil
+
 }
 
 // Incr increments the integer value of a key  by one

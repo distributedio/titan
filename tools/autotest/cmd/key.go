@@ -152,7 +152,7 @@ func (ek *ExampleKey) ExpireAtEqualErr(t *testing.T, errValue string, args ...in
 
 //PExpireEqual verify that the return value of the expire key operation is correct
 func (ek *ExampleKey) PExpireEqual(t *testing.T, key string, value, expectValue int) {
-	reply, err := redis.Int(ek.conn.Do("expire", key, value))
+	reply, err := redis.Int(ek.conn.Do("pexpire", key, value))
 	assert.NoError(t, err)
 	assert.Equal(t, expectValue, reply)
 }

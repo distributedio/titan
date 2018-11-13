@@ -51,7 +51,7 @@ func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
-	seconds, err := strconv.Atoi(ctx.Args[1])
+	seconds, err := strconv.ParseInt(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -70,14 +70,14 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
-	timestamp, err := strconv.Atoi(ctx.Args[1])
+	timestamp, err := strconv.ParseInt(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
 
 	at := int64(time.Second * time.Duration(timestamp))
 	if at <= 0 {
-		at = db.Now() - 1
+		at = 1
 	}
 
 	if err := kv.ExpireAt(key, at); err != nil {
@@ -107,7 +107,7 @@ func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
-	ms, err := strconv.Atoi(ctx.Args[1])
+	ms, err := strconv.ParseInt(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -127,13 +127,13 @@ func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
-	ms, err := strconv.Atoi(ctx.Args[1])
+	ms, err := strconv.ParseInt(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
 	at := int64(time.Millisecond * time.Duration(ms))
 	if at <= 0 {
-		at = db.Now()
+		at = 1
 	}
 	if err := kv.ExpireAt(key, at); err != nil {
 		if err == db.ErrKeyNotFound {

@@ -152,7 +152,7 @@ func (ek *ExampleKey) ExpireAtEqualErr(t *testing.T, errValue string, args ...in
 
 //PExpireEqual verify that the return value of the expire key operation is correct
 func (ek *ExampleKey) PExpireEqual(t *testing.T, key string, value, expectValue int) {
-	reply, err := redis.Int(ek.conn.Do("expire", key, value))
+	reply, err := redis.Int(ek.conn.Do("pexpire", key, value))
 	assert.NoError(t, err)
 	assert.Equal(t, expectValue, reply)
 }
@@ -177,13 +177,13 @@ func (ek *ExampleKey) PExpireAtEqualErr(t *testing.T, errValue string, args ...i
 }
 
 func (ek *ExampleKey) TypeEqual(t *testing.T, key string, expectValue interface{}) {
-	reply, err := redis.Int(ek.conn.Do("type", key))
+	reply, err := redis.String(ek.conn.Do("type", key))
 	assert.NoError(t, err)
 	assert.Equal(t, expectValue, reply)
 }
 
 func (ek *ExampleKey) TypeEqualErr(t *testing.T, errValue string, args ...interface{}) {
-	_, err := redis.Int(ek.conn.Do("type", args...))
+	_, err := redis.String(ek.conn.Do("type", args...))
 	assert.EqualError(t, err, errValue)
 }
 
@@ -194,7 +194,7 @@ func (ek *ExampleKey) KeysEqualErr(t *testing.T, errValue string, expectValue in
 }
 
 func (ek *ExampleKey) ObjectEqual(t *testing.T, key string, expectValue interface{}) {
-	reply, err := redis.Int(ek.conn.Do("object", "encoding", key))
+	reply, err := redis.String(ek.conn.Do("object", "encoding", key))
 	assert.NoError(t, err)
 	assert.Equal(t, expectValue, reply)
 }
@@ -202,6 +202,19 @@ func (ek *ExampleKey) ObjectEqual(t *testing.T, key string, expectValue interfac
 func (ek *ExampleKey) ObjectEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	tmp := []interface{}{"encoding"}
 	tmp = append(tmp, args...)
-	_, err := redis.Int(ek.conn.Do("object", tmp...))
+	_, err := redis.String(ek.conn.Do("object", tmp...))
+	assert.EqualError(t, err, errValue)
+}
+
+//Persist verify that the return value of the expire key operation is correct
+func (ek *ExampleKey) PersistEqual(t *testing.T, key string, expectValue int) {
+	reply, err := redis.Int(ek.conn.Do("persist", key))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
+//PersistEqualAtErr verify that the err return value of the expire key operation is correct
+func (ek *ExampleKey) PersistEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ek.conn.Do("persist", args...)
 	assert.EqualError(t, err, errValue)
 }

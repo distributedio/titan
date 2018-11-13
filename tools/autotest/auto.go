@@ -80,7 +80,7 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LsetEqual(t, "key-list", 3, "v0")
 	ac.el.LindexEqual(t, "key-list", 3)
 	ac.el.LrangeEqual(t, "key-list", 0, 10)
-	// ac.el.LrangeEqual(t, "key-list", 99, 100)
+	ac.el.LrangeEqual(t, "key-list", 99, 100)
 	ac.el.LpopEqual(t, "key-list")
 	ac.el.LpopEqual(t, "key-list-l")
 
@@ -103,16 +103,16 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.TTLEqual(t, "key-set", -1)
 	ac.ek.RandomKeyEqual(t)
-	ac.ek.ScanEqual(t, "", 3)
+	ac.ek.ScanEqual(t, "", 4)
 	ac.ek.ExistsEqual(t, 3, "key-set", "incr", "foo", "append")
-	ac.ek.DelEqual(t, 3, "key-set", "incr", "foo", "append")
+	ac.ek.DelEqual(t, 4, "key-set", "incr", "foo", "append", "key-setx")
 	ac.ek.TTLEqual(t, "key-set", -2)
 	ac.ek.RandomKeyEqual(t)
 	ac.ek.ScanEqual(t, "", 0)
 
 	ac.es.SetEqual(t, "key-set", "value")
-	ac.ek.TypeEqual(t, "ket-set", "string")
-	ac.ek.ObjectEqual(t, "key-set", "embstr")
+	ac.ek.TypeEqual(t, "key-set", "string")
+	ac.ek.ObjectEqual(t, "key-set", "raw")
 	ac.ek.ExpireEqual(t, "key-set", 2, 1)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
@@ -121,37 +121,42 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 
 	//test PExpire
 	ac.el.LpushEqual(t, "key-set", "value")
-	ac.ek.TypeEqual(t, "ket-set", "list")
+	ac.ek.TypeEqual(t, "key-set", "list")
 	ac.ek.PExpireEqual(t, "key-set", 2000, 1)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.PExpireEqual(t, "key-set", 1, 0)
 	ac.ek.PExpireEqual(t, "key-set", 0, 0)
 
-	at := time.Now().Unix() + int64(2*time.Second)
+	at := time.Now().Unix() + 1
 	var key []string
 	for i := 0; i < 4000; i++ {
 		num := strconv.Itoa(i)
 		key = append(key, "v", num)
 	}
-	ac.el.LpushEqual(t, "zkey-list")
-	ac.ek.TypeEqual(t, "ket-set", "list")
-	ac.ek.ObjectEqual(t, "key-set", "quicklist")
-	ac.ek.ExpireAtEqual(t, "zkey-list", int(at), 1)
-	time.Sleep(time.Second * 2)
-	ac.ek.ExpireAtEqual(t, "zkey-list", int(at), 0)
-	ac.ek.ExpireAtEqual(t, "zkey-list", int(at), 0)
+	ac.el.LpushEqual(t, "zkey-listx", key...)
+	ac.ek.TypeEqual(t, "zkey-listx", "list")
+	ac.ek.ObjectEqual(t, "zkey-listx", "ziplist")
+	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
+	time.Sleep(time.Second * 1)
+	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 0)
 
 	//test PExpire
-	at = time.Now().UnixNano()/1000 + int64(2*time.Second)
-	ac.el.LpushEqual(t, "key-set", "value")
-	ac.ek.TypeEqual(t, "ket-set", "list")
-	ac.ek.ObjectEqual(t, "key-set", "ziplist")
-	ac.ek.PExpireAtEqual(t, "key-set", 2000, 1)
-	ac.ek.TTLEqual(t, "key-set", 1)
-	time.Sleep(time.Second * 2)
-	ac.ek.PExpireAtEqual(t, "key-set", 1, 0)
-	ac.ek.PExpireAtEqual(t, "key-set", 0, 0)
+	at = (time.Now().Unix() + 1) * 1000
+	ac.el.LpushEqual(t, "key-setz", "value")
+	ac.ek.TypeEqual(t, "key-setz", "list")
+	ac.ek.ObjectEqual(t, "key-setz", "linkedlist")
+	ac.ek.PExpireAtEqual(t, "key-setz", int(at), 1)
+	ac.ek.TTLEqual(t, "key-setz", 0)
+	time.Sleep(time.Second * 1)
+	ac.ek.PExpireAtEqual(t, "key-setz", int(at), 0)
+
+	at = time.Now().Unix() + 1
+	ac.es.SetEqual(t, "zkey-listx", "value")
+	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
+	ac.ek.PersistEqual(t, "zkey-listx", 1)
+	time.Sleep(time.Second * 1)
+	ac.ek.PersistEqual(t, "zkey-listx", 1)
 }
 
 //SystemCase check system case

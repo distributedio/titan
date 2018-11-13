@@ -102,7 +102,7 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 	}
 
-	if err != db.ErrKeyNotFound && obj.Type != db.ObjectString {
+	if err != db.ErrKeyNotFound {
 		txn.Destory(obj, key)
 	}
 
@@ -298,7 +298,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil && err != db.ErrKeyNotFound {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	if err != db.ErrKeyNotFound && obj.Type != db.ObjectString {
+	if err != db.ErrKeyNotFound {
 		txn.Destory(obj, key)
 	}
 
@@ -324,7 +324,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	if err != db.ErrKeyNotFound && obj.Type != db.ObjectString {
+	if err != db.ErrKeyNotFound {
 		txn.Destory(obj, key)
 	}
 

@@ -46,12 +46,15 @@ func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
 	if err != nil {
 		return nil, err
 	}
-	if obj.Type != ObjectList {
-		return nil, ErrTypeMismatch
+	if IsExpired(obj, Now()) {
+		if err := txn.Destory(obj, key); err != nil {
+			return nil, err
+		}
+		return list(txn, key), nil
 	}
 
-	if IsExpired(obj, Now()) {
-		return list(txn, key), nil
+	if obj.Type != ObjectList {
+		return nil, ErrTypeMismatch
 	}
 
 	if obj.Encoding == ObjectEncodingLinkedlist {

@@ -11,7 +11,7 @@ import (
 func SetVal(t *testing.T, db *DB, key, val []byte) {
 	txn, err := db.Begin()
 	assert.NoError(t, err)
-	str := txn.NewString(key)
+	str := NewString(txn, key)
 	assert.NoError(t, err)
 	err = str.Set(val)
 	assert.NoError(t, err)

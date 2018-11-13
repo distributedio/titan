@@ -22,9 +22,9 @@ type String struct {
 // otherwise object is null if key is not exist and err is not found
 // otherwise  return err
 func GetString(txn *Transaction, key []byte) (*String, error) {
-	str := &String{txn: txn, key: key}
-	now := Now()
+	str := NewString(txn, key)
 	mkey := MetaKey(txn.db, key)
+	now := Now()
 	Meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
@@ -33,14 +33,13 @@ func GetString(txn *Transaction, key []byte) (*String, error) {
 		return nil, err
 	}
 	if err := str.decode(Meta); err != nil {
+		if IsErrNotFound(err) {
+			str.Meta.UpdatedAt = now
+			return str, nil
+		}
 		return nil, err
 	}
-	if str.Meta.Type != ObjectString {
-		return nil, ErrTypeMismatch
-	}
-	if str.Meta.Encoding != ObjectEncodingRaw {
-		return nil, ErrTypeMismatch
-	}
+
 	str.Meta.UpdatedAt = now
 	return str, nil
 }
@@ -209,11 +208,18 @@ func (s *String) decode(b []byte) error {
 
 	timestamp := Now()
 	if obj.ExpireAt != 0 && obj.ExpireAt < timestamp {
-		return nil
+		return ErrKeyNotFound
 	}
 
+	if obj.Type != ObjectString {
+		return ErrTypeMismatch
+	}
+
+	if obj.Encoding != ObjectEncodingRaw {
+		return ErrTypeMismatch
+	}
 	s.Meta.Object = *obj
-	if len(b) > ObjectEncodingLength && s.Meta.Type == ObjectString {
+	if len(b) > ObjectEncodingLength {
 		s.Meta.Value = b[ObjectEncodingLength:]
 	}
 	return nil

@@ -140,10 +140,10 @@ func (an *Abnormal) SystemCase(t *testing.T) {
 //MultiCase check multi case
 func (an *Abnormal) MultiCase(t *testing.T) {
 
-	// an.em.MultiEqualErr(t, "ERR wrong number of arguments for 'multi' command", "he", "he")
-	// an.em.ExecEqualErr(t, "ERR wrong number of arguments for 'exec' command", "he", "he")
-	// an.em.ExecEqualErr(t, "ERR EXEC without MULTI")
+	an.em.MultiEqualErr(t, "ERR wrong number of arguments for 'multi' command", "he", "he")
+	an.em.ExecEqualErr(t, "ERR wrong number of arguments for 'exec' command", "he", "he")
+	an.em.ExecEqualErr(t, "ERR EXEC without MULTI")
 	an.em.MultiEqual(t)
 	an.em.MultiEqualErr(t, "ERR MULTI calls can not be nested")
-	// an.em.ExecEqualErr(t, "")
+	an.em.ExecEqualErr(t, "")
 }

@@ -60,7 +60,7 @@ func (ac *AutoClient) StringCase(t *testing.T) {
 	ac.es.AppendEqual(t, "append", "value")
 	ac.es.StrlenEqual(t, "key-set")
 	ac.es.MSetEqual(t, "key-set", "value")
-	ac.es.MGetEqual(t, "key-not-exist")
+	// ac.es.MGetEqual(t, "key-not-exist")
 	ac.es.IncrEqual(t, "incr")
 	ac.es.IncrEqual(t, "incr")
 	ac.es.StrlenEqual(t, "heng")

@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"go.uber.org/zap/zapcore"
@@ -9,39 +8,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-//MetricsType object type
-type metricsType int
-
-const (
-	ConnectionOnlineType metricsType = iota
-	ZTInfoType
-	IsLeaderType
-	LRangeSeekType
-	CommandCallType
-	TransactionCommitType
-	TransactionRollbackType
-	TransactionConflictType
-	TransactionFailureType
-	LogMetricsType
-)
-
-//MetricsTypeValue export metric msg
-var MetricsTypeValue = map[metricsType]string{
-	ConnectionOnlineType:    "ConnectionOnlineGaugeVec",
-	ZTInfoType:              "ZTInfoCounterVec",
-	IsLeaderType:            "IsLeaderGaugeVec",
-	LRangeSeekType:          "LRangeSeekHistogramVec",
-	CommandCallType:         "CommandTransferHistogram",
-	TransactionCommitType:   "TransactionCommitHistogramVec",
-	TransactionRollbackType: "TransactionRollbackGaugeVec",
-	TransactionConflictType: "TransactionConflictGauageVec",
-	TransactionFailureType:  "TransactionFailureGaugeVec",
-	LogMetricsType:          "LogMetrics",
-}
-
 const (
 	//promethus default namespace
-	namespace = "titan"
+	namespace = "thanos"
 
 	//promethues default label key
 	command   = "command"
@@ -49,6 +18,7 @@ const (
 	leader    = "leader"
 	ztinfo    = "ztinfo"
 	labelName = "level"
+	gckeys    = "gckeys"
 )
 
 var (
@@ -58,6 +28,7 @@ var (
 	leaderLabel  = []string{leader}
 	multiLabel   = []string{biz, command}
 	ztInfoLabel  = []string{ztinfo}
+	gcKeysLabel  = []string{gckeys}
 
 	// global prometheus object
 	gm *Metrics
@@ -72,13 +43,14 @@ type Metrics struct {
 	ZTInfoCounterVec    *prometheus.CounterVec
 	IsLeaderGaugeVec    *prometheus.GaugeVec
 	LRangeSeekHistogram prometheus.Histogram
+	GCKeysCounterVec    *prometheus.CounterVec
 
 	//command biz
-	CommandCallHistogramVec       *prometheus.HistogramVec
-	TransactionCommitHistogramVec *prometheus.HistogramVec
-	TransactionRollbackGaugeVec   *prometheus.GaugeVec
-	TransactionConflictGauageVec  *prometheus.GaugeVec
-	TransactionFailureGaugeVec    *prometheus.GaugeVec
+	CommandCallHistogramVec *prometheus.HistogramVec
+	TxnCommitHistogramVec   *prometheus.HistogramVec
+	TxnRetriesCounterVec    *prometheus.CounterVec
+	TxnConflictsCounterVec  *prometheus.CounterVec
+	TxnFailuresCounterVec   *prometheus.CounterVec
 
 	//logger
 	LogMetricsCounterVec *prometheus.CounterVec
@@ -91,57 +63,57 @@ func init() {
 	gm.CommandCallHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
-			Name:      "command_call_times",
+			Name:      "command_duration_seconds",
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
 			Help:      "The cost times of command call",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandCallHistogramVec)
 
-	gm.TransactionRollbackGaugeVec = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
+	gm.TxnRetriesCounterVec = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "transaction_rollback_count",
-			Help:      "The count of transaction rollback",
+			Name:      "txn_retries_total",
+			Help:      "The total of txn retries",
 		}, multiLabel)
-	prometheus.MustRegister(gm.TransactionRollbackGaugeVec)
+	prometheus.MustRegister(gm.TxnRetriesCounterVec)
 
-	gm.TransactionConflictGauageVec = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
+	gm.TxnConflictsCounterVec = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "transaction_conflict_count",
-			Help:      "The count of transaction conflict",
+			Name:      "txn_conflicts_total",
+			Help:      "The total of txn conflicts",
 		}, multiLabel)
-	prometheus.MustRegister(gm.TransactionConflictGauageVec)
+	prometheus.MustRegister(gm.TxnConflictsCounterVec)
 
-	gm.TransactionCommitHistogramVec = prometheus.NewHistogramVec(
+	gm.TxnCommitHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
-			Name:      "transaction_commit_times",
+			Name:      "txn_commit_seconds",
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
-			Help:      "The cost times of transaction commit",
+			Help:      "The cost times of txn commit",
 		}, multiLabel)
-	prometheus.MustRegister(gm.TransactionCommitHistogramVec)
+	prometheus.MustRegister(gm.TxnCommitHistogramVec)
 
-	gm.TransactionFailureGaugeVec = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
+	gm.TxnFailuresCounterVec = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "transaction_failure_count",
-			Help:      "The count of transaction failure",
+			Name:      "txn_failures_total",
+			Help:      "The total of txn failures",
 		}, multiLabel)
-	prometheus.MustRegister(gm.TransactionFailureGaugeVec)
+	prometheus.MustRegister(gm.TxnFailuresCounterVec)
 
 	gm.ConnectionOnlineGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "connect_online_count",
-			Help:      "The count of online connection",
+			Name:      "connect_online_number",
+			Help:      "The number of online connection",
 		}, bizLabel)
 	prometheus.MustRegister(gm.ConnectionOnlineGaugeVec)
 
 	gm.LRangeSeekHistogram = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
-			Name:      "lrange_seek_times",
+			Name:      "lrange_seek_duration_seconds",
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
 			Help:      "The cost times of list lrange seek",
 		})
@@ -150,10 +122,18 @@ func init() {
 	gm.ZTInfoCounterVec = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "zt_info",
+			Name:      "zt_info_total",
 			Help:      "zlist transfer worker summary",
 		}, ztInfoLabel)
 	prometheus.MustRegister(gm.ZTInfoCounterVec)
+
+	gm.GCKeysCounterVec = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "gc_keys_total",
+			Help:      "the number of gc keys added or deleted",
+		}, gcKeysLabel)
+	prometheus.MustRegister(gm.GCKeysCounterVec)
 
 	gm.IsLeaderGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -166,26 +146,18 @@ func init() {
 	gm.LogMetricsCounterVec = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "logs_total",
+			Name:      "logs_entries_total",
 			Help:      "Number of logs of certain level",
 		},
 		[]string{labelName},
 	)
 
-	http.Handle("/titan/gm", prometheus.Handler())
+	http.Handle("/thanos/metrics", prometheus.Handler())
 }
 
 //GetMetrics return metrics object
 func GetMetrics() *Metrics {
 	return gm
-}
-
-//String export gm msg
-func (mt *Metrics) String() string {
-	if msg, err := json.Marshal(MetricsTypeValue); err != nil {
-		return string(msg)
-	}
-	return ""
 }
 
 //Measure logger level rate

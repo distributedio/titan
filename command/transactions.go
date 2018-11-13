@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"log"
 	"strings"
+	"time"
 
-	"gitlab.meitu.com/platform/thanos/resp"
+	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/thanos/encoding/resp"
+	"gitlab.meitu.com/platform/thanos/metrics"
 )
 
 // Multi starts a transaction which will block subsequent commands until 'exec'
 func Multi(ctx *Context) {
 	ctx.Client.Multi = true
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Exec all the commands queued in client
@@ -60,8 +63,18 @@ func Exec(ctx *Context) {
 		onCommits[i] = onCommit
 		outputs[i] = out
 	}
+	start := time.Now()
+	mt := metrics.GetMetrics()
+	defer func() {
+		cost := time.Since(start).Seconds()
+		mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+	}()
 	err = txn.Commit(ctx)
 	if err != nil {
+		if db.IsConflictError(err) {
+			mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+		}
+		mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 		// TODO log err message
 		log.Println(err)
 		resp.ReplyArray(ctx.Out, 0)
@@ -103,7 +116,7 @@ func Watch(ctx *Context) {
 		return
 	}
 	ctx.Client.Txn = txn
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Discard flushes all previously queued commands in a transaction and restores the connection state to normal
@@ -115,7 +128,7 @@ func Discard(ctx *Context) {
 	}
 	ctx.Client.Commands = nil
 	ctx.Client.Multi = false
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Unwatch flushes all the previously watched keys for a transaction
@@ -124,5 +137,5 @@ func Unwatch(ctx *Context) {
 		ctx.Client.Txn.Rollback()
 		ctx.Client.Txn = nil
 	}
-	resp.ReplySimpleString(ctx.Out, "OK")
+	resp.ReplySimpleString(ctx.Out, OK)
 }

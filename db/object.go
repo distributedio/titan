@@ -110,6 +110,7 @@ func (obj *Object) String() string {
 		UUIDString(obj.ID), obj.Type, obj.Encoding, obj.CreatedAt, obj.UpdatedAt, obj.ExpireAt)
 }
 
+// Object new object thougth key
 func (txn *Transaction) Object(key []byte) (*Object, error) {
 	obj := &Object{}
 	mkey := MetaKey(txn.db, key)
@@ -136,12 +137,22 @@ func (txn *Transaction) Object(key []byte) (*Object, error) {
 func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	mkey := MetaKey(txn.db, key)
 	dkey := DataKey(txn.db, obj.ID)
-
+	now := Now()
 	if err := txn.t.Delete(mkey); err != nil {
 		return err
 	}
 	if obj.Type != ObjectString {
-		return gc(txn.t, dkey)
+		if err := gc(txn.t, dkey); err != nil {
+			return err
+		}
+
 	}
+
+	if obj.ExpireAt > now {
+		if err := unExpireAt(txn.t, mkey, obj.ExpireAt); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

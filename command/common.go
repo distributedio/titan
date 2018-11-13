@@ -9,8 +9,10 @@ import (
 	"strconv"
 )
 
-const TokenSignLen = 11
+//tokenSignLen token default len
+const tokenSignLen = 11
 
+//Base token base msg
 type Base struct {
 	Version   int8   `json:"version"`
 	CreateAt  int64  `json:"create_at"`
@@ -18,7 +20,7 @@ type Base struct {
 	// Sign      string `json:"-"`
 }
 
-// Namespace SHOULD NOT contains a colon
+//MarshalBinary Namespace SHOULD NOT contains a colon
 func (t *Base) MarshalBinary() (data []byte, err error) {
 	data = append(data, t.Namespace...)
 	data = append(data, '-')
@@ -28,6 +30,7 @@ func (t *Base) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
+//UnmarshalBinary token base unmarshl
 func (t *Base) UnmarshalBinary(data []byte) error {
 	fields := bytes.Split(data, []byte{'-'})
 	l := len(fields)
@@ -52,21 +55,22 @@ func (t *Base) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+//Verify token auth
 func Verify(token, key []byte) ([]byte, error) {
-	encodedSignLen := hex.EncodedLen(TokenSignLen)
+	encodedSignLen := hex.EncodedLen(tokenSignLen)
 	if len(token) < encodedSignLen || len(key) == 0 {
 		return nil, errors.New("token or key is parameter illegal")
 
 	}
 
-	sign := make([]byte, TokenSignLen)
+	sign := make([]byte, tokenSignLen)
 	hex.Decode(sign, token[len(token)-encodedSignLen:])
 
 	meta := token[:len(token)-encodedSignLen-1] //counting in the ":"
 	mac := hmac.New(sha256.New, key)
 	mac.Write(meta)
 
-	if !hmac.Equal(mac.Sum(nil)[:TokenSignLen], sign) {
+	if !hmac.Equal(mac.Sum(nil)[:tokenSignLen], sign) {
 		return nil, errors.New("token mismatch")
 	}
 
@@ -77,6 +81,7 @@ func Verify(token, key []byte) ([]byte, error) {
 	return t.Namespace, nil
 }
 
+//Token token create through key server namespace create time
 func Token(key, namespace []byte, createAt int64) ([]byte, error) {
 	t := &Base{Namespace: namespace, CreateAt: createAt, Version: 1}
 	data, err := t.MarshalBinary()
@@ -90,7 +95,7 @@ func Token(key, namespace []byte, createAt int64) ([]byte, error) {
 
 	//truncate to 32 byte: https://tools.ietf.org/html/rfc2104#section-5
 	// we have 11 byte rigth of hmac,so the rest of data is token message
-	sign = sign[:TokenSignLen]
+	sign = sign[:tokenSignLen]
 
 	encodedSign := make([]byte, hex.EncodedLen(len(sign)))
 	hex.Encode(encodedSign, sign)

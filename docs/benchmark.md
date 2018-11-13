@@ -1,1 +1,1 @@
-# Benchmark of thanos
+# Benchmark of titan

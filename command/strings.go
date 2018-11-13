@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/db"
+	"gitlab.meitu.com/platform/titan/db"
 )
 
 var (

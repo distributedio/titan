@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/db/store"
+	"gitlab.meitu.com/platform/titan/db/store"
 
 	"go.uber.org/zap"
 )

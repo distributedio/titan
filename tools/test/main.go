@@ -4,7 +4,7 @@ import (
 	"flag"
 	"testing"
 
-	"gitlab.meitu.com/platform/thanos/tools/autotest"
+	"gitlab.meitu.com/platform/titan/tools/autotest"
 )
 
 func main() {
@@ -12,7 +12,7 @@ func main() {
 	var testcase string
 	var addr string
 
-	flag.StringVar(&addr, "addr", ":7369", "thanos server addr")
+	flag.StringVar(&addr, "addr", ":7369", "titan server addr")
 	flag.StringVar(&testcase, "testcase", "", "default run testcase all")
 	flag.Parse()
 	client := autotest.NewAutoClient()

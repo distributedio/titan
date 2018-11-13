@@ -11,9 +11,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"gitlab.meitu.com/platform/thanos/conf"
-	"gitlab.meitu.com/platform/thanos/db/store"
-	"gitlab.meitu.com/platform/thanos/metrics"
+	"gitlab.meitu.com/platform/titan/conf"
+	"gitlab.meitu.com/platform/titan/db/store"
+	"gitlab.meitu.com/platform/titan/metrics"
 )
 
 var (

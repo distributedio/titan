@@ -1,12 +1,12 @@
-package thanos
+package titan
 
 import (
 	"net"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/command"
-	"gitlab.meitu.com/platform/thanos/context"
-	"gitlab.meitu.com/platform/thanos/metrics"
+	"gitlab.meitu.com/platform/titan/command"
+	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/metrics"
 	"go.uber.org/zap"
 )
 
@@ -25,7 +25,7 @@ func New(ctx *context.ServerContext) *Server {
 
 //Serve the redis requests
 func (s *Server) Serve(lis net.Listener) error {
-	zap.L().Info("thanos server start", zap.String("addr", lis.Addr().String()))
+	zap.L().Info("titan server start", zap.String("addr", lis.Addr().String()))
 	s.servCtx.StartAt = time.Now()
 	s.lis = lis
 	for {

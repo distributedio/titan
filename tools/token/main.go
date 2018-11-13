@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/command"
+	"gitlab.meitu.com/platform/titan/command"
 )
 
 var (

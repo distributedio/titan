@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.meitu.com/platform/thanos/db"
-	"gitlab.meitu.com/platform/thanos/encoding/resp"
-	"gitlab.meitu.com/platform/thanos/metrics"
+	"gitlab.meitu.com/platform/titan/db"
+	"gitlab.meitu.com/platform/titan/encoding/resp"
+	"gitlab.meitu.com/platform/titan/metrics"
 )
 
 // Multi starts a transaction which will block subsequent commands until 'exec'

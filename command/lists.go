@@ -102,7 +102,7 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if !lst.Exist() {
-		return BulkString(ctx.Out, "empty list or set"), nil
+		return BytesArray(ctx.Out, nil), nil
 	}
 
 	items, err := lst.Range(start, stop)
@@ -110,7 +110,7 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 	if len(items) == 0 {
-		return BulkString(ctx.Out, "empty list or set"), nil
+		return BytesArray(ctx.Out, nil), nil
 	}
 	return BytesArray(ctx.Out, items), nil
 }

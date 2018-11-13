@@ -1,10 +1,5 @@
 package db
 
-var (
-	// ListZipThreshould create the zlist type of list if count key > ListZipThreshould
-	ListZipThreshould = 100
-)
-
 // List defines the list interface
 type List interface {
 	Index(n int64) (data []byte, err error)
@@ -22,25 +17,30 @@ type List interface {
 	Destory() error
 }
 
-// GetList returns a List object
-// if key is zip return zlist otherwise return llist
-// if key is not found, return null object but return error nil
-func GetList(txn *Transaction, key []byte, count int) (List, error) {
-	var lst List
-	if count < ListZipThreshould {
-		lst = NewLList(txn, key)
-	} else {
-		lst = NewZList(txn, key)
+// GetList returns a List object, it creates a new one if the key does not exist,
+// when UseZip() is set, it will create a ziplist instead of a linklist
+func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
+	opt := &listOption{}
+	for _, o := range opts {
+		if o == nil {
+			continue
+		}
+		o(opt)
+	}
+	list := NewLList
+	if opt.useZip {
+		list = NewZList
 	}
 
 	metaKey := MetaKey(txn.db, key)
 	val, err := txn.t.Get(metaKey)
 	if err != nil {
 		if IsErrNotFound(err) { // error NotFound
-			return lst, nil
+			return list(txn, key), nil
 		}
 		return nil, err
 	}
+
 	// exist
 	obj, err := DecodeObject(val)
 	if err != nil {
@@ -50,7 +50,7 @@ func GetList(txn *Transaction, key []byte, count int) (List, error) {
 		if err := txn.Destory(obj, key); err != nil {
 			return nil, err
 		}
-		return lst, nil
+		return list(txn, key), nil
 	}
 
 	if obj.Type != ObjectList {

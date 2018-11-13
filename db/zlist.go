@@ -37,6 +37,7 @@ func NewZList(txn *Transaction, key []byte) List {
 		rawMetaKey: metaKey,
 		txn:        txn,
 	}
+	PutZList(txn, metaKey)
 	return l
 }
 
@@ -272,7 +273,7 @@ func (l *ZList) Destory() error {
 
 // TransferToLList create an llist and put values into llist from zlist, LList will inheritance
 // information from ZList
-func (l *ZList) TransferToLList(dbns []byte, dbid byte, key []byte) (*LList, error) {
+func (l *ZList) TransferToLList(dbns []byte, dbid DBID, key []byte) (*LList, error) {
 	ll := &LList{
 		LListMeta: LListMeta{
 			Object: Object{
@@ -292,7 +293,9 @@ func (l *ZList) TransferToLList(dbns []byte, dbid byte, key []byte) (*LList, err
 	}
 	dataKeyPrefix := []byte{}
 	dataKeyPrefix = append(dataKeyPrefix, dbns...)
-	dataKeyPrefix = append(dataKeyPrefix, ':', dbid, ':', 'D', ':')
+	dataKeyPrefix = append(dataKeyPrefix, ':')
+	dataKeyPrefix = append(dataKeyPrefix, dbid.Bytes()...)
+	dataKeyPrefix = append(dataKeyPrefix, ':', 'D', ':')
 	dataKeyPrefix = append(dataKeyPrefix, ll.Object.ID...)
 	ll.rawDataKeyPrefix = append(dataKeyPrefix, ':')
 	return ll, ll.RPush(l.value.V...)

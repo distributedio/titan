@@ -54,8 +54,8 @@ func loadZList(txn *Transaction, metaKey []byte) (*ZList, error) {
 // NOTE put this key to sys db.
 func toZTKey(metakey []byte) []byte {
 	b := []byte{}
-	//	b = append(b, sysNamespace...)
-	//	b = append(b, ':', byte(sysDatabaseID))
+	b = append(b, sysNamespace...)
+	b = append(b, ':', byte(sysDatabaseID))
 	b = append(b, ':', 'Z', 'T', ':')
 	b = append(b, metakey...)
 	return b
@@ -87,8 +87,7 @@ func doZListTransfer(txn *Transaction, metakey []byte) (int, error) {
 		return 0, err
 	}
 
-	//llist, err := zlist.TransferToLList(splitMetaKey(metakey))
-	llist, err := zlist.TransferToLList(nil, 1, nil)
+	llist, err := zlist.TransferToLList(splitMetaKey(metakey))
 	if err != nil {
 		zap.L().Error("[ZT] error in convert zlist", zap.Error(err))
 		return 0, err

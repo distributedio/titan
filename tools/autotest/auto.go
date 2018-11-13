@@ -80,16 +80,16 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LsetEqual(t, "key-list", 3, "v0")
 	ac.el.LindexEqual(t, "key-list", 3)
 	ac.el.LrangeEqual(t, "key-list", 0, 10)
-	ac.el.LrangeEqual(t, "key-list", 99, 100)
+	// ac.el.LrangeEqual(t, "key-list", 99, 100)
 	ac.el.LpopEqual(t, "key-list")
 	ac.el.LpopEqual(t, "key-list-l")
 
-	var key []string
+	var keys []string
 	for i := 0; i < 4000; i++ {
 		num := strconv.Itoa(i)
-		key = append(key, "v", num)
+		keys = append(keys, "v", num)
 	}
-	ac.el.LpushEqual(t, "zkey-list")
+	ac.el.LpushEqual(t, "zkey-list", keys...)
 	ac.el.LlenEqual(t, "zkey-list")
 	ac.el.LsetEqual(t, "zkey-list", 3, "v0")
 	ac.el.LindexEqual(t, "zkey-list", 3)

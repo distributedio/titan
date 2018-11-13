@@ -91,7 +91,7 @@ func (an *Abnormal) ListCase(t *testing.T) {
 	an.el.LpushEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "key")
 
 	an.el.LindexEqualErr(t, "ERR wrong number of arguments for 'lindex' command", "z", "z", "z")
-	an.el.LindexEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "key")
+	an.el.LindexEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", 1)
 
 	an.el.LrangeEqualErr(t, "ERR wrong number of arguments for 'lrange' command", "he", "he", "he", "he")
 	an.el.LrangeEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "1", "1")
@@ -104,8 +104,8 @@ func (an *Abnormal) ListCase(t *testing.T) {
 	an.el.LsetEqualErr(t, "ERR value is not an integer or out of range", "lpush", "x", "z")
 	an.el.LsetEqualErr(t, "ERR index out of range", "lpush", "-100", "z")
 
-	an.el.RpopEqualErr(t, "ERR wrong number of arguments for 'rpop' command", "heng", "heng")
-	an.el.RpopEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set")
+	// an.el.RpopEqualErr(t, "ERR wrong number of arguments for 'rpop' command", "heng", "heng")
+	// an.el.RpopEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set")
 
 	an.el.RpushEqualErr(t, "ERR wrong number of arguments for 'rpush' command", "heng")
 	an.el.RpushEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "k")

@@ -2,11 +2,14 @@ package command
 
 import (
 	"bytes"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"gitlab.meitu.com/platform/titan/context"
+	"gitlab.meitu.com/platform/titan/db"
 )
 
 func TestInfo(t *testing.T) {
@@ -27,4 +30,66 @@ func TestInfo(t *testing.T) {
 	if strings.Index(out.String(), "ERR") == 0 {
 		t.Fail()
 	}
+}
+
+func TestMonitor(t *testing.T) {
+	assert := assert.New(t)
+	cli := &context.ClientContext{
+		Namespace:  "$unittest",
+		ID:         1,
+		RemoteAddr: "127.0.0.1",
+		DB:         &db.DB{Namespace: "$unittest", ID: 0},
+	}
+	serv := &context.ServerContext{}
+
+	out := bytes.NewBuffer(nil)
+	ctx := &Context{
+		Name:    "monitor",
+		Args:    nil,
+		In:      nil,
+		Out:     out,
+		Context: context.New(cli, serv),
+	}
+
+	Monitor(ctx)
+	assert.Equal("+OK\r\n", out.String())
+
+	out.Reset()
+	ctx = &Context{
+		Name:    "ping",
+		Args:    nil,
+		In:      nil,
+		Out:     ioutil.Discard,
+		Context: ctx.Context,
+	}
+	feedMonitors(ctx)
+	assert.Equal(" [0 127.0.0.1] ping \r\n", out.String()[len("+1542094152.528169"):])
+}
+
+func TestClient_List(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	cli := &context.ClientContext{
+		Namespace:  "$unittest",
+		ID:         1,
+		RemoteAddr: "127.0.0.1",
+		DB:         &db.DB{Namespace: "$unittest", ID: 0},
+		Created:    now,
+		Updated:    now,
+	}
+	serv := &context.ServerContext{}
+	serv.Clients.Store(cli.RemoteAddr, cli)
+
+	out := bytes.NewBuffer(nil)
+	ctx := &Context{
+		Name:    "client",
+		Args:    []string{"list"},
+		In:      nil,
+		Out:     out,
+		Context: context.New(cli, serv),
+	}
+
+	Client(ctx)
+
+	assert.Contains(out.String(), "id=1 addr=127.0.0.1")
 }

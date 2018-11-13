@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ func Delete(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	c, err := kv.Delete(keys)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, c), nil
 }
@@ -41,7 +42,7 @@ func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	c, err := kv.Exists(keys)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, c), nil
 }
@@ -60,7 +61,7 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, 1), nil
 }
@@ -83,7 +84,7 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	return Integer(ctx.Out, 1), nil
@@ -97,7 +98,7 @@ func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, 1), nil
 }
@@ -115,7 +116,7 @@ func PExpire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, 1), nil
 
@@ -138,7 +139,7 @@ func PExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, 1), nil
 }
@@ -152,7 +153,7 @@ func TTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, -2), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if obj.ExpireAt == 0 {
 		return Integer(ctx.Out, -1), nil
@@ -171,7 +172,7 @@ func PTTL(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, -2), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if db.IsExpired(obj, now) {
 		return Integer(ctx.Out, -2), nil
@@ -206,7 +207,7 @@ func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			if err == db.ErrKeyNotFound {
 				return NullBulkString(ctx.Out), nil
 			}
-			return nil, err
+			return nil, errors.New("ERR " + err.Error())
 		}
 
 		switch subCmd {
@@ -230,7 +231,7 @@ func Type(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err == db.ErrKeyNotFound {
 			return SimpleString(ctx.Out, "none"), nil
 		}
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	return SimpleString(ctx.Out, obj.Type.String()), nil
@@ -252,7 +253,7 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if err := kv.Keys(prefix, f); err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return BytesArray(ctx.Out, list), nil
 }
@@ -322,9 +323,8 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return true
 	}
 
-	err = kv.Keys(start, f)
-	if err != nil {
-		return nil, err
+	if err := kv.Keys(start, f); err != nil {
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return func() {
 		resp.ReplyArray(ctx.Out, 2)
@@ -342,7 +342,7 @@ func RandomKey(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key, err := kv.RandomKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if key == nil {
 		return NullBulkString(ctx.Out), nil

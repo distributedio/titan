@@ -292,7 +292,7 @@ func TestLRange(t *testing.T) {
 	ctx = ContextTest("lrange", key, "-2", "-5")
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Equal(t, "empty list or set", lines[1])
+	assert.Equal(t, "*0", lines[0])
 
 	ctx = ContextTest("lrange", key, "0", "2")
 	Call(ctx)
@@ -312,7 +312,7 @@ func TestLRange(t *testing.T) {
 	ctx = ContextTest("lrange", key, "-6", "1")
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Equal(t, "empty list or set", lines[1])
+	assert.Equal(t, "*0", lines[0])
 
 	ctx = ContextTest("lrange", key, "-7", "-2")
 	Call(ctx)
@@ -322,7 +322,7 @@ func TestLRange(t *testing.T) {
 	ctx = ContextTest("lrange", key, "-2", "-5")
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Equal(t, "empty list or set", lines[1])
+	assert.Equal(t, "*0", lines[0])
 
 	ctx = ContextTest("lrange", key, "0", "2")
 	Call(ctx)

@@ -13,6 +13,6 @@ func Test(t *testing.T) {
 
 	an.StringCase(t)
 	an.ListCase(t)
-	// an.KeyCase(t)
+	an.KeyCase(t)
 	an.MultiCase(t)
 }

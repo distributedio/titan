@@ -91,17 +91,18 @@ func StartExpire(db *DB) error {
 }
 
 // split a meta key with format: {namespace}:{id}:M:{key}
-func splitMetaKey(key []byte) ([]byte, byte, []byte) {
+func splitMetaKey(key []byte) ([]byte, DBID, []byte) {
 	idx := bytes.Index(key, []byte{':'})
 	namespace := key[:idx]
-	id := key[idx+1]
-	rawkey := key[idx+5:]
+	id := toDBID(key[idx+1 : idx+4])
+	rawkey := key[idx+6:]
 	return namespace, id, rawkey
 }
-func toTikvDataKey(namespace []byte, id byte, key []byte) []byte {
+func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	var b []byte
 	b = append(b, namespace...)
-	b = append(b, ':', id)
+	b = append(b, ':')
+	b = append(b, id.Bytes()...)
 	b = append(b, ':', 'D', ':')
 	b = append(b, key...)
 	return b

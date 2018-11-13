@@ -32,11 +32,8 @@ func GetString(txn *Transaction, key []byte) (*String, error) {
 		}
 		return nil, err
 	}
-	if err := str.decode(Meta); err != nil {
-		if IsErrNotFound(err) {
-			str.Meta.UpdatedAt = now
-			return str, nil
-		}
+
+	if err := str.decode(Meta); err != nil && err != ErrKeyNotFound {
 		return nil, err
 	}
 

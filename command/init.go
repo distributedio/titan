@@ -27,7 +27,7 @@ func init() {
 		"append":   Append,
 		"getset":   GetSet,
 		"getrange": GetRange,
-		"msetnx":   MSetNx,
+		// "msetnx":   MSetNx,
 		"setnx":    SetNx,
 		"setex":    SetEx,
 		"psetex":   PSetEx,

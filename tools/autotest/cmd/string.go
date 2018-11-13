@@ -56,8 +56,8 @@ func (es *ExampleString) GetEqualErr(t *testing.T, errValue string, args ...inte
 //SetNxEqualErr verify that the return value of the set operation is correct
 func (es *ExampleString) SetNxEqual(t *testing.T, key string, value string) {
 	es.values[key] = value
-	reply, err := redis.String(es.conn.Do("SETNX", key, value))
-	assert.Equal(t, "OK", reply)
+	reply, err := redis.Int(es.conn.Do("SETNX", key, value))
+	assert.Equal(t, 1, reply)
 	assert.NoError(t, err)
 	data, err := redis.Bytes(es.conn.Do("GET", key))
 	assert.Equal(t, value, string(data))
@@ -67,7 +67,7 @@ func (es *ExampleString) SetNxEqual(t *testing.T, key string, value string) {
 //SetExEqualErr verify that the return value of the set operation is correct
 func (es *ExampleString) SetExEqual(t *testing.T, key string, value string, delta int) {
 	es.values[key] = value
-	reply, err := redis.String(es.conn.Do("SETEX", key, value, delta))
+	reply, err := redis.String(es.conn.Do("SETEX", key, delta, value))
 	assert.Equal(t, "OK", reply)
 	assert.NoError(t, err)
 	data, err := redis.Bytes(es.conn.Do("GET", key))
@@ -75,14 +75,13 @@ func (es *ExampleString) SetExEqual(t *testing.T, key string, value string, delt
 	assert.NoError(t, err)
 	time.Sleep(time.Second * time.Duration(delta))
 	data, err = redis.Bytes(es.conn.Do("GET", key))
-	assert.Equal(t, value, "")
-	assert.NoError(t, err)
+	assert.Equal(t, "", string(data))
 }
 
 //PSetexEqualErr verify that the return value of the set operation is correct
 func (es *ExampleString) PSetexEqual(t *testing.T, key string, value string, delta int) {
 	es.values[key] = value
-	reply, err := redis.String(es.conn.Do("PSETEX", key, value, delta))
+	reply, err := redis.String(es.conn.Do("PSETEX", key, delta, value))
 	assert.Equal(t, "OK", reply)
 	assert.NoError(t, err)
 	data, err := redis.Bytes(es.conn.Do("GET", key))
@@ -90,8 +89,7 @@ func (es *ExampleString) PSetexEqual(t *testing.T, key string, value string, del
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * time.Duration(delta))
 	data, err = redis.Bytes(es.conn.Do("GET", key))
-	assert.Equal(t, value, "")
-	assert.NoError(t, err)
+	assert.Equal(t, "", string(data))
 }
 
 //SetRangeEqualErr verify that the return value of the set operation is correct

@@ -28,7 +28,7 @@ func (an *Abnormal) Start(addr string) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = redis.String(conn.Do("auth", "test-1541501672-1-98d9882bb7a8ba2c16974e"))
+	_, err = redis.String(conn.Do("auth", "test-1542098935-1-7ca41bda4efc2a1889c04e"))
 	if err != nil {
 		panic(err)
 	}

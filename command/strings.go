@@ -2,7 +2,6 @@ package command
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -130,7 +129,6 @@ func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	for i, str := range strs {
 		if str == nil || !str.Exist() {
-			fmt.Println("fuck")
 			values[i] = nil
 			continue
 		}

@@ -34,7 +34,7 @@ func (ac *AutoClient) Start(addr string) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = redis.String(conn.Do("auth", "test-1541501672-1-98d9882bb7a8ba2c16974e"))
+	_, err = redis.String(conn.Do("auth", "test-1542098935-1-7ca41bda4efc2a1889c04e"))
 	if err != nil {
 		panic(err)
 	}
@@ -55,14 +55,15 @@ func (ac *AutoClient) Close() {
 //StringCase check string case
 //TODO
 func (ac *AutoClient) StringCase(t *testing.T) {
-	ac.es.SetNxEqual(t, "key-set", "v1")
+	ac.es.SetNxEqual(t, "key-setx", "v1")
 	ac.es.SetExEqual(t, "key-set", "v2", 1)
 	ac.es.PSetexEqual(t, "key-set", "v3", 1000)
+
 	ac.es.SetEqual(t, "key-set", "value")
 	ac.es.AppendEqual(t, "key-set", "value")
 	ac.es.AppendEqual(t, "append", "value")
 	ac.es.StrlenEqual(t, "key-set")
-	ac.es.MSetNxEqual(t, 1, "key-setm", "value", "key-set", "value")
+	// ac.es.MSetNxEqual(t, 1, "key-setm", "value", "key-set", "value")
 
 	ac.es.MSetEqual(t, "key-set", "value")
 	ac.es.MGetEqual(t, "key-not-exist")
@@ -156,7 +157,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 //SystemCase check system case
 func (ac *AutoClient) SystemCase(t *testing.T) {
 	//auth
-	ac.AuthEqual(t, "test-1541501672-1-98d9882bb7a8ba2c16974e")
+	ac.AuthEqual(t, "test-1542098935-1-7ca41bda4efc2a1889c04e")
 	//ping
 	ac.PingEqual(t)
 }

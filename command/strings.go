@@ -2,6 +2,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -107,7 +108,6 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		txn.Destory(&s.Meta.Object, key)
 	}
 
-	s = txn.NewString(key)
 	if err := s.Set(value, unit); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -130,6 +130,7 @@ func MGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	for i, str := range strs {
 		if str == nil || !str.Exist() {
+			fmt.Println("fuck")
 			values[i] = nil
 			continue
 		}
@@ -205,10 +206,6 @@ func Append(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
-	}
-
-	if !str.Exist() {
-		str = txn.NewString(key)
 	}
 
 	llen, err := str.Append(value)
@@ -288,7 +285,6 @@ func SetNx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return Integer(ctx.Out, int64(0)), nil
 	}
 
-	str = txn.NewString(key)
 	if err := str.Set([]byte(ctx.Args[1])); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -308,7 +304,6 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		txn.Destory(&str.Meta.Object, key)
 	}
 
-	str = txn.NewString(key)
 	ui, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
@@ -334,7 +329,6 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		txn.Destory(&str.Meta.Object, key)
 	}
 
-	str = txn.NewString(key)
 	ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
@@ -367,11 +361,6 @@ func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	//Non-existing keys are considered as empty strings, so this command will make sure it holds a string large enough to be able to set value at offset.
-	if !str.Exist() {
-		str = txn.NewString(key)
-	}
-
 	// If the offset is larger than the current length of the string at key, the string is padded with zero-bytes to make offset fit.
 	val, err := str.SetRange(int64(offset), []byte(ctx.Args[2]))
 	if err != nil {
@@ -390,9 +379,6 @@ func Incr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
-	}
-	if !str.Exist() {
-		str = txn.NewString(key)
 	}
 	delta, err := str.Incr(1)
 	if err != nil {
@@ -414,10 +400,6 @@ func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	delta, err := strconv.ParseInt(string(ctx.Args[1]), 10, 0)
 	if err != nil {
 		return nil, ErrInteger
-	}
-
-	if !str.Exist() {
-		str = txn.NewString(key)
 	}
 
 	delta, err = str.Incr(delta)
@@ -442,10 +424,6 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, ErrInteger
 	}
 
-	if !str.Exist() {
-		str = txn.NewString(key)
-	}
-
 	delta, err = str.Incrf(delta)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -462,9 +440,6 @@ func Decr(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return nil, ErrTypeMismatch
 		}
 		return nil, errors.New("ERR " + err.Error())
-	}
-	if !str.Exist() {
-		str = txn.NewString(key)
 	}
 
 	delta, err := str.Incr(-1)
@@ -487,9 +462,6 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	delta, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
 	if err != nil {
 		return nil, ErrInteger
-	}
-	if !str.Exist() {
-		str = txn.NewString(key)
 	}
 
 	delta, err = str.Incr(-delta)

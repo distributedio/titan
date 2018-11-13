@@ -186,9 +186,9 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, key := range tkeys {
-		obj := txn.NewString(key)
-		if data, ok := mdata[string(key)]; ok {
+	for i, key := range keys {
+		obj := NewString(txn, key)
+		if data, ok := mdata[string(tkeys[i])]; ok {
 			if err := obj.decode(data); err != nil {
 				zap.L().Error("strings decode failed",
 					zap.ByteString("key", key),
@@ -198,11 +198,6 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 		sobjs[i] = obj
 	}
 	return sobjs, nil
-}
-
-// NewString returns a new string object
-func (txn *Transaction) NewString(key []byte) *String {
-	return NewString(txn, key)
 }
 
 // Kv returns a kv object

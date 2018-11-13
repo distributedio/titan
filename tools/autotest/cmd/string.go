@@ -3,6 +3,7 @@ package cmd
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
@@ -52,6 +53,64 @@ func (es *ExampleString) GetEqualErr(t *testing.T, errValue string, args ...inte
 	assert.EqualError(t, err, errValue)
 }
 
+//SetNxEqualErr verify that the return value of the set operation is correct
+func (es *ExampleString) SetNxEqual(t *testing.T, key string, value string) {
+	es.values[key] = value
+	reply, err := redis.String(es.conn.Do("SETNX", key, value))
+	assert.Equal(t, "OK", reply)
+	assert.NoError(t, err)
+	data, err := redis.Bytes(es.conn.Do("GET", key))
+	assert.Equal(t, value, string(data))
+	assert.NoError(t, err)
+}
+
+//SetExEqualErr verify that the return value of the set operation is correct
+func (es *ExampleString) SetExEqual(t *testing.T, key string, value string, delta int) {
+	es.values[key] = value
+	reply, err := redis.String(es.conn.Do("SETEX", key, value, delta))
+	assert.Equal(t, "OK", reply)
+	assert.NoError(t, err)
+	data, err := redis.Bytes(es.conn.Do("GET", key))
+	assert.Equal(t, value, string(data))
+	assert.NoError(t, err)
+	time.Sleep(time.Second * time.Duration(delta))
+	data, err = redis.Bytes(es.conn.Do("GET", key))
+	assert.Equal(t, value, "")
+	assert.NoError(t, err)
+}
+
+//PSetexEqualErr verify that the return value of the set operation is correct
+func (es *ExampleString) PSetexEqual(t *testing.T, key string, value string, delta int) {
+	es.values[key] = value
+	reply, err := redis.String(es.conn.Do("PSETEX", key, value, delta))
+	assert.Equal(t, "OK", reply)
+	assert.NoError(t, err)
+	data, err := redis.Bytes(es.conn.Do("GET", key))
+	assert.Equal(t, value, string(data))
+	assert.NoError(t, err)
+	time.Sleep(time.Millisecond * time.Duration(delta))
+	data, err = redis.Bytes(es.conn.Do("GET", key))
+	assert.Equal(t, value, "")
+	assert.NoError(t, err)
+}
+
+//SetRangeEqualErr verify that the return value of the set operation is correct
+func (es *ExampleString) SetRangeEqual(t *testing.T, key string, value string) {
+}
+
+//MSetNxRangeEqualErr verify that the return value of the set operation is correct
+func (es *ExampleString) MSetNxEqual(t *testing.T, expectValue int, args ...string) {
+	as := make([]interface{}, len(args))
+	for i := 0; i < len(args); i = i + 2 {
+		es.values[args[i]] = args[i+1]
+		as[i] = args[i]
+		as[i+1] = args[i+1]
+	}
+	reply, err := redis.Int(es.conn.Do("MSETNx", as...))
+	assert.NoError(t, err)
+	assert.Equal(t, expectValue, reply)
+}
+
 //AppendEqual verify that the return value of the append operation is correct
 func (es *ExampleString) AppendEqual(t *testing.T, key string, value string) {
 	if v, ok := es.values[key]; ok {
@@ -87,6 +146,22 @@ func (es *ExampleString) IncrEqual(t *testing.T, key string) {
 	reply, err := redis.Int(es.conn.Do("incr", key))
 	assert.Equal(t, vi, reply)
 	assert.NoError(t, err)
+}
+
+//DecrEqual verify that the return value of the incr operation is correct
+func (es *ExampleString) DecrEqual(t *testing.T, key string) {
+}
+
+//IncrByEqual verify that the return value of the incr operation is correct
+func (es *ExampleString) IncrByEqual(t *testing.T, key string) {
+}
+
+//IncrByFloatEqual verify that the return value of the incr operation is correct
+func (es *ExampleString) IncrByFloatEqual(t *testing.T, key string) {
+}
+
+//DecrbyEqual verify that the return value of the incr operation is correct
+func (es *ExampleString) DecrByEqual(t *testing.T, key string) {
 }
 
 //IncrEqualErr verify that the return value of the incr operation is correct

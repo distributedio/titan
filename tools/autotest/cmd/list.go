@@ -141,7 +141,7 @@ func (el *ExampleList) LrangeEqual(t *testing.T, key string, start, end int) {
 		end = -end
 	}
 	if end <= len(el.mapList[key]) {
-		v = v[start:end]
+		v = v[start : end+1]
 	}
 	reply, err := redis.Strings(el.conn.Do("lrange", key, start, end))
 	assert.Equal(t, v, reply)

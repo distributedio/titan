@@ -1,6 +1,7 @@
 package autotest
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -54,12 +55,17 @@ func (ac *AutoClient) Close() {
 //StringCase check string case
 //TODO
 func (ac *AutoClient) StringCase(t *testing.T) {
+	ac.es.SetNxEqual(t, "key-set", "v1")
+	ac.es.SetExEqual(t, "key-set", "v2", 1)
+	ac.es.PSetexEqual(t, "key-set", "v3", 1000)
 	ac.es.SetEqual(t, "key-set", "value")
 	ac.es.AppendEqual(t, "key-set", "value")
 	ac.es.AppendEqual(t, "append", "value")
 	ac.es.StrlenEqual(t, "key-set")
+	ac.es.MSetNxEqual(t, 1, "key-setm", "value", "key-set", "value")
+
 	ac.es.MSetEqual(t, "key-set", "value")
-	// ac.es.MGetEqual(t, "key-not-exist")
+	ac.es.MGetEqual(t, "key-not-exist")
 	ac.es.IncrEqual(t, "incr")
 	ac.es.IncrEqual(t, "incr")
 	ac.es.StrlenEqual(t, "heng")
@@ -76,6 +82,19 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LrangeEqual(t, "key-list", 99, 100)
 	ac.el.LpopEqual(t, "key-list")
 	ac.el.LpopEqual(t, "key-list-l")
+
+	var key []string
+	for i := 0; i < 4000; i++ {
+		num := strconv.Itoa(i)
+		key = append(key, "v", num)
+	}
+	ac.el.LpushEqual(t, "zkey-list")
+	ac.el.LlenEqual(t, "zkey-list")
+	ac.el.LsetEqual(t, "zkey-list", 3, "v0")
+	ac.el.LindexEqual(t, "zkey-list", 3)
+	ac.el.LrangeEqual(t, "zkey-list", 0, 10)
+	ac.el.LrangeEqual(t, "zkey-list", 99, 100)
+	ac.el.LpopEqual(t, "zkey-list")
 }
 
 //KeyCase check key case
@@ -91,11 +110,47 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ScanEqual(t, "", 0)
 
 	ac.es.SetEqual(t, "key-set", "value")
+	ac.ek.TypeEqual(t, "ket-set", "string")
+	ac.ek.ObjectEqual(t, "key-set", "embstr")
 	ac.ek.ExpireEqual(t, "key-set", 2, 1)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.ExpireEqual(t, "key-set", 1, 0)
 	ac.ek.ExpireEqual(t, "key-set", 0, 0)
+
+	//test PExpire
+	ac.el.LpushEqual(t, "key-set", "value")
+	ac.ek.TypeEqual(t, "ket-set", "list")
+	ac.ek.PExpireEqual(t, "key-set", 2000, 1)
+	ac.ek.TTLEqual(t, "key-set", 1)
+	time.Sleep(time.Second * 2)
+	ac.ek.PExpireEqual(t, "key-set", 1, 0)
+	ac.ek.PExpireEqual(t, "key-set", 0, 0)
+
+	at := time.Now().Unix() + int64(2*time.Second)
+	var key []string
+	for i := 0; i < 4000; i++ {
+		num := strconv.Itoa(i)
+		key = append(key, "v", num)
+	}
+	ac.el.LpushEqual(t, "zkey-list")
+	ac.ek.TypeEqual(t, "ket-set", "list")
+	ac.ek.ObjectEqual(t, "key-set", "quicklist")
+	ac.ek.ExpireAtEqual(t, "zkey-list", int(at), 1)
+	time.Sleep(time.Second * 2)
+	ac.ek.ExpireAtEqual(t, "zkey-list", int(at), 0)
+	ac.ek.ExpireAtEqual(t, "zkey-list", int(at), 0)
+
+	//test PExpire
+	at = time.Now().UnixNano()/1000 + int64(2*time.Second)
+	ac.el.LpushEqual(t, "key-set", "value")
+	ac.ek.TypeEqual(t, "ket-set", "list")
+	ac.ek.ObjectEqual(t, "key-set", "ziplist")
+	ac.ek.PExpireAtEqual(t, "key-set", 2000, 1)
+	ac.ek.TTLEqual(t, "key-set", 1)
+	time.Sleep(time.Second * 2)
+	ac.ek.PExpireAtEqual(t, "key-set", 1, 0)
+	ac.ek.PExpireAtEqual(t, "key-set", 0, 0)
 }
 
 //SystemCase check system case

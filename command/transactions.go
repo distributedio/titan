@@ -54,8 +54,7 @@ func Exec(ctx *Context) {
 		if _, ok := txnCommands[name]; ok {
 			onCommit, err = TxnCall(subCtx, txn)
 			if err != nil {
-				txn.Rollback()
-				return
+				resp.ReplyError(out, err.Error())
 			}
 		} else {
 			Call(subCtx)

@@ -2,6 +2,10 @@
 
 An distributed implementation of Redis compatible layer over TiKV
 
+## Status
+
+Active development, not ready for production. We welcome any form of contributions!
+
 ## Commands
 
 ### Connections

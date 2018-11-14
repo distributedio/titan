@@ -144,7 +144,6 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 		if err := gc(txn.t, dkey); err != nil {
 			return err
 		}
-
 	}
 
 	if obj.ExpireAt > 0 {

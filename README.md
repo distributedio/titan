@@ -9,9 +9,9 @@ Active development, not ready for production. We welcome any form of contributio
 ## Features
 
 * Completely compatible with redis protocol
-* Full distributed transaction support
+* Full distributed transaction with strong consistency
+* Multi-tenancy support
 * No painful scale out
-* Strong consistency
 * High availability 
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 

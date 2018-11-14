@@ -148,18 +148,66 @@ func (es *ExampleString) IncrEqual(t *testing.T, key string) {
 
 //DecrEqual verify that the return value of the incr operation is correct
 func (es *ExampleString) DecrEqual(t *testing.T, key string) {
+	var vi int
+	if v, ok := es.values[key]; ok {
+		vi, _ = strconv.Atoi(v)
+		vi = vi - 1
+		es.values[key] = strconv.Itoa(vi)
+	} else {
+		vi = -1
+		es.values[key] = strconv.Itoa(vi)
+	}
+	reply, err := redis.Int(es.conn.Do("decr", key))
+	assert.Equal(t, vi, reply)
+	assert.NoError(t, err)
 }
 
 //IncrByEqual verify that the return value of the incr operation is correct
-func (es *ExampleString) IncrByEqual(t *testing.T, key string) {
+func (es *ExampleString) IncrByEqual(t *testing.T, key string, delta int) {
+	var vi int
+	if v, ok := es.values[key]; ok {
+		vi, _ = strconv.Atoi(v)
+		vi = vi + delta
+		es.values[key] = strconv.Itoa(vi)
+	} else {
+		vi = delta
+		es.values[key] = strconv.Itoa(vi)
+	}
+	reply, err := redis.Int(es.conn.Do("incrby", key, delta))
+	assert.Equal(t, vi, reply)
+	assert.NoError(t, err)
 }
 
 //IncrByFloatEqual verify that the return value of the incr operation is correct
-func (es *ExampleString) IncrByFloatEqual(t *testing.T, key string) {
+func (es *ExampleString) IncrByFloatEqual(t *testing.T, key string, delta float64) {
+	var vi float64
+	if v, ok := es.values[key]; ok {
+		vi, _ = strconv.ParseFloat(string(v), 64)
+		vi = vi + delta
+		es.values[key] = strconv.FormatFloat(vi, 'e', 10, 64)
+	} else {
+		vi = delta
+		es.values[key] = strconv.FormatFloat(vi, 'e', 10, 64)
+	}
+	reply, err := redis.Float64(es.conn.Do("incrbyfloat", key, delta))
+	assert.Equal(t, vi, reply)
+	assert.NoError(t, err)
 }
 
 //DecrbyEqual verify that the return value of the incr operation is correct
-func (es *ExampleString) DecrByEqual(t *testing.T, key string) {
+func (es *ExampleString) DecrByEqual(t *testing.T, key string, delta int) {
+	var vi int
+	if v, ok := es.values[key]; ok {
+		vi, _ = strconv.Atoi(v)
+		vi = vi - delta
+		es.values[key] = strconv.Itoa(vi)
+	} else {
+		vi = -delta
+		es.values[key] = strconv.Itoa(vi)
+	}
+	reply, err := redis.Int(es.conn.Do("decrby", key, delta))
+	assert.Equal(t, vi, reply)
+	assert.NoError(t, err)
 }
 
 //IncrEqualErr verify that the return value of the incr operation is correct

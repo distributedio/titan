@@ -400,33 +400,23 @@ func TestStringIncrBy(t *testing.T) {
 
 //bug
 func TestStringIncrByFloat(t *testing.T) {
-	/*
-			args := make([][]byte, 2)
-			args[0] = []byte("incrbyfloat")
-			args[1] = []byte("2.0e2")
-			cmdctx.Db.Begin()
-			r, err := IncrByFloatHandler(cmdctx, args)
-			cmdctx.Db.Commit()
-			rr := &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(200)}
-			assert.Equal(t, rr, r)
-			assert.NoError(t, err)
+	args := make([]string, 2)
+	args[0] = "incrbyfloat"
+	args[1] = "2.0e2"
 
-			args[1] = []byte("2.0e2")
-			cmdctx.Db.Begin()
-			r, err = IncrByFloatHandler(cmdctx, args)
-			cmdctx.Db.Commit()
-			rr = &protocol.ReplyData{Type: protocol.REPLYBINT, Value: int64(0)}
-			assert.Equal(t, rr, r)
-			assert.NoError(t, err)
+	ctx := ContextTest("incrbyfloat", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "200")
 
-				args[1] = []byte("02")
-				cmdctx.Db.Begin()
-				r, err = IncrByFloatHandler(cmdctx, args)
-				cmdctx.Db.Commit()
-				assert.Equal(t, RedisIntegerResp, r)
-				assert.NotNil(t, err)
-		//
-	*/
+	args[1] = "-2.0e2"
+	ctx = ContextTest("incrbyfloat", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "0")
+
+	args[1] = "02"
+	ctx = ContextTest("incrbyfloat", args...)
+	Call(ctx)
+	assert.Contains(t, ctxString(ctx.Out), "0")
 }
 
 func TestStringDecr(t *testing.T) {

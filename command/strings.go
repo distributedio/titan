@@ -423,12 +423,11 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
-
 	delta, err = str.Incrf(delta)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return SimpleString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
+	return BulkString(ctx.Out, strconv.FormatFloat(delta, 'f', 17, 64)), nil
 }
 
 // Decr decrements the integer value of a key by one

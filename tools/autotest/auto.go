@@ -53,7 +53,6 @@ func (ac *AutoClient) Close() {
 }
 
 //StringCase check string case
-//TODO
 func (ac *AutoClient) StringCase(t *testing.T) {
 	ac.es.SetNxEqual(t, "key-setx", "v1")
 	ac.es.SetExEqual(t, "key-set", "v2", 1)
@@ -69,7 +68,13 @@ func (ac *AutoClient) StringCase(t *testing.T) {
 	ac.es.MGetEqual(t, "key-not-exist")
 	ac.es.IncrEqual(t, "incr")
 	ac.es.IncrEqual(t, "incr")
+	ac.es.IncrByEqual(t, "incr", 19)
+	ac.es.DecrEqual(t, "incr")
+	ac.es.DecrByEqual(t, "incr", 19)
+	ac.es.IncrByFloatEqual(t, "incr", 1.111111)
+	ac.es.IncrByFloatEqual(t, "incr", 2.1e2)
 	ac.es.StrlenEqual(t, "heng")
+
 }
 
 //ListCase check list case

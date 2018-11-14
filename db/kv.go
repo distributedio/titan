@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"log"
 	"math/rand"
 
 	"gitlab.meitu.com/platform/titan/db/store"
@@ -174,7 +173,6 @@ func (kv *Kv) FlushAll() error {
 		return err
 	}
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
-		log.Println(string(iter.Key()))
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
 		}

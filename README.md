@@ -1,10 +1,20 @@
 # Titan
 
-An distributed implementation of Redis compatible layer over TiKV
+An distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
 
 ## Status
 
 Active development, not ready for production. We welcome any form of contributions!
+
+## Features
+
+* Completely compatible with redis protocol
+* Full distributed transaction support
+* No painful scale out
+* Strong consistency
+* High availability 
+
+Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 
 
 ## Commands
 

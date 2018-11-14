@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/golang/protobuf/proto"
-	pb "gitlab.meitu.com/platform/titan/db/zlistproto"
+	pb "github.com/meitu/titan/db/zlistproto"
 )
 
 // GetZList generate List objectm with auto reation, if zip is true, zipped list will be choose

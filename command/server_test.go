@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.meitu.com/platform/titan/context"
-	"gitlab.meitu.com/platform/titan/db"
+	"github.com/meitu/titan/context"
+	"github.com/meitu/titan/db"
 )
 
 func TestInfo(t *testing.T) {

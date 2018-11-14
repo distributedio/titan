@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/db"
-	"gitlab.meitu.com/platform/titan/encoding/resp"
+	"github.com/meitu/titan/db"
+	"github.com/meitu/titan/encoding/resp"
 )
 
 const (

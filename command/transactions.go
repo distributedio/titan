@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/db"
-	"gitlab.meitu.com/platform/titan/encoding/resp"
-	"gitlab.meitu.com/platform/titan/metrics"
+	"github.com/meitu/titan/db"
+	"github.com/meitu/titan/encoding/resp"
+	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
 )
 

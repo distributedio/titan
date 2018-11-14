@@ -17,11 +17,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"gitlab.meitu.com/platform/titan"
-	"gitlab.meitu.com/platform/titan/conf"
-	"gitlab.meitu.com/platform/titan/context"
-	"gitlab.meitu.com/platform/titan/db"
-	"gitlab.meitu.com/platform/titan/metrics"
+	"github.com/meitu/titan"
+	"github.com/meitu/titan/conf"
+	"github.com/meitu/titan/context"
+	"github.com/meitu/titan/db"
+	"github.com/meitu/titan/metrics"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strconv"
 
-	"gitlab.meitu.com/platform/titan/db"
+	"github.com/meitu/titan/db"
 )
 
 // HDel removes the specified fields from the hash stored at key

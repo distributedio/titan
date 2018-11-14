@@ -27,7 +27,7 @@ auth = ""
 #rules:       nonempty
 #description: pd address in tidb
 #required
-pd-addrs = "tikv://172.16.201.74:2379"
+pd-addrs = ""
 
 [server.tikv.zt]
 

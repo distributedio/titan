@@ -4,7 +4,7 @@ import (
 	"flag"
 	"testing"
 
-	"gitlab.meitu.com/platform/titan/tools/autotest"
+	"github.com/meitu/titan/tools/autotest"
 )
 
 func main() {

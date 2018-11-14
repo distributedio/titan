@@ -7,10 +7,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"gitlab.meitu.com/platform/titan"
-	"gitlab.meitu.com/platform/titan/conf"
-	"gitlab.meitu.com/platform/titan/context"
-	"gitlab.meitu.com/platform/titan/db"
+	"github.com/meitu/titan"
+	"github.com/meitu/titan/conf"
+	"github.com/meitu/titan/context"
+	"github.com/meitu/titan/db"
 )
 
 var (

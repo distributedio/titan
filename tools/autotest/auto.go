@@ -161,7 +161,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
 	ac.ek.PersistEqual(t, "zkey-listx", 1)
 	time.Sleep(time.Second * 2)
-	ac.ek.PersistEqual(t, "zkey-listx", 1)
+	ac.ek.PersistEqual(t, "zkey-listx", 0)
 }
 
 //SystemCase check system case

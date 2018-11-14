@@ -2,13 +2,13 @@ package command
 
 import (
 	"bytes"
-	"log"
 	"strings"
 	"time"
 
 	"gitlab.meitu.com/platform/titan/db"
 	"gitlab.meitu.com/platform/titan/encoding/resp"
 	"gitlab.meitu.com/platform/titan/metrics"
+	"go.uber.org/zap"
 )
 
 // Multi starts a transaction which will block subsequent commands until 'exec'
@@ -74,8 +74,11 @@ func Exec(ctx *Context) {
 			mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 		}
 		mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-		// TODO log err message
-		log.Println(err)
+		zap.L().Error("commit failed",
+			zap.Int64("clientid", ctx.Client.ID),
+			zap.String("command", ctx.Name),
+			zap.String("traceid", ctx.TraceID),
+			zap.Error(err))
 		resp.ReplyArray(ctx.Out, 0)
 		return
 	}
@@ -90,9 +93,12 @@ func Exec(ctx *Context) {
 			c()
 		}
 
-		// TODO handle error here
 		if _, err := ctx.Out.Write(outputs[i].Bytes()); err != nil {
-			log.Println(err)
+			zap.L().Error("reply to client failed",
+				zap.Int64("clientid", ctx.Client.ID),
+				zap.String("command", ctx.Name),
+				zap.String("traceid", ctx.TraceID),
+				zap.Error(err))
 			break
 		}
 	}

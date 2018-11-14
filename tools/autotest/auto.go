@@ -153,14 +153,14 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ObjectEqual(t, "key-setz", "linkedlist")
 	ac.ek.PExpireAtEqual(t, "key-setz", int(at), 1)
 	ac.ek.TTLEqual(t, "key-setz", 0)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 	ac.ek.PExpireAtEqual(t, "key-setz", int(at), 0)
 
 	at = time.Now().Unix() + 1
 	ac.es.SetEqual(t, "zkey-listx", "value")
 	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
 	ac.ek.PersistEqual(t, "zkey-listx", 1)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 	ac.ek.PersistEqual(t, "zkey-listx", 1)
 }
 

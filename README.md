@@ -63,24 +63,24 @@ Visit [Titan](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=297458
 - [x] mget 
 - [x] mset 
 - [x] strlen
-- [ ] incr
-- [ ] incrby
-- [ ] decr
-- [ ] decrby
+- [x] incr
+- [x] incrby
+- [x] decr
+- [x] decrby
 - [x] append
 - [ ] bitcount
 - [ ] bitfield
 - [ ] bitop
 - [ ] bitpos
 - [ ] getbit
-- [ ] getrange
-- [ ] getset
-- [ ] incrbyfloat 
+- [x] getrange
+- [x] getset
+- [x] incrbyfloat 
 - [ ] msetnx
-- [ ] psetex
+- [x] psetex
 - [ ] setbit
-- [ ] setex
-- [ ] setnx
+- [x] setex
+- [x] setnx
 - [ ] setrange
 
 ### List
@@ -92,7 +92,7 @@ Visit [Titan](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=297458
 - [x] lset
 - [x] lpush
 - [x] lpop
-- [x] lpushhx
+- [x] lpushx
 - [ ] ltrim
 - [ ] lrem
 - [ ] rpop

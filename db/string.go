@@ -32,7 +32,6 @@ func GetString(txn *Transaction, key []byte) (*String, error) {
 		}
 		return nil, err
 	}
-
 	if err := str.decode(Meta); err != nil && err != ErrKeyNotFound {
 		return nil, err
 	}
@@ -127,13 +126,13 @@ func (s *String) GetRange(start, end int) []byte {
 	if start > end || start > vlen || end < 0 {
 		return nil
 	}
-	if end > vlen {
-		end = vlen
+	if end >= vlen-1 {
+		end = vlen - 1
 	}
 	if start < 0 {
 		start = 0
 	}
-	return s.Meta.Value[start:][:end+1]
+	return s.Meta.Value[:end+1][start:]
 }
 
 //SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.

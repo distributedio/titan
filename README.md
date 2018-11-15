@@ -127,7 +127,7 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 - [ ] lrem
 - [ ] rpop
 - [ ] rpoplpush
-- [ ] rpush
+- [x] rpush
 - [ ] rpushhx
 - [ ] blpop
 - [ ] brpop

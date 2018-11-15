@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/meitu/titan.svg?branch=master)](https://travis-ci.org/meitu/titan)
 [![Go Report Card](https://goreportcard.com/badge/github.com/meitu/titan)](https://goreportcard.com/report/github.com/meitu/titan)
 [![Coverage Status](https://coveralls.io/repos/github/meitu/titan/badge.svg?branch=master)](https://coveralls.io/github/meitu/titan?branch=master)
+[![Coverage Status](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/meitu/titan/releases)
 
 A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
 

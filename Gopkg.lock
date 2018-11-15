@@ -156,27 +156,6 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:d9431ea21bc989899e4b0a390d6621297629db0a069415cc64b70870c6ff01a0"
-  name = "github.com/meitu/titan"
-  packages = [
-    ".",
-    "command",
-    "conf",
-    "context",
-    "db",
-    "db/store",
-    "db/zlistproto",
-    "encoding/resp",
-    "metrics",
-    "tools/autotest",
-    "tools/autotest/cmd",
-    "tools/integration",
-  ]
-  pruneopts = "UT"
-  revision = "9b8d3e8d235b2d81c03e6854e3c82275e8fdea88"
-  version = "v0.3"
-
-[[projects]]
   digest = "1:b56c589214f01a5601e0821387db484617392d0042f26234bf2da853a2f498a1"
   name = "github.com/naoina/go-stringutil"
   packages = ["."]

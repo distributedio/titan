@@ -1,6 +1,0 @@
-syntax = "proto3";
-package zlistproto;
-
-message zlistvalue{
-    repeated bytes v = 1;
-}

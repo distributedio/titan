@@ -318,7 +318,7 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 	return false, nil
 }
 
-func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
+func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, error) {
 	count := 0
 	label := "default"
 	switch {
@@ -339,7 +339,7 @@ func isLeader(db *DB, leader []byte, interval time.Duration) (bool, error) {
 			continue
 		}
 
-		isLeader, err := checkLeader(txn.t, leader, UUID(), interval)
+		isLeader, err := checkLeader(txn.t, leader, id, interval)
 		mtFunc := func() {
 			if isLeader {
 				metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(1)

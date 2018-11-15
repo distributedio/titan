@@ -75,8 +75,9 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 func StartExpire(db *DB) error {
 	ticker := time.NewTicker(expireTick)
 	defer ticker.Stop()
+	id := UUID()
 	for range ticker.C {
-		isLeader, err := isLeader(db, sysExpireLeader, time.Duration(sysExpireLeaderFlushInterval))
+		isLeader, err := isLeader(db, sysExpireLeader, id, time.Duration(sysExpireLeaderFlushInterval))
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
 			continue

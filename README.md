@@ -20,6 +20,10 @@ Active development, not ready for production. We welcome any form of contributio
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 
 
+## Installing
+
+[Deploy Titan](docs/ops/deploy.md)
+
 ## Commands
 
 ### Connections

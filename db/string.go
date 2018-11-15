@@ -132,7 +132,7 @@ func (s *String) GetRange(start, end int) []byte {
 	if start < 0 {
 		start = 0
 	}
-	return s.Meta.Value[:end+1][start:]
+	return s.Meta.Value[start : end+1]
 }
 
 //SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.

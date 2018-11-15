@@ -27,8 +27,9 @@ func compareGetString(want, get *String) error {
 }
 
 var (
-	ExistKey   = []byte("StringKey")
-	NoExistKey = []byte("NoExitStringKey")
+	ExistKey       = []byte("StringKey")
+	ExpireExistKey = []byte("ExpireStringKey")
+	NoExistKey     = []byte("NoExitStringKey")
 
 	value = []byte("StringValue")
 
@@ -130,29 +131,45 @@ func TestString_Get(t *testing.T) {
 }
 
 func TestString_Set(t *testing.T) {
-	var exp = []int64{1}
+	var exp = []int64{int64(5 * time.Second)}
 	type args struct {
 		val    []byte
 		expire []int64
 	}
+	type want struct {
+		val []byte
+		err error
+	}
 	tests := []struct {
 		name    string
+		key     []byte
 		args    args
+		want    want
 		wantErr bool
 	}{
 		{
 			name: "set no expire",
+			key:  ExistKey,
 			args: args{
 				val:    value,
 				expire: nil,
+			},
+			want: want{
+				val: value,
+				err: nil,
 			},
 			wantErr: false,
 		},
 		{
 			name: "set expire",
+			key:  ExpireExistKey,
 			args: args{
 				val:    value,
 				expire: exp,
+			},
+			want: want{
+				val: nil,
+				err: ErrKeyNotFound,
 			},
 			wantErr: false,
 		},
@@ -164,7 +181,7 @@ func TestString_Set(t *testing.T) {
 			if txn, err = mockDB.Begin(); err != nil {
 				t.Errorf("TestGetSet db.Begin error %s", err)
 			}
-			s, err := GetString(txn, ExistKey)
+			s, err := GetString(txn, tt.key)
 			if err != nil {
 				t.Errorf("String.Set() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -176,24 +193,36 @@ func TestString_Set(t *testing.T) {
 				t.Errorf("Set() txn.Commit error = %v", err)
 				return
 			}
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("String.Set() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if tt.args.expire != nil {
+			if len(tt.args.expire) != 0 {
 				if txn, err = mockDB.Begin(); err != nil {
 					t.Errorf("TestGetSet db.Begin error %s", err)
 				}
-				s, err := GetString(txn, ExistKey)
-				time.Sleep(2 * time.Second)
+				s, err = GetString(txn, tt.key)
+				if val, err := s.Get(); !bytes.Equal(val, tt.args.val) || err != nil {
+					t.Errorf("String.Get() key=%s error = %v,value = %v", string(tt.key), err, string(val))
+				}
 				if err = txn.Commit(context.TODO()); err != nil {
 					t.Errorf("Set() txn.Commit error = %v", err)
 					return
 				}
-				if val, err := s.Get(); val != nil || err != ErrKeyNotFound {
-					t.Errorf("String.Get() error = %v,value = %v", err, string(val))
-				}
-			}
 
+				time.Sleep(8 * time.Second)
+			}
+			if txn, err = mockDB.Begin(); err != nil {
+				t.Errorf("TestGetSet db.Begin error %s", err)
+			}
+			s, err = GetString(txn, tt.key)
+			if err = txn.Commit(context.TODO()); err != nil {
+				t.Errorf("Set() txn.Commit error = %v", err)
+				return
+			}
+			if val, err := s.Get(); !bytes.Equal(val, tt.want.val) || err != tt.want.err {
+				t.Errorf("String.Get() key=%s error = %v,value = %v", string(tt.key), err, string(val))
+			}
 		})
 	}
 }
@@ -241,61 +270,44 @@ func TestString_Len(t *testing.T) {
 }
 
 func TestString_Exist(t *testing.T) {
-	tests := []struct {
-		name string
-		want bool
-	}{
-		{
-			name: "Exist",
-			want: true,
-		},
-		{
-			name: "NoExist",
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.name == "Exist" {
+	/*
+		// write exist string
+		tests := []struct {
+			name string
+			key  string
+			want bool
+		}{
+			{
+				name: "Exist",
+				key:  "exist_key",
+				want: true,
+			},
+			{
+				name: "NoExist",
+				key:  "not_exist_key",
+				want: false,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
 				txn, err := mockDB.Begin()
 				if err != nil {
 					t.Errorf("db.Begin error %s", err)
 				}
-				s, err := GetString(txn, value)
+				s, err := GetString(txn, tt.key)
 				if err != nil {
 					t.Errorf("String.GetString error = %v", err)
 				}
-				err = s.Set(value)
-				if err != nil {
-					t.Errorf("String.Set error = %v", err)
+				if got := s.Exist(); got != tt.want {
+					t.Errorf("String.Exist() = %v, want %v", got, tt.want)
 				}
 				if err = txn.Commit(context.TODO()); err != nil {
 					t.Errorf("Set() txn.Commit error = %v", err)
 					return
 				}
-				if got := s.Exist(); got != tt.want {
-					t.Errorf("String.Exist() = %v, want %v", got, tt.want)
-				}
-			}
-			if tt.name == "NoExist" {
-				txn, err := mockDB.Begin()
-				if err != nil {
-					t.Errorf("db.Begin error %s", err)
-				}
-				s := NewString(txn, nil)
-				if err != nil {
-					t.Errorf("String.GetString error = %v", err)
-				}
-				if err = txn.Commit(context.TODO()); err != nil {
-					t.Errorf("Set() txn.Commit error = %v", err)
-					return
-				}
-				if got := s.Exist(); got != tt.want {
-					t.Errorf("String.Exist() = %v, want %v", got, tt.want)
-				}
-			}
-		})
-	}
+			})
+		}
+	*/
 }
 
 func TestString_Append(t *testing.T) {

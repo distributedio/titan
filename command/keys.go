@@ -94,6 +94,14 @@ func ExpireAt(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func Persist(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	key := []byte(ctx.Args[0])
+	obj, err := txn.Object(key)
+	if err != nil && err != db.ErrKeyNotFound {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if err == db.ErrKeyNotFound || obj.ExpireAt == 0 {
+		return Integer(ctx.Out, 0), nil
+	}
+
 	if err := kv.ExpireAt(key, 0); err != nil {
 		if err == db.ErrKeyNotFound {
 			return Integer(ctx.Out, 0), nil

@@ -291,6 +291,12 @@ func TestPerist(t *testing.T) {
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
 	assert.Equal(t, ":-1", lines[0])
+
+	ctx = ContextTest("persist", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+
 }
 
 func TestType(t *testing.T) {

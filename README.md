@@ -1,6 +1,7 @@
 # Titan
 
 [![Build Status](https://travis-ci.org/meitu/titan.svg?branch=master)](https://travis-ci.org/meitu/titan)
+[![Go Report Card](https://goreportcard.com/badge/github.com/meitu/titan)](https://goreportcard.com/report/github.com/meitu/titan)
 
 A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
 

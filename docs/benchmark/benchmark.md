@@ -1,4 +1,4 @@
-# Benchmark of titan
+# Benchmarks of Titan
 
 ## Environment
 

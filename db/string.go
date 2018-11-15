@@ -126,7 +126,7 @@ func (s *String) GetRange(start, end int) []byte {
 	if start > end || start > vlen || end < 0 {
 		return nil
 	}
-	if end >= vlen-1 {
+	if end > vlen {
 		end = vlen - 1
 	}
 	if start < 0 {

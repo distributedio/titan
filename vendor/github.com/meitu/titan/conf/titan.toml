@@ -1,0 +1,118 @@
+#type:        string
+#description: the file name to record connd PID
+#default:     titan.pid
+#pid-filename = "titan.pid"
+
+[server]
+
+#type:        string
+#description: client connetion auth
+auth = ""
+
+#type:        string
+#rules:       netaddr
+#description: address to listen
+#default:     0.0.0.0:7369
+#listen = "0.0.0.0:7369"
+
+#type:        int64
+#rules:       numeric
+#description: client connection count
+#default:     1000
+#max-connection = 1000
+
+[server.tikv]
+
+#type:        string
+#rules:       nonempty
+#description: pd address in tidb
+#required
+pd-addrs = ""
+
+[server.tikv.zt]
+
+#type:        int
+#rules:       numeric
+#description: parallel workers count
+#default:     5
+#workers = 5
+
+#type:        int
+#rules:       numeric
+#description: object transfer limitation per-transection
+#default:     10
+#batch = 10
+
+#type:        int
+#rules:       numeric
+#description: ZT Worker queue depth
+#default:     100
+#depth = 100
+
+#type:        time.Duration
+#description: Queue fill interval in milsecond
+#default:     1000ms
+#interval = "1s"
+
+
+[status]
+
+#type:        string
+#rules:       nonempty
+#description: listen address of http server
+#default:     0.0.0.0:7345
+#listen = "0.0.0.0:7345"
+
+
+[tikv-logger]
+
+#type:        string
+#rules:       nonempty
+#description: the default log path
+#default:     logs/tikv
+#path = "logs/tikv"
+
+#type:        string
+#description: log level(debug, info, warn, error, panic, fatal)
+#default:     info
+#level = "info"
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling log compress
+#default:     false
+#compress = false
+
+#type:        string
+#description: log time rotate pattern(s m h D M W)
+#default:     0 0 0 * * *
+#time-rotate = "0 0 0 * * *"
+
+
+[logger]
+
+#type:        string
+#description: the default logger name
+#default:     titan
+#name = "titan"
+
+#type:        string
+#description: the default log path
+#default:     logs/titan
+#path = "logs/titan"
+
+#type:        string
+#description: log level(debug, info, warn, error, panic, fatal)
+#default:     info
+#level = "debug"
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling log compress
+#default:     false
+#compress = false
+
+#type:        string
+#description: log time rotate pattern(s m h D M W)
+#default:     0 0 0 * * *
+#time-rotate = "0 0 0 * * *"

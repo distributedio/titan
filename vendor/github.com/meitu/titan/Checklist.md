@@ -1,0 +1,13 @@
+- [ ] zap + rollingwriter
+- [ ] unit test
+- [ ] auto test
+- [ ] ci/cd
+- [ ] metrics
+- [ ] status/pprof
+- [ ] continuous
+- [ ] list/zlist
+- [ ] strings
+- [ ] keys
+- [ ] conf
+- [ ] gc/expire/zt
+- [ ] token

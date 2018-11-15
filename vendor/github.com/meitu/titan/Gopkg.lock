@@ -11,11 +11,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:052a1514d36e44c32f5f8ffacdda052683ad589eaa08655a9b2a859df09f77b3"
+  digest = "1:9b954f4198ee2bbf72ca4a7ca88de7c671144ce81b6ba5ca576b8ae728106211"
   name = "github.com/arthurkiller/rollingWriter"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d77e5d907c73b73bdb17cad30a04d9e034284b1f"
+  revision = "e7449b1b067c688765230649996e78374d95cdc3"
 
 [[projects]]
   branch = "master"
@@ -154,27 +154,6 @@
   pruneopts = "UT"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
-
-[[projects]]
-  digest = "1:d9431ea21bc989899e4b0a390d6621297629db0a069415cc64b70870c6ff01a0"
-  name = "github.com/meitu/titan"
-  packages = [
-    ".",
-    "command",
-    "conf",
-    "context",
-    "db",
-    "db/store",
-    "db/zlistproto",
-    "encoding/resp",
-    "metrics",
-    "tools/autotest",
-    "tools/autotest/cmd",
-    "tools/integration",
-  ]
-  pruneopts = "UT"
-  revision = "9b8d3e8d235b2d81c03e6854e3c82275e8fdea88"
-  version = "v0.3"
 
 [[projects]]
   digest = "1:b56c589214f01a5601e0821387db484617392d0042f26234bf2da853a2f498a1"
@@ -647,20 +626,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/arthurkiller/rollingWriter",
-    "github.com/golang/protobuf/proto",
     "github.com/gomodule/redigo/redis",
-    "github.com/meitu/titan",
-    "github.com/meitu/titan/command",
-    "github.com/meitu/titan/conf",
-    "github.com/meitu/titan/context",
-    "github.com/meitu/titan/db",
-    "github.com/meitu/titan/db/store",
-    "github.com/meitu/titan/db/zlistproto",
-    "github.com/meitu/titan/encoding/resp",
-    "github.com/meitu/titan/metrics",
-    "github.com/meitu/titan/tools/autotest",
-    "github.com/meitu/titan/tools/autotest/cmd",
-    "github.com/meitu/titan/tools/integration",
     "github.com/pingcap/tidb/kv",
     "github.com/pingcap/tidb/store/mockstore",
     "github.com/pingcap/tidb/store/tikv",
@@ -671,7 +637,6 @@
     "github.com/shafreeck/retry",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
-    "github.com/twinj/uuid",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
   ]

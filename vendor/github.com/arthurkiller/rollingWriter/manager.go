@@ -64,6 +64,7 @@ func NewManager(c *Config) (Manager, error) {
 					if err != nil {
 						// SHOULD NOT HAPPEN
 						log.Println("error in open file", err)
+						os.Exit(-1)
 					}
 					if info, err := file.Stat(); err == nil {
 						if info.Size() > m.thresholdSize {
@@ -90,32 +91,30 @@ func (m *manager) Close() {
 // ParseVolume parse the config volume format and return threshold
 func (m *manager) ParseVolume(c *Config) {
 	s := []byte(strings.ToUpper(c.RollingVolumeSize))
-
-	if !(strings.Contains(string(s), "K") || strings.Contains(string(s), "M") ||
-		strings.Contains(string(s), "G") || strings.Contains(string(s), "KB") ||
-		strings.Contains(string(s), "MB") || strings.Contains(string(s), "GB")) {
+	if !(strings.Contains(string(s), "K") || strings.Contains(string(s), "KB") ||
+		strings.Contains(string(s), "M") || strings.Contains(string(s), "MB") ||
+		strings.Contains(string(s), "G") || strings.Contains(string(s), "GB") ||
+		strings.Contains(string(s), "T") || strings.Contains(string(s), "TB")) {
 
 		// set the default threshold with 1GB
 		m.thresholdSize = 1024 * 1024 * 1024
 		return
 	}
 
-	var (
-		p       int
-		unit    int64 = 1
-		unitstr string
-	)
+	var unit int64 = 1
+	p, _ := strconv.Atoi(string(s[:len(s)-1]))
+	unitstr := string(s[len(s)-1])
 
 	if s[len(s)-1] == 'B' {
 		p, _ = strconv.Atoi(string(s[:len(s)-2]))
 		unitstr = string(s[len(s)-2:])
-	} else {
-		p, _ = strconv.Atoi(string(s[:len(s)-1]))
-		unitstr = string(s[len(s)-1])
 	}
 
 	switch unitstr {
 	default:
+		fallthrough
+	case "T", "TB":
+		unit *= 1024
 		fallthrough
 	case "G", "GB":
 		unit *= 1024

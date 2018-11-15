@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/metrics"
+	"github.com/meitu/titan/metrics"
 
 	"github.com/pingcap/tidb/kv"
 )

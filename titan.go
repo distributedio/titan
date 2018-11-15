@@ -4,9 +4,9 @@ import (
 	"net"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/command"
-	"gitlab.meitu.com/platform/titan/context"
-	"gitlab.meitu.com/platform/titan/metrics"
+	"github.com/meitu/titan/command"
+	"github.com/meitu/titan/context"
+	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
 )
 

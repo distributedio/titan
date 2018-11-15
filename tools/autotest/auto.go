@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/tools/autotest/cmd"
+	"github.com/meitu/titan/tools/autotest/cmd"
 
 	"github.com/gomodule/redigo/redis"
 )

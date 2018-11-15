@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/tools/integration"
+	"github.com/meitu/titan/tools/integration"
 )
 
 var (

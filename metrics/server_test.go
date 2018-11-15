@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.meitu.com/platform/titan/conf"
+	"github.com/meitu/titan/conf"
 )
 
 var (

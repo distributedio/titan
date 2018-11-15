@@ -1,7 +1,20 @@
-# Titan [![build status](https://gitlab.meitu.com/platform/titan/badges/dev/build.svg)](https://gitlab.meitu.com/platform/titan/commits/dev) [![coverage report](https://gitlab.meitu.com/platform/titan/badges/dev/coverage.svg)](https://gitlab.meitu.com/platform/titan/commits/dev)
-An distributed implementation of Redis compatible layer over TiKV
+# Titan
 
-Visit [Titan](http://cf.meitu.com/confluence/pages/viewpage.action?pageId=29745824) for more informations.
+An distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
+
+## Status
+
+Active development, not ready for production. We welcome any form of contributions!
+
+## Features
+
+* Completely compatible with redis protocol
+* Full distributed transaction with strong consistency
+* Multi-tenancy support
+* No painful scale out
+* High availability 
+
+Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 
 
 ## Commands
 

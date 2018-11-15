@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"math/rand"
 
-	"gitlab.meitu.com/platform/titan/db/store"
+	"github.com/meitu/titan/db/store"
 )
 
 // Kv supplies key releated operations

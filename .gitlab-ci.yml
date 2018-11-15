@@ -5,23 +5,23 @@ stages:
   - build
 
 before_script:
-  - mkdir -p /go/src/gitlab.meitu.com/platform /go/src/_/builds
-  - cp -r `pwd` /go/src/gitlab.meitu.com/platform/titan
+  - mkdir -p /go/src/github.com/meitu /go/src/_/builds
+  - cp -r `pwd` /go/src/github.com/meitu/titan
 
 unit_tests:
   stage: test
   script:
-    - cd /go/src/gitlab.meitu.com/platform/titan
+    - cd /go/src/github.com/meitu/titan
     - make test
 
 coverage:
   stage: test
   script:
-    - cd /go/src/gitlab.meitu.com/platform/titan
+    - cd /go/src/github.com/meitu/titan
     - make coverage
 
 build:
   stage: build
   script:
-    - cd /go/src/gitlab.meitu.com/platform/titan
+    - cd /go/src/github.com/meitu/titan
     - make

@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"gitlab.meitu.com/platform/titan/conf"
-	"gitlab.meitu.com/platform/titan/context"
-	"gitlab.meitu.com/platform/titan/db"
-	"gitlab.meitu.com/platform/titan/db/store"
+	"github.com/meitu/titan/conf"
+	"github.com/meitu/titan/context"
+	"github.com/meitu/titan/db"
+	"github.com/meitu/titan/db/store"
 )
 
 var cfg = &conf.Tikv{

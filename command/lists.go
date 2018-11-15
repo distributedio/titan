@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.meitu.com/platform/titan/db"
+	"github.com/meitu/titan/db"
 )
 
 var (

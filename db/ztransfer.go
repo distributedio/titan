@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"gitlab.meitu.com/platform/titan/conf"
-	"gitlab.meitu.com/platform/titan/metrics"
+	"github.com/meitu/titan/conf"
+	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
 )
 

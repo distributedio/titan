@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/twinj/uuid"
-	"gitlab.meitu.com/platform/titan/context"
+	"github.com/meitu/titan/context"
 
 	"go.uber.org/zap"
 )

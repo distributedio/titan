@@ -1,6 +1,6 @@
 # Titan
 
-An distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
+A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
 
 ## Status
 

@@ -24,6 +24,10 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 
 [Deploy Titan](docs/ops/deploy.md)
 
+## Benchmarks
+
+[Titan Benchmarks](docs/benchmark/benchmark.md)
+
 ## Commands
 
 ### Connections

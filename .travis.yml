@@ -1,0 +1,6 @@
+language: go
+
+go:
+    - "1.11"
+
+script: make && make test

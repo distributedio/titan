@@ -10,6 +10,10 @@ A distributed implementation of Redis compatible layer based on [TiKV](https://g
 
 Active development, not ready for production. We welcome any form of contributions!
 
+Our goal is to build a solid NoSQL database aiming to run in the production environment. 
+We are using Titan in production inside Meitu now. If you cannot wait to experiment it in 
+the production environment, feel free to contact us for technical supporting.
+
 ## Features
 
 * Completely compatible with redis protocol

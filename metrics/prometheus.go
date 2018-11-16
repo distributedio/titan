@@ -151,6 +151,7 @@ func init() {
 		},
 		[]string{labelName},
 	)
+	prometheus.MustRegister(gm.LogMetricsCounterVec)
 
 	http.Handle("/titan/metrics", prometheus.Handler())
 }

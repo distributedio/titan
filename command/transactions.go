@@ -101,7 +101,11 @@ func Exec(ctx *Context) {
 			zap.String("command", ctx.Name),
 			zap.String("traceid", ctx.TraceID),
 			zap.Error(err))
-		resp.ReplyArray(ctx.Out, 0)
+		if watching {
+			resp.ReplyArray(ctx.Out, 0)
+			return
+		}
+		resp.ReplyError(ctx.Out, "EXECABORT Transaction discarded because of txn conflicts")
 		return
 	}
 

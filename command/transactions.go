@@ -8,6 +8,7 @@ import (
 	"github.com/meitu/titan/db"
 	"github.com/meitu/titan/encoding/resp"
 	"github.com/meitu/titan/metrics"
+	"github.com/shafreeck/retry"
 	"go.uber.org/zap"
 )
 
@@ -26,60 +27,85 @@ func Exec(ctx *Context) {
 		return
 	}
 
+	// Has watch command been issued
+	watching := ctx.Client.Txn != nil
 	txn := ctx.Client.Txn
-	// txn has not begun (watch is not called )
-	var err error
-	if txn == nil {
-		txn, err = ctx.Client.DB.Begin()
-		if err != nil {
-			resp.ReplyError(ctx.Out, "ERR "+err.Error())
-			return
-		}
-	}
+	ctx.Client.Txn = nil
 
 	size := len(commands)
-	outputs := make([]*bytes.Buffer, size)
-	onCommits := make([]OnCommit, size)
-	for i, cmd := range commands {
-		var onCommit OnCommit
-		out := bytes.NewBuffer(nil)
-		subCtx := &Context{
-			Name:    cmd.Name,
-			Args:    cmd.Args,
-			In:      ctx.In,
-			Out:     out,
-			Context: ctx.Context,
-		}
-		name := strings.ToLower(cmd.Name)
-		if _, ok := txnCommands[name]; ok {
-			onCommit, err = TxnCall(subCtx, txn)
+	var err error
+	var outputs []*bytes.Buffer
+	var onCommits []OnCommit
+	err = retry.Ensure(ctx, func() error {
+		if !watching {
+			txn, err = ctx.Client.DB.Begin()
 			if err != nil {
-				resp.ReplyError(out, err.Error())
+				zap.L().Error("begin txn failed",
+					zap.Int64("clientid", ctx.Client.ID),
+					zap.String("command", ctx.Name),
+					zap.String("traceid", ctx.TraceID),
+					zap.Error(err))
+				resp.ReplyArray(ctx.Out, 0)
+				return err
 			}
-		} else {
-			Call(subCtx)
 		}
-		onCommits[i] = onCommit
-		outputs[i] = out
-	}
-	start := time.Now()
-	mt := metrics.GetMetrics()
-	defer func() {
-		cost := time.Since(start).Seconds()
-		mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
-	}()
-	err = txn.Commit(ctx)
+		outputs = make([]*bytes.Buffer, size)
+		onCommits = make([]OnCommit, size)
+		for i, cmd := range commands {
+			var onCommit OnCommit
+			out := bytes.NewBuffer(nil)
+			subCtx := &Context{
+				Name:    cmd.Name,
+				Args:    cmd.Args,
+				In:      ctx.In,
+				Out:     out,
+				Context: ctx.Context,
+			}
+			name := strings.ToLower(cmd.Name)
+			if _, ok := txnCommands[name]; ok {
+				onCommit, err = TxnCall(subCtx, txn)
+				if err != nil {
+					resp.ReplyError(out, err.Error())
+				}
+			} else {
+				Call(subCtx)
+			}
+			onCommits[i] = onCommit
+			outputs[i] = out
+		}
+		start := time.Now()
+		mt := metrics.GetMetrics()
+		defer func() {
+			cost := time.Since(start).Seconds()
+			mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+		}()
+		err = txn.Commit(ctx)
+		if err != nil {
+			mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+			if db.IsRetryableError(err) && !watching {
+				mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				return retry.Retriable(err)
+			}
+			zap.L().Error("commit failed",
+				zap.Int64("clientid", ctx.Client.ID),
+				zap.String("command", ctx.Name),
+				zap.String("traceid", ctx.TraceID),
+				zap.Error(err))
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		if db.IsConflictError(err) {
-			mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-		}
-		mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-		zap.L().Error("commit failed",
+		zap.L().Error("txn failed",
 			zap.Int64("clientid", ctx.Client.ID),
 			zap.String("command", ctx.Name),
 			zap.String("traceid", ctx.TraceID),
 			zap.Error(err))
-		resp.ReplyArray(ctx.Out, 0)
+		if watching {
+			resp.ReplyArray(ctx.Out, 0)
+			return
+		}
+		resp.ReplyError(ctx.Out, "EXECABORT Transaction discarded because of txn conflicts")
 		return
 	}
 

@@ -29,6 +29,21 @@ func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor)
 	}
 }
 
+// Write to conn and log error if needed
+func (c *client) Write(p []byte) (int, error) {
+	n, err := c.conn.Write(p)
+	if err != nil {
+		zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
+			zap.Int64("clientid", c.cliCtx.ID),
+			zap.String("namespace", c.cliCtx.Namespace),
+			zap.Bool("multi", c.cliCtx.Multi),
+			zap.Bool("watching", c.cliCtx.Txn != nil),
+			zap.String("command", c.cliCtx.LastCmd))
+		c.conn.Close()
+	}
+	return n, err
+}
+
 func (c *client) serve(conn net.Conn) error {
 	c.conn = conn
 	c.r = bufio.NewReader(conn)
@@ -78,7 +93,7 @@ func (c *client) serve(conn net.Conn) error {
 			Name:    cmd[0],
 			Args:    cmd[1:],
 			In:      c.r,
-			Out:     c.conn,
+			Out:     c,
 			TraceID: GenerateTraceID(),
 		}
 		innerCtx, cancel := context.WithCancel(rootCtx)

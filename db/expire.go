@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/meitu/titan/db/store"
-
+	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
 )
 
@@ -57,6 +57,17 @@ func expireAt(txn store.Transaction, mkey []byte, objID []byte, oldAt int64, new
 			return err
 		}
 	}
+	action := ""
+	if oldAt > 0 && newAt > 0 {
+		action = "updated"
+	} else if oldAt > 0 {
+		action = "removed"
+	} else if newAt > 0 {
+		action = "added"
+	}
+	if action != "" {
+		metrics.GetMetrics().ExpireKeysTotal.WithLabelValues(action).Inc()
+	}
 	return nil
 }
 
@@ -68,6 +79,7 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 	if err := txn.Delete(oldKey); err != nil {
 		return err
 	}
+	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("removed").Inc()
 	return nil
 }
 
@@ -178,4 +190,5 @@ func runExpire(db *DB) {
 		txn.Rollback()
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}
+	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(expireBatchLimit - limit))
 }

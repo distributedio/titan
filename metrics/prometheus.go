@@ -19,6 +19,7 @@ const (
 	ztinfo    = "ztinfo"
 	labelName = "level"
 	gckeys    = "gckeys"
+	expire    = "expire"
 )
 
 var (
@@ -29,6 +30,7 @@ var (
 	multiLabel   = []string{biz, command}
 	ztInfoLabel  = []string{ztinfo}
 	gcKeysLabel  = []string{gckeys}
+	expireLabel  = []string{expire}
 
 	// global prometheus object
 	gm *Metrics
@@ -44,6 +46,9 @@ type Metrics struct {
 	IsLeaderGaugeVec    *prometheus.GaugeVec
 	LRangeSeekHistogram prometheus.Histogram
 	GCKeysCounterVec    *prometheus.CounterVec
+
+	//expire
+	ExpireKeysTotal *prometheus.CounterVec
 
 	//command biz
 	CommandCallHistogramVec *prometheus.HistogramVec
@@ -134,6 +139,14 @@ func init() {
 			Help:      "the number of gc keys added or deleted",
 		}, gcKeysLabel)
 	prometheus.MustRegister(gm.GCKeysCounterVec)
+
+	gm.ExpireKeysTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "expire_keys_total",
+			Help:      "the number of expire keys added or expired",
+		}, expireLabel)
+	prometheus.MustRegister(gm.ExpireKeysTotal)
 
 	gm.IsLeaderGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

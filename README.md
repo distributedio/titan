@@ -25,6 +25,10 @@ the production environment, feel free to contact us for technical supporting.
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 
 
+## Roadmap
+
+[Roadmap](docs/roadmap.md)
+
 ## Installing
 
 [Deploy Titan](docs/ops/deploy.md)

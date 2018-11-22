@@ -2,24 +2,24 @@
 
 ## Commands
 
--[ ] List(left commands)
--[ ] Hashes (WIP)
--[ ] Sets
--[ ] Sorted Set
--[ ] Geo 
--[ ] hyperloglog
+- [ ] List(left commands)
+- [ ] Hashes (WIP)
+- [ ] Sets
+- [ ] Sorted Set
+- [ ] Geo 
+- [ ] hyperloglog
 
 ## GC
 
--[ ] TiKV MVCC GC worker
+- [ ] TiKV MVCC GC worker
 
 ## Advanced commands
 
--[ ] Pub/Sub
--[ ] Streams
--[ ] Scripting
+- [ ] Pub/Sub
+- [ ] Streams
+- [ ] Scripting
 
 ## Performance
 
--[ ] RocksDB Merge Operations
--[ ] RocksDB Ramfs
+- [ ] RocksDB Merge Operations
+- [ ] RocksDB Ramfs

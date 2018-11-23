@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/meitu/titan/context"
 	"github.com/meitu/titan/db"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInfo(t *testing.T) {
@@ -63,7 +63,7 @@ func TestMonitor(t *testing.T) {
 		Context: ctx.Context,
 	}
 	feedMonitors(ctx)
-	assert.Equal(" [0 127.0.0.1] ping \r\n", out.String()[len("+1542094152.528169"):])
+	assert.Contains(out.String(), "[0 127.0.0.1] ping \r\n")
 }
 
 func TestClient_List(t *testing.T) {

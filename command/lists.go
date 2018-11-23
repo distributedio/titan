@@ -130,12 +130,12 @@ func LRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 
-	after := false
+	before := false
 	switch strings.ToLower(ctx.Args[1]) {
 	case "before":
-		after = false
+		before = true
 	case "after":
-		after = true
+		before = false
 	default:
 		return nil, ErrSyntax
 	}
@@ -155,7 +155,7 @@ func LInsert(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return Integer(ctx.Out, -1), nil
 	}
 
-	err = lst.Insert(pivot, value, after)
+	err = lst.Insert(pivot, value, before)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}

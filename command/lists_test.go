@@ -146,8 +146,8 @@ func TestLInsert(t *testing.T) {
 	ctx = ContextTest("lrange", key, "0", "-1")
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Contains(t, lines, "a1")
-	assert.Contains(t, lines, "b1")
+	assert.Equal(t, "a1", lines[4])
+	assert.Equal(t, "b1", lines[8])
 	clearList(t, key)
 
 	key = "list-linsert-zlist"
@@ -168,8 +168,8 @@ func TestLInsert(t *testing.T) {
 	ctx = ContextTest("lrange", key, "0", "-1")
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Contains(t, lines, "a1")
-	assert.Contains(t, lines, "b1")
+	assert.Equal(t, "a1", lines[4])
+	assert.Equal(t, "b1", lines[8])
 	clearList(t, key)
 }
 

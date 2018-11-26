@@ -9,15 +9,16 @@ COPY . /go/src/github.com/meitu/titan
 
 WORKDIR /go/src/github.com/meitu/titan
 
-RUN env GOOS=linux CGO_ENABLED=0 go build ./bin/titan/  
+RUN env GOOS=linux CGO_ENABLED=0 make
 
-## Executable image
+# Executable image
 FROM scratch
 
-COPY --from=builder /go/src/github.com/meitu/titan/titan /titan
+COPY --from=builder /go/src/github.com/meitu/titan/titan /titan/bin/titan
+COPY --from=builder /go/src/github.com/meitu/titan/conf/titan.toml /titan/conf/titan.toml
 
-WORKDIR /
+WORKDIR /titan
 
-EXPOSE 6380
+EXPOSE 7369
 
-ENTRYPOINT ["/titan"]
+ENTRYPOINT ["./bin/titan"]

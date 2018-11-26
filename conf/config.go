@@ -21,7 +21,7 @@ type Server struct {
 
 //Tikv config is the config of tikv sdk
 type Tikv struct {
-	PdAddrs string `cfg:"pd-addrs;required; nonempty;pd address in tidb"`
+	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
 	ZT      ZT     `cfg:"zt"`
 }
 

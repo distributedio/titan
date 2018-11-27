@@ -50,18 +50,26 @@ func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
 
 // Delete specific keys, ignore if non exist
 func (kv *Kv) Delete(keys [][]byte) (int64, error) {
-	var count int64
-	now := Now()
-	metaKeys := make([][]byte, len(keys))
-	for i, key := range keys {
-		metaKeys[i] = MetaKey(kv.txn.db, key)
+	var (
+		count    int64
+		metaKeys [][]byte
+		mapping  = make(map[string][]byte)
+		now      = Now()
+	)
+	// use mapping to filter duplicate keys
+	for _, key := range keys {
+		mkey := MetaKey(kv.txn.db, key)
+		if _, ok := mapping[string(mkey)]; !ok {
+			mapping[string(mkey)] = key
+			metaKeys = append(metaKeys, mkey)
+		}
 	}
 
-	values, err := BatchGetValues(kv.txn, metaKeys)
+	values, err := store.BatchGetValues(kv.txn.t, metaKeys)
 	if err != nil {
 		return count, err
 	}
-	for i, val := range values {
+	for k, val := range values {
 		if val != nil {
 			obj, err := DecodeObject(val)
 			if err != nil {
@@ -70,7 +78,7 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 			if IsExpired(obj, now) {
 				continue
 			}
-			if err := kv.txn.Destory(obj, keys[i]); err != nil {
+			if err := kv.txn.Destory(obj, mapping[k]); err != nil {
 				continue
 			}
 			count++

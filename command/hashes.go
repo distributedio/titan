@@ -193,12 +193,17 @@ func HVals(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // HLen returns the number of fields contained in the hash stored at key
 func HLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	var len int64
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
 		return nil, err
 	}
-	return Integer(ctx.Out, hash.HLen()), nil
+	len, err = hash.HLen()
+	if err != nil {
+		return nil, err
+	}
+	return Integer(ctx.Out, len), nil
 }
 
 // HStrLen returns the string length of the value associated with field in the hash stored at key

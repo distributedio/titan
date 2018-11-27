@@ -15,27 +15,24 @@ var (
 )
 
 type SlotMeta struct {
-	ID        int64
 	Len       int64
 	UpdatedAt int64
 }
 
 func EncodeSlotMeta(s *SlotMeta) []byte {
-	b := make([]byte, 24, 24)
-	binary.BigEndian.PutUint64(b[:8], uint64(s.ID))
-	binary.BigEndian.PutUint64(b[8:16], uint64(s.Len))
-	binary.BigEndian.PutUint64(b[16:24], uint64(s.UpdatedAt))
+	b := make([]byte, 16, 16)
+	binary.BigEndian.PutUint64(b[:8], uint64(s.Len))
+	binary.BigEndian.PutUint64(b[8:], uint64(s.UpdatedAt))
 	return b
 }
 
 func DecodeSlotMeta(b []byte) (*SlotMeta, error) {
-	if len(b) != 24 {
+	if len(b) != 16 {
 		return nil, ErrInvalidLength
 	}
 	meta := &SlotMeta{}
-	meta.ID = int64(binary.BigEndian.Uint64(b[:8]))
-	meta.Len = int64(binary.BigEndian.Uint64(b[8:16]))
-	meta.UpdatedAt = int64(binary.BigEndian.Uint64(b[16:24]))
+	meta.Len = int64(binary.BigEndian.Uint64(b[:8]))
+	meta.UpdatedAt = int64(binary.BigEndian.Uint64(b[8:]))
 	return meta, nil
 }
 
@@ -116,7 +113,7 @@ func hashSlotKey(key []byte, slot int64) []byte {
 	return append(key, EncodeInt64(slot)...)
 }
 
-func (hash *Hash) calculateSlot(field []byte) int64 {
+func (hash *Hash) calculateSlotID(field []byte) int64 {
 	if !hash.isSlot() {
 		return 0
 	}
@@ -138,7 +135,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	for _, field := range fields {
 		keys = append(keys, hashItemKey(dkey, field))
 	}
-	kvMap, actionSlot, hlen, err := hash.delHash(keys)
+	kvMap, slotsMap, hlen, err := hash.delHash(keys)
 	if err != nil {
 		return 0, err
 	}
@@ -162,10 +159,19 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if num == 0 {
 		return 0, nil
 	}
-	if actionSlot != nil && hash.isSlot() {
-		actionSlot.Len = actionSlot.Len - num
-		actionSlot.UpdatedAt = Now()
-		if err := hash.updateSlot(actionSlot); err != nil {
+	if hash.isSlot() {
+		slot := &SlotMeta{}
+		i := rand.Intn(len(fields))
+		slotID := hash.calculateSlotID(fields[i])
+		slotKey := SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slotID))
+		if b, ok := slotsMap[string(slotKey)]; ok {
+			if s, err := DecodeSlotMeta(b); err == nil {
+				slot = s
+			}
+		}
+		slot.Len = slot.Len - num
+		slot.UpdatedAt = Now()
+		if err := hash.updateSlot(slotID, slot); err != nil {
 			return 0, err
 		}
 
@@ -176,8 +182,9 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	return num, nil
 }
 
-func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, *SlotMeta, int64, error) {
+func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, map[string][]byte, int64, error) {
 	var (
+		slotsMap      map[string][]byte
 		slots         [][]byte
 		isSlot        = hash.isSlot()
 		slotKeyPrefix = SlotKey(hash.txn.db, hash.meta.ID, nil)
@@ -193,6 +200,7 @@ func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, *SlotMeta, int64, e
 	}
 	for k, v := range kvMap {
 		if isSlot && bytes.Contains([]byte(k), slotKeyPrefix) {
+			slotsMap[string(k)] = v
 			slots = append(slots, v)
 			delete(kvMap, k)
 		}
@@ -202,11 +210,7 @@ func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, *SlotMeta, int64, e
 		if err != nil {
 			return nil, nil, 0, err
 		}
-		actionSlot, err := DecodeSlotMeta(slots[rand.Intn(len(slots))])
-		if err != nil {
-			return nil, nil, 0, err
-		}
-		return kvMap, actionSlot, slot.Len, nil
+		return kvMap, slotsMap, slot.Len, nil
 	}
 	return kvMap, nil, hash.meta.Len, nil
 }
@@ -303,8 +307,8 @@ func (hash *Hash) updateMeta() error {
 	return hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
 }
 
-func (hash *Hash) updateSlot(slot *SlotMeta) error {
-	slotKey := SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slot.ID))
+func (hash *Hash) updateSlot(slotID int64, slot *SlotMeta) error {
+	slotKey := SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slotID))
 	smeta := EncodeSlotMeta(slot)
 	return hash.txn.t.Set(slotKey, smeta)
 }

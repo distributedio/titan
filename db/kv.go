@@ -52,16 +52,18 @@ func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
 func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 	var count int64
 	now := Now()
-	metaKeys := make([][]byte, len(keys))
+	mkeys := make([][]byte, len(keys))
+	keyMap := make(map[string][]byte)
 	for i, key := range keys {
-		metaKeys[i] = MetaKey(kv.txn.db, key)
+		mkey := MetaKey(kv.txn.db, key)
+		mkeys[i] = mkey
+		keyMap[string(mkey)] = key
 	}
-
-	values, err := BatchGetValues(kv.txn, metaKeys)
+	values, err := store.BatchGetValues(kv.txn.t, mkeys)
 	if err != nil {
 		return count, err
 	}
-	for i, val := range values {
+	for k, val := range values {
 		if val != nil {
 			obj, err := DecodeObject(val)
 			if err != nil {
@@ -70,7 +72,7 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 			if IsExpired(obj, now) {
 				continue
 			}
-			if err := kv.txn.Destory(obj, keys[i]); err != nil {
+			if err := kv.txn.Destory(obj, keyMap[k]); err != nil {
 				continue
 			}
 			count++

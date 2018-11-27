@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+	"hash/crc32"
 	"math/rand"
 	"strconv"
 
@@ -138,6 +139,25 @@ func (hash *Hash) isMetaSlot() bool {
 	return false
 }
 
+func hashSlotKey(key []byte, slot int64) []byte {
+	key = append(key, []byte(Separator)...)
+	return append(key, EncodeInt64(slot)...)
+}
+
+func (hash *Hash) calculateSlot(field []byte) int64 {
+	if !hash.isSlot() {
+		return 0
+	}
+	return int64(crc32.ChecksumIEEE(field)) % hash.meta.Slot
+}
+
+func (hash *Hash) isSlot() bool {
+	if hash.meta.Slot != 0 {
+		return true
+	}
+	return false
+}
+
 // HDel removes the specified fields from the hash stored at key
 func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	var (
@@ -180,6 +200,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if err := hash.addLen(-num); err != nil {
 		return 0, err
 	}
+
 	return num, nil
 }
 

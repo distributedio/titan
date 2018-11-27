@@ -139,9 +139,12 @@ func (hash *Hash) isMetaSlot() bool {
 	return false
 }
 
-func hashSlotKey(key []byte, slot int64) []byte {
-	key = append(key, []byte(Separator)...)
-	return append(key, EncodeInt64(slot)...)
+func slotGC(txn *Transaction, objID []byte) error {
+	slotKeyPrefix := SlotKey(txn.db, objID, nil)
+	if err := gc(txn.t, slotKeyPrefix); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (hash *Hash) calculateSlotID(field []byte) int64 {

@@ -111,8 +111,8 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
 	go StartZT(sysdb, &conf.ZT)
-	if conf.Slots != defaultHashSlots {
-		defaultHashSlots = conf.Slots
+	if conf.Slots != defaultHashMetaSlot {
+		defaultHashMetaSlot = conf.Slots
 	}
 	return rds, nil
 }
@@ -254,8 +254,8 @@ func DataKey(db *DB, key []byte) []byte {
 	return dkey
 }
 
-// SlotKey builds a slotkey from a slot id
-func SlotKey(db *DB, objId, slotId []byte) []byte {
+// MetaSlotKey builds a slotkey from a slot id
+func MetaSlotKey(db *DB, objId, slotId []byte) []byte {
 	var skey []byte
 	skey = append(skey, []byte(db.Namespace)...)
 	skey = append(skey, ':')

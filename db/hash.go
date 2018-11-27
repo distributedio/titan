@@ -11,26 +11,26 @@ import (
 )
 
 var (
-	defaultHashSlots int64 = 0
+	defaultHashMetaSlot int64 = 0
 )
 
-type SlotMeta struct {
+type MetaSlot struct {
 	Len       int64
 	UpdatedAt int64
 }
 
-func EncodeSlotMeta(s *SlotMeta) []byte {
+func EncodeMetaSlot(s *MetaSlot) []byte {
 	b := make([]byte, 16)
 	binary.BigEndian.PutUint64(b[:8], uint64(s.Len))
 	binary.BigEndian.PutUint64(b[8:], uint64(s.UpdatedAt))
 	return b
 }
 
-func DecodeSlotMeta(b []byte) (*SlotMeta, error) {
+func DecodeMetaSlot(b []byte) (*MetaSlot, error) {
 	if len(b) != 16 {
 		return nil, ErrInvalidLength
 	}
-	meta := &SlotMeta{}
+	meta := &MetaSlot{}
 	meta.Len = int64(binary.BigEndian.Uint64(b[:8]))
 	meta.UpdatedAt = int64(binary.BigEndian.Uint64(b[8:]))
 	return meta, nil
@@ -39,15 +39,15 @@ func DecodeSlotMeta(b []byte) (*SlotMeta, error) {
 // HashMeta is the meta data of the hashtable
 type HashMeta struct {
 	Object
-	Len  int64
-	Slot int64
+	Len      int64
+	MetaSlot int64
 }
 
 func (hm *HashMeta) Encode() []byte {
 	b := EncodeObject(&hm.Object)
 	meta := make([]byte, 16)
 	binary.BigEndian.PutUint64(meta[:8], uint64(hm.Len))
-	binary.BigEndian.PutUint64(meta[8:], uint64(hm.Slot))
+	binary.BigEndian.PutUint64(meta[8:], uint64(hm.MetaSlot))
 	return append(b, meta...)
 }
 
@@ -62,7 +62,7 @@ func (hm *HashMeta) Decode(b []byte) error {
 	hm.Object = *obj
 	meta := b[ObjectEncodingLength:]
 	hm.Len = int64(binary.BigEndian.Uint64(meta[:8]))
-	hm.Slot = int64(binary.BigEndian.Uint64(meta[8:]))
+	hm.MetaSlot = int64(binary.BigEndian.Uint64(meta[8:]))
 	return nil
 }
 
@@ -89,7 +89,7 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 			hash.meta.Type = ObjectHash
 			hash.meta.Encoding = ObjectEncodingHT
 			hash.meta.Len = 0
-			hash.meta.Slot = defaultHashSlots
+			hash.meta.MetaSlot = defaultHashMetaSlot
 			return hash, nil
 		}
 		return nil, err
@@ -103,13 +103,28 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	return hash, nil
 }
 
+//NewHash create new hashes object
+func NewHash(txn *Transaction, key []byte) *Hash {
+	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
+	now := Now()
+	hash.meta.CreatedAt = now
+	hash.meta.UpdatedAt = now
+	hash.meta.ExpireAt = 0
+	hash.meta.ID = UUID()
+	hash.meta.Type = ObjectHash
+	hash.meta.Encoding = ObjectEncodingHT
+	hash.meta.Len = 0
+	hash.meta.MetaSlot = defaultHashMetaSlot
+	return hash
+}
+
 func hashItemKey(key []byte, field []byte) []byte {
 	key = append(key, []byte(Separator)...)
 	return append(key, field...)
 }
 
-func slotGC(txn *Transaction, objID []byte) error {
-	slotKeyPrefix := SlotKey(txn.db, objID, nil)
+func metaSlotGC(txn *Transaction, objID []byte) error {
+	slotKeyPrefix := MetaSlotKey(txn.db, objID, nil)
 	if err := gc(txn.t, slotKeyPrefix); err != nil {
 		return err
 	}
@@ -117,14 +132,14 @@ func slotGC(txn *Transaction, objID []byte) error {
 }
 
 func (hash *Hash) calculateSlotID(field []byte) int64 {
-	if !hash.isSlot() {
+	if !hash.isMetaSlot() {
 		return 0
 	}
-	return int64(crc32.ChecksumIEEE(field)) % hash.meta.Slot
+	return int64(crc32.ChecksumIEEE(field)) % hash.meta.MetaSlot
 }
 
-func (hash *Hash) isSlot() bool {
-	if hash.meta.Slot != 0 {
+func (hash *Hash) isMetaSlot() bool {
+	if hash.meta.MetaSlot != 0 {
 		return true
 	}
 	return false
@@ -132,8 +147,11 @@ func (hash *Hash) isSlot() bool {
 
 // HDel removes the specified fields from the hash stored at key
 func (hash *Hash) HDel(fields [][]byte) (int64, error) {
-	var keys [][]byte
-	var num int64
+	var (
+		keys [][]byte
+		num  int64
+		now  = Now()
+	)
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for _, field := range fields {
 		keys = append(keys, hashItemKey(dkey, field))
@@ -144,7 +162,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	}
 	vlen := int64(len(kvMap))
 	if vlen >= hlen {
-		if err := hash.Destory(); err != nil {
+		if err := hash.Destroy(); err != nil {
 			return 0, err
 		}
 		return vlen, nil
@@ -162,38 +180,47 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if num == 0 {
 		return 0, nil
 	}
-	if hash.isSlot() {
-		slot := &SlotMeta{}
+	if hash.isMetaSlot() {
+		metaSlot := &MetaSlot{}
 		i := rand.Intn(len(fields))
 		slotID := hash.calculateSlotID(fields[i])
-		slotKey := SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slotID))
-		if b, ok := slotsMap[string(slotKey)]; ok {
-			if s, err := DecodeSlotMeta(b); err == nil {
-				slot = s
+		metaSlotKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slotID))
+		if b, ok := slotsMap[string(metaSlotKey)]; ok {
+			if s, err := DecodeMetaSlot(b); err == nil {
+				metaSlot = s
 			}
 		}
-		slot.Len = slot.Len - num
-		slot.UpdatedAt = Now()
-		if err := hash.updateSlot(slotID, slot); err != nil {
+		metaSlot.Len = metaSlot.Len - num
+		metaSlot.UpdatedAt = now
+		if err := hash.updateMetaSlot(slotID, metaSlot); err != nil {
 			return 0, err
 		}
 
-	} else if err := hash.updateMeta(); err != nil {
-		return 0, err
-	}
+	} else {
+		if defaultHashMetaSlot != 0 {
+			metaSlot := &MetaSlot{Len: hash.meta.Len, UpdatedAt: now}
+			if err := hash.updateMetaSlot(0, metaSlot); err != nil {
+				return 0, err
+			}
+			hash.meta.MetaSlot = defaultHashMetaSlot
+		}
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
 
+	}
 	return num, nil
 }
 
 func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, map[string][]byte, int64, error) {
 	var (
 		slotsMap      map[string][]byte
-		slots         [][]byte
-		isSlot        = hash.isSlot()
-		slotKeyPrefix = SlotKey(hash.txn.db, hash.meta.ID, nil)
+		metaSlots     [][]byte
+		isMetaSlot    = hash.isMetaSlot()
+		slotKeyPrefix = MetaSlotKey(hash.txn.db, hash.meta.ID, nil)
 	)
-	if isSlot {
-		slotKeys := hash.getSlotKeys()
+	if isMetaSlot {
+		slotKeys := hash.getMetaSlotKeys()
 		keys = append(slotKeys, keys...)
 	}
 
@@ -202,18 +229,18 @@ func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, map[string][]byte, 
 		return nil, nil, 0, err
 	}
 	for k, v := range kvMap {
-		if isSlot && bytes.Contains([]byte(k), slotKeyPrefix) {
+		if isMetaSlot && bytes.Contains([]byte(k), slotKeyPrefix) {
 			slotsMap[string(k)] = v
-			slots = append(slots, v)
+			metaSlots = append(metaSlots, v)
 			delete(kvMap, k)
 		}
 	}
-	if isSlot && len(slots) > 0 {
-		slot, err := hash.calculateSlotMeta(&slots)
+	if isMetaSlot && len(metaSlots) > 0 {
+		metaSlot, err := hash.calculateMetaSlot(&metaSlots)
 		if err != nil {
 			return nil, nil, 0, err
 		}
-		return kvMap, slotsMap, slot.Len, nil
+		return kvMap, slotsMap, metaSlot.Len, nil
 	}
 	return kvMap, nil, hash.meta.Len, nil
 }
@@ -310,14 +337,14 @@ func (hash *Hash) updateMeta() error {
 	return hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
 }
 
-func (hash *Hash) updateSlot(slotID int64, slot *SlotMeta) error {
-	slotKey := SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slotID))
-	smeta := EncodeSlotMeta(slot)
-	return hash.txn.t.Set(slotKey, smeta)
+func (hash *Hash) updateMetaSlot(slotID int64, slot *MetaSlot) error {
+	slotKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slotID))
+	metaSlot := EncodeMetaSlot(slot)
+	return hash.txn.t.Set(slotKey, metaSlot)
 }
 
 // Destory the hash store
-func (hash *Hash) Destory() error {
+func (hash *Hash) Destroy() error {
 	metaKey := MetaKey(hash.txn.db, hash.key)
 	dataKey := DataKey(hash.txn.db, hash.meta.ID)
 	if err := hash.txn.t.Delete(metaKey); err != nil {
@@ -327,8 +354,8 @@ func (hash *Hash) Destory() error {
 		return err
 	}
 
-	if hash.isSlot() {
-		if err := slotGC(hash.txn, hash.meta.ID); err != nil {
+	if hash.isMetaSlot() {
+		if err := metaSlotGC(hash.txn, hash.meta.ID); err != nil {
 			return err
 		}
 	}
@@ -425,39 +452,74 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 
 // HLen returns the number of fields contained in the hash stored at key
 func (hash *Hash) HLen() (int64, error) {
-	if hash.isSlot() {
-		skeys := hash.getSlotKeys()
-		values, err := BatchGetValues(hash.txn, skeys)
+	if hash.isMetaSlot() {
+		rows, err := hash.getAllMetaSlot()
 		if err != nil {
 			return 0, err
 		}
-		slotMeta, err := hash.calculateSlotMeta(&values)
-		if err == nil {
-			return 0, err
+		if len(*rows) > 0 {
+			metaSlot, err := hash.calculateMetaSlot(rows)
+			if err != nil {
+				return 0, err
+			}
+			return metaSlot.Len, nil
 		}
-		return slotMeta.Len, nil
 	}
 	return hash.meta.Len, nil
-
 }
 
-func (hash *Hash) getSlotKeys() [][]byte {
-	slot := hash.meta.Slot
-	keys := make([][]byte, slot)
-	for slot > 0 {
-		keys = append(keys, SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slot)))
-		slot--
+func (hash *Hash) Object() (*Object, error) {
+	obj := hash.meta.Object
+	if hash.isMetaSlot() {
+		rows, err := hash.getAllMetaSlot()
+		if err != nil {
+			return nil, err
+		}
+		if len(*rows) > 0 {
+			metaSlot, err := hash.calculateMetaSlot(rows)
+			if err != nil {
+				return nil, err
+			}
+			obj.UpdatedAt = metaSlot.UpdatedAt
+		}
+	}
+	return &obj, nil
+}
+
+func (hash *Hash) getMetaSlotKeys() [][]byte {
+	metaSlot := hash.meta.MetaSlot
+	keys := make([][]byte, metaSlot)
+	for metaSlot > 0 {
+		keys = append(keys, MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(metaSlot)))
+		metaSlot--
 	}
 	return keys
 }
 
-func (hash *Hash) calculateSlotMeta(vals *[][]byte) (*SlotMeta, error) {
-	slot := &SlotMeta{}
+func (hash *Hash) getAllMetaSlot() (*[][]byte, error) {
+	var metaSlots [][]byte
+	metaSlotKey := MetaSlotKey(hash.txn.db, hash.meta.ID, nil)
+	iter, err := hash.txn.t.Seek(metaSlotKey)
+	if err != nil {
+		return nil, err
+	}
+
+	for iter.Valid() && iter.Key().HasPrefix(metaSlotKey) {
+		metaSlots = append(metaSlots, iter.Value())
+		if err := iter.Next(); err != nil {
+			return nil, err
+		}
+	}
+	return &metaSlots, nil
+}
+
+func (hash *Hash) calculateMetaSlot(vals *[][]byte) (*MetaSlot, error) {
+	slot := &MetaSlot{}
 	for _, val := range *vals {
 		if val == nil {
 			continue
 		}
-		meta, err := DecodeSlotMeta(val)
+		meta, err := DecodeMetaSlot(val)
 		if err != nil {
 			return nil, err
 		}

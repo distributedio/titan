@@ -144,7 +144,7 @@ func hashSlotKey(key []byte, slot int64) []byte {
 	return append(key, EncodeInt64(slot)...)
 }
 
-func (hash *Hash) calculateSlot(field []byte) int64 {
+func (hash *Hash) calculateSlotID(field []byte) int64 {
 	if !hash.isSlot() {
 		return 0
 	}

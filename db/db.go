@@ -111,7 +111,9 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
 	go StartZT(sysdb, &conf.ZT)
-
+	if conf.Slots != defaultHashSlots {
+		defaultHashSlots = conf.Slots
+	}
 	return rds, nil
 }
 
@@ -250,6 +252,19 @@ func DataKey(db *DB, key []byte) []byte {
 	dkey = append(dkey, ':', 'D', ':')
 	dkey = append(dkey, key...)
 	return dkey
+}
+
+// SlotKey builds a slotkey from a slot id
+func SlotKey(db *DB, objId, slotId []byte) []byte {
+	var skey []byte
+	skey = append(skey, []byte(db.Namespace)...)
+	skey = append(skey, ':')
+	skey = append(skey, db.ID.Bytes()...)
+	skey = append(skey, ':', 'S', ':')
+	skey = append(skey, objId...)
+	skey = append(skey, ':')
+	skey = append(skey, slotId...)
+	return skey
 }
 
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {

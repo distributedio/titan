@@ -1,14 +1,72 @@
 package db
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/binary"
+	"hash/crc32"
+	"math/rand"
 	"strconv"
+
+	"github.com/meitu/titan/db/store"
 )
+
+var (
+	defaultHashSlots int64 = 0
+)
+
+type SlotMeta struct {
+	ID        int64
+	Len       int64
+	UpdatedAt int64
+}
+
+func EncodeSlotMeta(s *SlotMeta) []byte {
+	b := make([]byte, 24, 24)
+	binary.BigEndian.PutUint64(b[:8], uint64(s.ID))
+	binary.BigEndian.PutUint64(b[8:16], uint64(s.Len))
+	binary.BigEndian.PutUint64(b[16:24], uint64(s.UpdatedAt))
+	return b
+}
+
+func DecodeSlotMeta(b []byte) (*SlotMeta, error) {
+	if len(b) != 24 {
+		return nil, ErrInvalidLength
+	}
+	meta := &SlotMeta{}
+	meta.ID = int64(binary.BigEndian.Uint64(b[:8]))
+	meta.Len = int64(binary.BigEndian.Uint64(b[8:16]))
+	meta.UpdatedAt = int64(binary.BigEndian.Uint64(b[16:24]))
+	return meta, nil
+}
 
 // HashMeta is the meta data of the hashtable
 type HashMeta struct {
 	Object
-	Len int64
+	Len  int64
+	Slot int64
+}
+
+func (hm *HashMeta) Encode() []byte {
+	b := EncodeObject(&hm.Object)
+	meta := make([]byte, 16, 16)
+	binary.BigEndian.PutUint64(meta[:8], uint64(hm.Len))
+	binary.BigEndian.PutUint64(meta[8:], uint64(hm.Slot))
+	return append(b, meta...)
+}
+
+func (hm *HashMeta) Decode(b []byte) error {
+	if len(b[ObjectEncodingLength:]) != 16 {
+		return ErrInvalidLength
+	}
+	obj, err := DecodeObject(b)
+	if err != nil {
+		return err
+	}
+	hm.Object = *obj
+	meta := b[ObjectEncodingLength:]
+	hm.Len = int64(binary.BigEndian.Uint64(meta[:8]))
+	hm.Slot = int64(binary.BigEndian.Uint64(meta[8:]))
+	return nil
 }
 
 // Hash implements the hashtable
@@ -20,7 +78,7 @@ type Hash struct {
 
 // GetHash returns a hash object, create new one if nonexists
 func GetHash(txn *Transaction, key []byte) (*Hash, error) {
-	hash := &Hash{txn: txn, key: key}
+	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
 
 	mkey := MetaKey(txn.db, key)
 	meta, err := txn.t.Get(mkey)
@@ -34,11 +92,12 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 			hash.meta.Type = ObjectHash
 			hash.meta.Encoding = ObjectEncodingHT
 			hash.meta.Len = 0
+			hash.meta.Slot = defaultHashSlots
 			return hash, nil
 		}
 		return nil, err
 	}
-	if err := json.Unmarshal(meta, &hash.meta); err != nil {
+	if err := hash.meta.Decode(meta); err != nil {
 		return nil, err
 	}
 	if hash.meta.Type != ObjectHash {
@@ -46,9 +105,29 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	}
 	return hash, nil
 }
+
 func hashItemKey(key []byte, field []byte) []byte {
-	key = append(key, ':')
+	key = append(key, []byte(Separator)...)
 	return append(key, field...)
+}
+
+func hashSlotKey(key []byte, slot int64) []byte {
+	key = append(key, []byte(Separator)...)
+	return append(key, EncodeInt64(slot)...)
+}
+
+func (hash *Hash) calculateSlot(field []byte) int64 {
+	if !hash.isSlot() {
+		return 0
+	}
+	return int64(crc32.ChecksumIEEE(field)) % hash.meta.Slot
+}
+
+func (hash *Hash) isSlot() bool {
+	if hash.meta.Slot != 0 {
+		return true
+	}
+	return false
 }
 
 // HDel removes the specified fields from the hash stored at key
@@ -59,15 +138,23 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	for _, field := range fields {
 		keys = append(keys, hashItemKey(dkey, field))
 	}
-	values, err := BatchGetValues(hash.txn, keys)
+	kvMap, actionSlot, hlen, err := hash.delHash(keys)
 	if err != nil {
 		return 0, err
 	}
-	for i, val := range values {
-		if val == nil {
+	vlen := int64(len(kvMap))
+	if vlen >= hlen {
+		if err := hash.Destory(); err != nil {
+			return 0, err
+		}
+		return vlen, nil
+	}
+
+	for k, v := range kvMap {
+		if v == nil {
 			continue
 		}
-		if err := hash.txn.t.Delete(keys[i]); err != nil {
+		if err := hash.txn.t.Delete([]byte(k)); err != nil {
 			return 0, err
 		}
 		num++
@@ -75,14 +162,53 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if num == 0 {
 		return 0, nil
 	}
-	hash.meta.Len -= num
-	if hash.meta.Len == 0 {
-		return num, hash.Destory()
-	}
-	if err := hash.updateMeta(); err != nil {
+	if actionSlot != nil && hash.isSlot() {
+		actionSlot.Len = actionSlot.Len - num
+		actionSlot.UpdatedAt = Now()
+		if err := hash.updateSlot(actionSlot); err != nil {
+			return 0, err
+		}
+
+	} else if err := hash.updateMeta(); err != nil {
 		return 0, err
 	}
+
 	return num, nil
+}
+
+func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, *SlotMeta, int64, error) {
+	var (
+		slots         [][]byte
+		isSlot        = hash.isSlot()
+		slotKeyPrefix = SlotKey(hash.txn.db, hash.meta.ID, nil)
+	)
+	if isSlot {
+		slotKeys := hash.getSlotKeys()
+		keys = append(slotKeys, keys...)
+	}
+
+	kvMap, err := store.BatchGetValues(hash.txn.t, keys)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	for k, v := range kvMap {
+		if isSlot && bytes.Contains([]byte(k), slotKeyPrefix) {
+			slots = append(slots, v)
+			delete(kvMap, k)
+		}
+	}
+	if isSlot && len(slots) > 0 {
+		slot, err := hash.calculateSlotMeta(&slots)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		actionSlot, err := DecodeSlotMeta(slots[rand.Intn(len(slots))])
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		return kvMap, actionSlot, slot.Len, nil
+	}
+	return kvMap, nil, hash.meta.Len, nil
 }
 
 // HSet sets field in the hash stored at key to value
@@ -173,11 +299,14 @@ func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 }
 
 func (hash *Hash) updateMeta() error {
-	meta, err := json.Marshal(hash.meta)
-	if err != nil {
-		return err
-	}
+	meta := hash.meta.Encode()
 	return hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
+}
+
+func (hash *Hash) updateSlot(slot *SlotMeta) error {
+	slotKey := SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slot.ID))
+	smeta := EncodeSlotMeta(slot)
+	return hash.txn.t.Set(slotKey, smeta)
 }
 
 // Destory the hash store
@@ -268,8 +397,49 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 }
 
 // HLen returns the number of fields contained in the hash stored at key
-func (hash *Hash) HLen() int64 {
-	return hash.meta.Len
+func (hash *Hash) HLen() (int64, error) {
+	if hash.isSlot() {
+		skeys := hash.getSlotKeys()
+		values, err := BatchGetValues(hash.txn, skeys)
+		if err != nil {
+			return 0, err
+		}
+		slotMeta, err := hash.calculateSlotMeta(&values)
+		if err == nil {
+			return 0, err
+		}
+		return slotMeta.Len, nil
+	}
+	return hash.meta.Len, nil
+
+}
+
+func (hash *Hash) getSlotKeys() [][]byte {
+	slot := hash.meta.Slot
+	keys := make([][]byte, slot, slot)
+	for slot > 0 {
+		keys = append(keys, SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slot)))
+		slot--
+	}
+	return keys
+}
+
+func (hash *Hash) calculateSlotMeta(vals *[][]byte) (*SlotMeta, error) {
+	slot := &SlotMeta{}
+	for _, val := range *vals {
+		if val == nil {
+			continue
+		}
+		meta, err := DecodeSlotMeta(val)
+		if err != nil {
+			return nil, err
+		}
+		slot.Len += meta.Len
+		if meta.UpdatedAt > slot.UpdatedAt {
+			slot.UpdatedAt = meta.UpdatedAt
+		}
+	}
+	return slot, nil
 }
 
 // HMGet returns the values associated with the specified fields in the hash stored at key

@@ -53,7 +53,7 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 	var (
 		count  int64
 		mkList [][]byte
-		mkMap  map[string][]byte
+		mkMap  = make(map[string][]byte)
 		now    = Now()
 	)
 	// use mkMap to filter duplicate keys

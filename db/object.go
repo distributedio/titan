@@ -146,6 +146,12 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 		}
 	}
 
+	if obj.Type == ObjectHash {
+		if err := slotGC(txn, obj.ID); err != nil {
+			return err
+		}
+	}
+
 	if obj.ExpireAt > 0 {
 		if err := unExpireAt(txn.t, mkey, obj.ExpireAt); err != nil {
 			return err

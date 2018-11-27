@@ -108,9 +108,12 @@ func hashItemKey(key []byte, field []byte) []byte {
 	return append(key, field...)
 }
 
-func hashSlotKey(key []byte, slot int64) []byte {
-	key = append(key, []byte(Separator)...)
-	return append(key, EncodeInt64(slot)...)
+func slotGC(txn *Transaction, objID []byte) error {
+	slotKeyPrefix := SlotKey(txn.db, objID, nil)
+	if err := gc(txn.t, slotKeyPrefix); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (hash *Hash) calculateSlotID(field []byte) int64 {
@@ -315,7 +318,27 @@ func (hash *Hash) updateSlot(slotID int64, slot *SlotMeta) error {
 
 // Destory the hash store
 func (hash *Hash) Destory() error {
-	return hash.txn.Destory(&hash.meta.Object, hash.key)
+	metaKey := MetaKey(hash.txn.db, hash.key)
+	dataKey := DataKey(hash.txn.db, hash.meta.ID)
+	if err := hash.txn.t.Delete(metaKey); err != nil {
+		return err
+	}
+	if err := gc(hash.txn.t, dataKey); err != nil {
+		return err
+	}
+
+	if hash.isSlot() {
+		if err := slotGC(hash.txn, hash.meta.ID); err != nil {
+			return err
+		}
+	}
+
+	if hash.meta.ExpireAt > 0 {
+		if err := unExpireAt(hash.txn.t, metaKey, hash.meta.ExpireAt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // HExists returns if field is an existing field in the hash stored at key

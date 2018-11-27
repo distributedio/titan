@@ -20,7 +20,7 @@ type SlotMeta struct {
 }
 
 func EncodeSlotMeta(s *SlotMeta) []byte {
-	b := make([]byte, 16, 16)
+	b := make([]byte, 16)
 	binary.BigEndian.PutUint64(b[:8], uint64(s.Len))
 	binary.BigEndian.PutUint64(b[8:], uint64(s.UpdatedAt))
 	return b
@@ -45,7 +45,7 @@ type HashMeta struct {
 
 func (hm *HashMeta) Encode() []byte {
 	b := EncodeObject(&hm.Object)
-	meta := make([]byte, 16, 16)
+	meta := make([]byte, 16)
 	binary.BigEndian.PutUint64(meta[:8], uint64(hm.Len))
 	binary.BigEndian.PutUint64(meta[8:], uint64(hm.Slot))
 	return append(b, meta...)
@@ -420,7 +420,7 @@ func (hash *Hash) HLen() (int64, error) {
 
 func (hash *Hash) getSlotKeys() [][]byte {
 	slot := hash.meta.Slot
-	keys := make([][]byte, slot, slot)
+	keys := make([][]byte, slot)
 	for slot > 0 {
 		keys = append(keys, SlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(slot)))
 		slot--

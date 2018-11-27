@@ -110,6 +110,21 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	return hash, nil
 }
 
+//NewHash create new hashes object
+func NewHash(txn *Transaction, key []byte) *Hash {
+	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
+	now := Now()
+	hash.meta.CreatedAt = now
+	hash.meta.UpdatedAt = now
+	hash.meta.ExpireAt = 0
+	hash.meta.ID = UUID()
+	hash.meta.Type = ObjectHash
+	hash.meta.Encoding = ObjectEncodingHT
+	hash.meta.Len = 0
+	hash.meta.MetaSlot = defaultHashMetaSlot
+	return hash
+}
+
 func hashItemKey(key []byte, field []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, key...)
@@ -139,8 +154,8 @@ func (hash *Hash) isMetaSlot() bool {
 	return false
 }
 
-func slotGC(txn *Transaction, objID []byte) error {
-	slotKeyPrefix := SlotKey(txn.db, objID, nil)
+func metaSlotGC(txn *Transaction, objID []byte) error {
+	slotKeyPrefix := MetaSlotKey(txn.db, objID, nil)
 	if err := gc(txn.t, slotKeyPrefix); err != nil {
 		return err
 	}
@@ -148,14 +163,14 @@ func slotGC(txn *Transaction, objID []byte) error {
 }
 
 func (hash *Hash) calculateSlotID(field []byte) int64 {
-	if !hash.isSlot() {
+	if !hash.isMetaSlot() {
 		return 0
 	}
-	return int64(crc32.ChecksumIEEE(field)) % hash.meta.Slot
+	return int64(crc32.ChecksumIEEE(field)) % hash.meta.MetaSlot
 }
 
-func (hash *Hash) isSlot() bool {
-	if hash.meta.Slot != 0 {
+func (hash *Hash) isMetaSlot() bool {
+	if hash.meta.MetaSlot != 0 {
 		return true
 	}
 	return false
@@ -203,7 +218,6 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if err := hash.addLen(-num); err != nil {
 		return 0, err
 	}
-
 	return num, nil
 }
 

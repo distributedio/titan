@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-	"hash/crc32"
 	"math/rand"
 	"strconv"
 
@@ -154,19 +153,19 @@ func (hash *Hash) isMetaSlot() bool {
 	return false
 }
 
-func metaSlotGC(txn *Transaction, objID []byte) error {
-	slotKeyPrefix := MetaSlotKey(txn.db, objID, nil)
-	if err := gc(txn.t, slotKeyPrefix); err != nil {
+func slotGC(txn *Transaction, objID []byte) error {
+	key := MetaSlotKey(txn.db, objID, nil)
+	if err := gc(txn.t, key); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (hash *Hash) calculateSlotID(field []byte) int64 {
-	if !hash.isMetaSlot() {
+func (hash *Hash) calculateSlotID(limit int64) int64 {
+	if !hash.isMetaSlot() || limit <= 1 {
 		return 0
 	}
-	return int64(crc32.ChecksumIEEE(field)) % hash.meta.MetaSlot
+	return rand.Int63n(limit - 1)
 }
 
 func (hash *Hash) isMetaSlot() bool {
@@ -672,13 +671,11 @@ func (hash *Hash) getSliceSlot(start, end int64) (*Slot, error) {
 		}
 		count++
 	}
-
 	if len(rawSlots) > 0 {
 		slot, err := hash.calculateSlot(&rawSlots)
 		if err != nil {
 			return nil, err
 		}
-
 		return slot, nil
 	}
 	return nil, ErrKeyNotFound

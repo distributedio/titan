@@ -254,16 +254,16 @@ func DataKey(db *DB, key []byte) []byte {
 	return dkey
 }
 
-// MetaSlotKey builds a slotkey from a slot id
-func MetaSlotKey(db *DB, objId, slotId []byte) []byte {
+// MetaSlotKey builds a meta slot key from a slot id
+func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 	var skey []byte
 	skey = append(skey, []byte(db.Namespace)...)
 	skey = append(skey, ':')
 	skey = append(skey, db.ID.Bytes()...)
-	skey = append(skey, ':', 'S', ':')
-	skey = append(skey, objId...)
+	skey = append(skey, ':', 'M', 'S', ':')
+	skey = append(skey, objID...)
 	skey = append(skey, ':')
-	skey = append(skey, slotId...)
+	skey = append(skey, slotID...)
 	return skey
 }
 

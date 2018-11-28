@@ -72,9 +72,10 @@ func (hm *HashMeta) Decode(b []byte) error {
 
 // Hash implements the hashtable
 type Hash struct {
-	meta HashMeta
-	key  []byte
-	txn  *Transaction
+	meta   HashMeta
+	key    []byte
+	exists bool
+	txn    *Transaction
 }
 
 // GetHash returns a hash object, create new one if nonexists
@@ -104,22 +105,8 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	if hash.meta.Type != ObjectHash {
 		return nil, ErrTypeMismatch
 	}
+	hash.exists = true
 	return hash, nil
-}
-
-//NewHash create new hashes object
-func NewHash(txn *Transaction, key []byte) *Hash {
-	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
-	now := Now()
-	hash.meta.CreatedAt = now
-	hash.meta.UpdatedAt = now
-	hash.meta.ExpireAt = 0
-	hash.meta.ID = UUID()
-	hash.meta.Type = ObjectHash
-	hash.meta.Encoding = ObjectEncodingHT
-	hash.meta.Len = 0
-	hash.meta.MetaSlot = defaultHashMetaSlot
-	return hash
 }
 
 func hashItemKey(key []byte, field []byte) []byte {
@@ -154,7 +141,6 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	var (
 		keys [][]byte
 		num  int64
-		now  = Now()
 	)
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for _, field := range fields {
@@ -189,28 +175,8 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	}
 
 	// update Len and UpdateAt
-	if hash.isMetaSlot() {
-		slotID := hash.calculateSlotID(hash.meta.MetaSlot)
-		slot, err := hash.getSlot(slotID)
-		if err != nil {
-			return 0, err
-		}
-		slot.Len -= num
-		slot.UpdatedAt = now
-		if err := hash.updateSlot(slotID, slot); err != nil {
-			return 0, err
-		}
-
-	} else {
-		hash.meta.Len -= num
-		hash.meta.UpdatedAt = now
-		if err := hash.autoUpdateSlot(defaultHashMetaSlot); err == nil {
-			hash.meta.MetaSlot = defaultHashMetaSlot
-		}
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
-
+	if err := hash.addLen(-num); err != nil {
+		return 0, err
 	}
 	return num, nil
 }
@@ -267,8 +233,7 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 	if exist {
 		return 0, nil
 	}
-	hash.meta.Len++
-	if err := hash.updateMeta(); err != nil {
+	if err := hash.addLen(1); err != nil {
 		return 0, err
 	}
 	return 1, nil
@@ -505,12 +470,47 @@ func (hash *Hash) HMSet(fields [][]byte, values [][]byte) error {
 
 // HMSet sets meta slot num
 func (hash *Hash) HMSlot(metaSlot int64) error {
+
+	if hash.isMetaSlot() {
+		slot, err := hash.getAllSlot()
+
+		if err == ErrKeyNotFound {
+			slot = &Slot{Len: 0, UpdatedAt: Now()}
+		} else if err != nil {
+			return err
+		}
+		hash.meta.Len = slot.Len
+		hash.meta.UpdatedAt = slot.UpdatedAt
+	}
 	if err := hash.autoUpdateSlot(metaSlot); err != nil {
 		return err
 	}
 	hash.meta.MetaSlot = metaSlot
 	if err := hash.updateMeta(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (hash *Hash) addLen(len int64) error {
+	isDirty := false
+	if hash.isMetaSlot() {
+		slotID := hash.calculateSlotID(hash.meta.MetaSlot)
+		if err := hash.addSlotLen(slotID, len); err != nil {
+			return err
+		}
+	} else {
+		hash.meta.Len += len
+		hash.meta.UpdatedAt = Now()
+		if err := hash.autoUpdateSlot(defaultHashMetaSlot); err == nil {
+			hash.meta.MetaSlot = defaultHashMetaSlot
+		}
+		isDirty = true
+	}
+	if isDirty || !hash.exists {
+		if err := hash.updateMeta(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -542,7 +542,7 @@ func (hash *Hash) autoUpdateSlot(metaSlot int64) error {
 			return err
 		}
 		sid := hash.calculateSlotID(metaSlot)
-		if err := hash.mergeSlot(sid, slot); err != nil {
+		if err := hash.addSlotLen(sid, slot.Len); err != nil {
 			return err
 		}
 		if err := hash.clearSliceSlot(metaSlot, hash.meta.MetaSlot-1); err != nil {
@@ -562,18 +562,19 @@ func (hash *Hash) clearSliceSlot(start, end int64) error {
 		if err := hash.txn.t.Delete(metaSlotKey); err != nil {
 			return err
 		}
+		i++
 	}
 	return nil
 }
 
-func (hash *Hash) mergeSlot(newID int64, old *Slot) error {
-	new, err := hash.getSlot(newID)
+func (hash *Hash) addSlotLen(newID int64, len int64) error {
+	slot, err := hash.getSlot(newID)
 	if err != nil {
 		return err
 	}
-	new.Len += old.Len
-	new.UpdatedAt = Now()
-	return hash.updateSlot(newID, new)
+	slot.Len += len
+	slot.UpdatedAt = Now()
+	return hash.updateSlot(newID, slot)
 }
 
 func (hash *Hash) getSlot(slotID int64) (*Slot, error) {
@@ -636,11 +637,13 @@ func (hash *Hash) getSliceSlot(start, end int64) (*Slot, error) {
 		}
 		count++
 	}
+
 	if len(rawSlots) > 0 {
 		slot, err := hash.calculateSlot(&rawSlots)
 		if err != nil {
 			return nil, err
 		}
+
 		return slot, nil
 	}
 	return nil, ErrKeyNotFound

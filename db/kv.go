@@ -79,8 +79,8 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 				continue
 			}
 			if obj.Type == ObjectHash {
-				hash := NewHash(kv.txn, mapping[k])
-				if err := hash.meta.Decode(val); err != nil {
+				hash, err := kv.txn.Hash(mapping[k])
+				if err != nil {
 					continue
 				}
 				if err := hash.Destroy(); err != nil {

@@ -150,11 +150,6 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 			return err
 		}
 	}
-	if obj.Type == ObjectHash {
-		if err := slotGC(txn, obj.ID); err != nil {
-			return err
-		}
-	}
 
 	return nil
 }

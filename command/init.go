@@ -75,6 +75,7 @@ func init() {
 		"hsetnx":       HSetNX,
 		"hmget":        HMGet,
 		"hmset":        HMSet,
+		"hmslot":       HMSlot,
 
 		// sets
 		"sadd":     SAdd,
@@ -169,6 +170,7 @@ func init() {
 		"hsetnx":       Desc{Proc: AutoCommit(HSetNX), Cons: Constraint{4, flags("wmF"), 1, 1, 1}},
 		"hmget":        Desc{Proc: AutoCommit(HMGet), Cons: Constraint{-3, flags("rF"), 1, 1, 1}},
 		"hmset":        Desc{Proc: AutoCommit(HMSet), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"hmslot":       Desc{Proc: AutoCommit(HMSlot), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
 
 		// sets
 		"sadd":     Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},

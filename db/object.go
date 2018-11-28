@@ -129,14 +129,6 @@ func (txn *Transaction) Object(key []byte) (*Object, error) {
 	if IsExpired(obj, Now()) {
 		return nil, ErrKeyNotFound
 	}
-	if obj.Type == ObjectHash {
-		hash := NewHash(txn, key)
-		if err := hash.meta.Decode(meta); err != nil {
-			return nil, err
-		}
-		return hash.Object()
-	}
-
 	return obj, nil
 }
 
@@ -155,11 +147,6 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 
 	if obj.ExpireAt > 0 {
 		if err := unExpireAt(txn.t, mkey, obj.ExpireAt); err != nil {
-			return err
-		}
-	}
-	if obj.Type == ObjectHash {
-		if err := slotGC(txn, obj.ID); err != nil {
 			return err
 		}
 	}

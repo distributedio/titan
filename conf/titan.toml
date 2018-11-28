@@ -24,10 +24,15 @@ auth = ""
 [server.tikv]
 
 #type:        string
-#rules:       nonempty
 #description: pd address in tidb
 #required
 pd-addrs = ""
+
+#type:        int64
+#rules:       numeric
+#description: hashes slot key count
+#default:     0
+#meta-slot = 0
 
 [server.tikv.zt]
 
@@ -104,7 +109,7 @@ pd-addrs = ""
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-#level = "debug"
+#level = "info"
 
 #type:        bool
 #rules:       boolean
@@ -116,3 +121,4 @@ pd-addrs = ""
 #description: log time rotate pattern(s m h D M W)
 #default:     0 0 0 * * *
 #time-rotate = "0 0 0 * * *"
+

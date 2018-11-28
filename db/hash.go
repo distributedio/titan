@@ -109,21 +109,6 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	return hash, nil
 }
 
-//NewHash create new hashes object
-func NewHash(txn *Transaction, key []byte) *Hash {
-	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
-	now := Now()
-	hash.meta.CreatedAt = now
-	hash.meta.UpdatedAt = now
-	hash.meta.ExpireAt = 0
-	hash.meta.ID = UUID()
-	hash.meta.Type = ObjectHash
-	hash.meta.Encoding = ObjectEncodingHT
-	hash.meta.Len = 0
-	hash.meta.MetaSlot = defaultHashMetaSlot
-	return hash
-}
-
 func hashItemKey(key []byte, field []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, key...)
@@ -671,11 +656,13 @@ func (hash *Hash) getSliceSlot(start, end int64) (*Slot, error) {
 		}
 		count++
 	}
+
 	if len(rawSlots) > 0 {
 		slot, err := hash.calculateSlot(&rawSlots)
 		if err != nil {
 			return nil, err
 		}
+
 		return slot, nil
 	}
 	return nil, ErrKeyNotFound

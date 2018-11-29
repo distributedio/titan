@@ -254,9 +254,7 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	if err := hash.txn.t.Set(ikey, value); err != nil {
 		return 0, err
 	}
-
-	hash.meta.Len++
-	if err := hash.updateMeta(); err != nil {
+	if err := hash.addLen(1); err != nil {
 		return 0, err
 	}
 	return 1, nil
@@ -362,8 +360,7 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 	}
 
 	if !exist {
-		hash.meta.Len++
-		if err := hash.updateMeta(); err != nil {
+		if err := hash.addLen(1); err != nil {
 			return 0, err
 		}
 	}
@@ -397,8 +394,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	}
 
 	if !exist {
-		hash.meta.Len++
-		if err := hash.updateMeta(); err != nil {
+		if err := hash.addLen(1); err != nil {
 			return 0, err
 		}
 	}
@@ -452,7 +448,6 @@ func (hash *Hash) HMSet(fields [][]byte, values [][]byte) error {
 	if err != nil {
 		return err
 	}
-
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for i := range fields {
 		ikey := hashItemKey(dkey, fields[i])
@@ -463,9 +458,7 @@ func (hash *Hash) HMSet(fields [][]byte, values [][]byte) error {
 			added++
 		}
 	}
-
-	hash.meta.Len += added
-	return hash.updateMeta()
+	return hash.addLen(added)
 }
 
 // HMSet sets meta slot num

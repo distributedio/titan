@@ -37,6 +37,10 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 
 [Titan Benchmarks](docs/benchmark/benchmark.md)
 
+## FAQ
+
+[FAQ](https://github.com/meitu/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
+
 ## Commands
 
 ### Connections

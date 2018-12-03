@@ -37,16 +37,26 @@ func DecodeObject(b []byte) (obj *Object, err error) {
 // EncodeInt64  encode the int64 object to binary
 func EncodeInt64(v int64) []byte {
 	var buf bytes.Buffer
+	if v < 0 {
+		v = int64(uint64(v) & 0x7FFFFFFFFFFFFFFF)
+	} else if v >= 0 {
+		v = int64(uint64(v) | 0x8000000000000000)
+	}
 
 	// Ignore the error returned here, because buf is a memory io.Writer, can should not fail here
-	binary.Write(&buf, binary.BigEndian, -v)
+	binary.Write(&buf, binary.BigEndian, v)
 	return buf.Bytes()
 }
 
 // DecodeInt64 decode the int64 object from binary
 func DecodeInt64(b []byte) int64 {
 	v := int64(binary.BigEndian.Uint64(b))
-	return -v
+	if v < 0 {
+		v = int64(uint64(v) & 0x7FFFFFFFFFFFFFFF)
+	} else if v >= 0 {
+		v = int64(uint64(v) | 0x8000000000000000)
+	}
+	return v
 }
 
 // EncodeFloat64 encode the float64 object to binary

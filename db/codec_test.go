@@ -40,10 +40,10 @@ func TestCodecEncodeInt64(t *testing.T) {
 }
 
 func TestCodecEncodeFloat64(t *testing.T) {
-	values := []float64{math.SmallestNonzeroFloat64, -1.0, 0.0, 1.0, math.MaxFloat64}
+	values := []float64{-1.0, 0.0, 1.0, math.MaxFloat64}
 	for i := 0; i < len(values)-1; i++ {
 		if bytes.Compare(EncodeFloat64(values[i]), EncodeFloat64(values[i+1])) >= 0 {
-			t.Fatal("EncodeInt64 is not memcomparable")
+			t.Fatal("EncodeFloat64 is not memcomparable")
 		}
 	}
 }

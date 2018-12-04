@@ -1,6 +1,7 @@
 package command
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,14 +9,13 @@ import (
 
 func initHashes(t *testing.T, key string, n int) {
 	args := []string{key}
-	for ; n > 0; n-- {
-		args = append(args, "field", "value")
-
+	for i := n; i > 0; i-- {
+		args = append(args, "init_field"+strconv.Itoa(i), "bar")
 	}
 	ctx := ContextTest("hmset", args...)
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
-	assert.Equal(t, ":1", lines[0])
+	assert.Equal(t, "+OK", lines[0])
 }
 
 func clearHashes(t *testing.T, key string) {
@@ -25,48 +25,53 @@ func clearHashes(t *testing.T, key string) {
 	assert.Equal(t, ":1", lines[0])
 }
 
-func setHashes(t *testing.T, key, val string) []string {
-	ctx := ContextTest("rpush", key, val)
+func setHashes(t *testing.T, args ...string) []string {
+	ctx := ContextTest("hmset", args...)
 	Call(ctx)
 	return ctxLines(ctx.Out)
 }
 
 func TestHLen(t *testing.T) {
 	// init
-	key := "list-llen-key"
+	key := "hash-hlen-key"
 	initList(t, key, 3)
 
 	// case 1
-	ctx := ContextTest("llen", key)
+	ctx := ContextTest("hlen", key)
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
 	assert.Equal(t, ":3", lines[0])
 
 	// case 2
-	lines = rpushList(t, key, "4")
-	assert.Equal(t, ":4", lines[0])
-	ctx = ContextTest("llen", key)
+	lines = setHashes(t, key, "a", "a", "b", "b")
+	assert.Equal(t, "+OK", lines[0])
+	ctx = ContextTest("hlen", key)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Equal(t, ":4", lines[0])
+	assert.Equal(t, ":5", lines[0])
+
+	// case 3
+	lines = setHashes(t, key, "c", "c", "c", "d")
+	assert.Equal(t, "+OK", lines[0])
+	ctx = ContextTest("hlen", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":5", lines[0])
+
 	// end
-	clearList(t, key)
-
-	// zlist init
-	key = "list-llen-zlistkey"
-	initList(t, key, 600)
-
-	ctx = ContextTest("llen", key)
-	Call(ctx)
-	lines = ctxLines(ctx.Out)
-	assert.Equal(t, ":600", lines[0])
-
-	lines = rpushList(t, key, "lastval")
-	assert.Equal(t, ":601", lines[0])
-	ctx = ContextTest("llen", key)
-	Call(ctx)
-	lines = ctxLines(ctx.Out)
-	assert.Equal(t, ":601", lines[0])
-	// end
-	clearList(t, key)
+	clearHashes(t, key)
 }
+func TestHDel(t *testing.T)         {}
+func TestHExists(t *testing.T)      {}
+func TestHGet(t *testing.T)         {}
+func TestHGetAll(t *testing.T)      {}
+func TestHIncrBy(t *testing.T)      {}
+func TestHIncrByFloat(t *testing.T) {}
+func TestHKeys(t *testing.T)        {}
+func TestHSet(t *testing.T)         {}
+func TestHSetNX(t *testing.T)       {}
+func TestHStrLen(t *testing.T)      {}
+func TestHVals(t *testing.T)        {}
+func TestHMGet(t *testing.T)        {}
+func TestHMSet(t *testing.T)        {}
+func TestHMSlot(t *testing.T)       {}

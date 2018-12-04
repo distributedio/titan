@@ -284,7 +284,10 @@ func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 	}
 	var fields [][]byte
 	var vals [][]byte
-	count := hash.meta.Len
+	count, err := hash.HLen()
+	if err != nil {
+		return nil, nil, err
+	}
 	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
 		fields = append(fields, []byte(iter.Key()[len(prefix):]))
 		vals = append(vals, iter.Value())

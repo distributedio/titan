@@ -243,21 +243,25 @@ func HMGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // HMSet sets the specified fields to their respective values in the hash stored at key
 func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(ctx.Args[0])
 
-	kvs := ctx.Args[1:]
+	var (
+		fields  [][]byte
+		values  [][]byte
+		mapping = make(map[string][]byte)
+		key     = []byte(ctx.Args[0])
+		kvs     = ctx.Args[1:]
+	)
+
 	if len(kvs)%2 != 0 {
 		return nil, errors.New("ERR wrong number of arguments for HMSET")
 	}
-
-	count := len(kvs) / 2
-	fields := make([][]byte, count)
-	values := make([][]byte, count)
-	j := 0
 	for i := 0; i < len(kvs)-1; i += 2 {
-		fields[j] = []byte(kvs[i])
-		values[j] = []byte(kvs[i+1])
-		j++
+		mapping[kvs[i]] = []byte(kvs[i+1])
+	}
+
+	for field, val := range mapping {
+		fields = append(fields, []byte(field))
+		values = append(values, val)
 	}
 
 	hash, err := txn.Hash(key)

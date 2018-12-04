@@ -61,7 +61,53 @@ func TestHLen(t *testing.T) {
 	// end
 	clearHashes(t, key)
 }
-func TestHDel(t *testing.T)         {}
+
+func TestHDel(t *testing.T) {
+	// init
+	key := "hash-hlen-key"
+	initList(t, key, 5)
+
+	// case 1
+	ctx := ContextTest("hdel", key, "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	ctx = ContextTest("hlen", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":4", lines[0])
+
+	// case 2
+	ctx = ContextTest("hdel", key, "2")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	ctx = ContextTest("hlen", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":3", lines[0])
+
+	// case 3
+	ctx = ContextTest("hdel", key, "3", "4", "5")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":3", lines[0])
+	ctx = ContextTest("hlen", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+	// then re-insert into hash
+	lines = setHashes(t, key, "a", "a", "b", "b")
+	assert.Equal(t, "+OK", lines[0])
+	ctx = ContextTest("hlen", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":2", lines[0])
+
+	// end
+	clearHashes(t, key)
+}
+
 func TestHExists(t *testing.T)      {}
 func TestHGet(t *testing.T)         {}
 func TestHGetAll(t *testing.T)      {}

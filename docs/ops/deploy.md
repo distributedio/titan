@@ -29,7 +29,7 @@ pd-addrs="tikv://your-pd-addrs:port"
 First, set auth value in the 'server' section of conf/titan.toml
 
 ```
-auth = "somepwd"
+auth = "YOUR_SERVER_KEY"
 ```
 
 Then use ./tools/token/token to generate a client token.
@@ -37,7 +37,7 @@ Then use ./tools/token/token to generate a client token.
 ```
 cd $GOPATH/src/github.com/meitu/titan/tools/token
 go build main.go -o titan-gen-client-token
-./titan-gen-client-token -key somepwd -namespace bbs
+./titan-gen-client-token -key YOUR_SERVER_KEY -namespace bbs
 ```
 
 Then you'll get the token for client auth, for example: bbs-1543999615-1-7a50221d92e69d63e1b443

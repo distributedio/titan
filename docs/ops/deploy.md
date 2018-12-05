@@ -25,9 +25,27 @@ Edit conf/titan.toml and set the pd-addrs
 pd-addrs="tikv://your-pd-addrs:port"
 ```
 
+### Enable Multi-tenancy
+First, set auth value in the 'server' section of conf/titan.toml
+
+```
+auth = "somepwd"
+```
+
+Then，use ./tools/token/token to gen a client token.
+
+```
+cd $GOPATH/src/github.com/meitu/titan/tools/token
+go build main.go -o titan-gen-client-token
+./titan-gen-client-token -key somepwd -namespace bbs
+```
+
+You get the token for client auth, for example: bbs-1543999615-1-7a50221d92e69d63e1b443
+
 ### Run
 
 ```
+cd $GOPATH/src/github.com/meitu/titan
 ./titan
 ```
 
@@ -36,3 +54,10 @@ pd-addrs="tikv://your-pd-addrs:port"
 ```
 redis-cli -p 7369
 ```
+
+If Multi-tenancy is enabled, use server generated token to auth:
+
+```
+redis-cli -p 7369 -a bbs-1543999615-1-7a50221d92e69d63e1b443
+```
+

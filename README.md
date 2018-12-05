@@ -1,20 +1,4 @@
-# Titan
-
-[![Build Status](https://travis-ci.org/meitu/titan.svg?branch=master)](https://travis-ci.org/meitu/titan)
-[![Go Report Card](https://goreportcard.com/badge/github.com/meitu/titan)](https://goreportcard.com/report/github.com/meitu/titan)
-[![Coverage Status](https://coveralls.io/repos/github/meitu/titan/badge.svg?branch=master)](https://coveralls.io/github/meitu/titan?branch=master)
-[![Coverage Status](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/meitu/titan/releases)
-
 A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
-
-## Status
-
-Active development, not ready for production. We welcome any form of contributions!
-
-Our goal is to build a solid NoSQL database aiming to run in the production environment. 
-We are using Titan in production inside Meitu now. If you cannot wait to experiment it in 
-the production environment, feel free to contact us for technical supporting.
-
 ## Features
 
 * Completely compatible with redis protocol
@@ -24,22 +8,6 @@ the production environment, feel free to contact us for technical supporting.
 * High availability 
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 
-
-## Roadmap
-
-[Roadmap](docs/roadmap.md)
-
-## Installing
-
-[Deploy Titan](docs/ops/deploy.md)
-
-## Benchmarks
-
-[Titan Benchmarks](docs/benchmark/benchmark.md)
-
-## FAQ
-
-[FAQ](https://github.com/meitu/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
 
 ## Commands
 

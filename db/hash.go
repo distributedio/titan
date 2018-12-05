@@ -80,21 +80,11 @@ type Hash struct {
 
 // GetHash returns a hash object, create new one if nonexists
 func GetHash(txn *Transaction, key []byte) (*Hash, error) {
-	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
-
+	hash := NewHash(txn, key)
 	mkey := MetaKey(txn.db, key)
 	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
-			now := Now()
-			hash.meta.CreatedAt = now
-			hash.meta.UpdatedAt = now
-			hash.meta.ExpireAt = 0
-			hash.meta.ID = UUID()
-			hash.meta.Type = ObjectHash
-			hash.meta.Encoding = ObjectEncodingHT
-			hash.meta.Len = 0
-			hash.meta.MetaSlot = defaultHashMetaSlot
 			return hash, nil
 		}
 		return nil, err
@@ -109,6 +99,23 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	return hash, nil
 }
 
+//NewString  create new hash object
+func NewHash(txn *Transaction, key []byte) *Hash {
+	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
+	now := Now()
+	hash.meta.CreatedAt = now
+	hash.meta.UpdatedAt = now
+	hash.meta.ExpireAt = 0
+	hash.meta.ID = UUID()
+	hash.meta.Type = ObjectHash
+	hash.meta.Encoding = ObjectEncodingHT
+	hash.meta.Len = 0
+	hash.meta.MetaSlot = defaultHashMetaSlot
+	return hash
+
+}
+
+//hashItemKey spits field into metakey
 func hashItemKey(key []byte, field []byte) []byte {
 	var dkey []byte
 	dkey = append(dkey, key...)
@@ -138,6 +145,7 @@ func (hash *Hash) isMetaSlot() bool {
 	return false
 }
 
+//SlotGC adds slotKey to GC remove queue
 func slotGC(txn *Transaction, objID []byte) error {
 	key := MetaSlotKey(txn.db, objID, nil)
 	if err := gc(txn.t, key); err != nil {

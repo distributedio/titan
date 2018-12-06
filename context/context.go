@@ -73,12 +73,13 @@ func NewClientContext(id int64, conn net.Conn) *ClientContext {
 
 // ServerContext is the runtime context of the server
 type ServerContext struct {
-	RequirePass string
-	Store       *db.RedisStore
-	Monitors    sync.Map
-	Clients     sync.Map
-	Pause       time.Duration // elapse to pause all clients
-	StartAt     time.Time
+	RequirePass      string
+	Store            *db.RedisStore
+	Monitors         sync.Map
+	Clients          sync.Map
+	Pause            time.Duration // elapse to pause all clients
+	StartAt          time.Time
+	ListZipThreshold int64
 }
 
 // Context combines the client and server context

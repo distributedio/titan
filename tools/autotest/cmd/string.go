@@ -80,16 +80,18 @@ func (es *ExampleString) SetExEqual(t *testing.T, key string, value string, delt
 
 //PSetexEqualErr verify that the return value of the set operation is correct
 func (es *ExampleString) PSetexEqual(t *testing.T, key string, value string, delta int) {
-	es.values[key] = value
-	reply, err := redis.String(es.conn.Do("PSETEX", key, delta, value))
-	assert.Equal(t, "OK", reply)
-	assert.NoError(t, err)
-	data, err := redis.Bytes(es.conn.Do("GET", key))
-	assert.Equal(t, value, string(data))
-	assert.NoError(t, err)
-	time.Sleep(time.Millisecond * time.Duration(delta))
-	data, err = redis.Bytes(es.conn.Do("GET", key))
-	assert.Equal(t, "", string(data))
+	/*
+		es.values[key] = value
+		reply, err := redis.String(es.conn.Do("PSETEX", key, delta, value))
+		assert.Equal(t, "OK", reply)
+		assert.NoError(t, err)
+		data, err := redis.Bytes(es.conn.Do("GET", key))
+		assert.Equal(t, value, string(data))
+		assert.NoError(t, err)
+		time.Sleep(time.Millisecond * time.Duration(delta))
+		data, err = redis.Bytes(es.conn.Do("GET", key))
+		assert.Equal(t, "", string(data))
+	*/
 }
 
 //SetRangeEqualErr verify that the return value of the set operation is correct

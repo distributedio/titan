@@ -57,7 +57,7 @@ func (t *Base) UnmarshalBinary(data []byte) error {
 
 //Verify token auth //wangzongsheng modify this function
 func Verify(token, key []byte) ([]byte, error) {
-	encodedSignLen := hex.EncodedLen(tokenSignLen)
+	//encodedSignLen := hex.EncodedLen(tokenSignLen)
 	if len(key) == 0 { // || len(token) < encodedSignLen
 		return nil, errors.New("token or key is parameter illegal")
 	}

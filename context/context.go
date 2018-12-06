@@ -79,7 +79,7 @@ type ServerContext struct {
 	Clients          sync.Map
 	Pause            time.Duration // elapse to pause all clients
 	StartAt          time.Time
-	ListZipThreshold int64
+	ListZipThreshold int
 }
 
 // Context combines the client and server context

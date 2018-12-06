@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"math"
 	"reflect"
 	"testing"
@@ -25,6 +26,24 @@ func TestCodecObject(t *testing.T) {
 		}
 		if !reflect.DeepEqual(got, obj) {
 			t.Fatalf("decode failed want=%v, got=%v", obj, got)
+		}
+	}
+}
+
+func TestCodecEncodeInt64(t *testing.T) {
+	values := []int64{math.MinInt64, -1, 0, 1, math.MaxInt64}
+	for i := 0; i < len(values)-1; i++ {
+		if bytes.Compare(EncodeInt64(values[i]), EncodeInt64(values[i+1])) >= 0 {
+			t.Fatal("EncodeInt64 is not memcomparable")
+		}
+	}
+}
+
+func TestCodecEncodeFloat64(t *testing.T) {
+	values := []float64{-1.0, 0.0, 1.0, math.MaxFloat64}
+	for i := 0; i < len(values)-1; i++ {
+		if bytes.Compare(EncodeFloat64(values[i]), EncodeFloat64(values[i+1])) >= 0 {
+			t.Fatal("EncodeFloat64 is not memcomparable")
 		}
 	}
 }

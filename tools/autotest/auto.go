@@ -56,7 +56,7 @@ func (ac *AutoClient) Close() {
 func (ac *AutoClient) StringCase(t *testing.T) {
 	ac.es.SetNxEqual(t, "key-setx", "v1")
 	ac.es.SetExEqual(t, "key-set", "v2", 1)
-	ac.es.PSetexEqual(t, "key-set", "v3", 2000)
+	ac.es.PSetexEqual(t, "key-set", "v3", 3000)
 
 	ac.es.SetEqual(t, "key-set", "value")
 	ac.es.AppendEqual(t, "key-set", "value")

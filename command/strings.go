@@ -469,3 +469,41 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return Integer(ctx.Out, int64(delta)), nil
 }
+
+// SetBit Sets or clears the bit at offset in the string value stored at key.
+func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	offset, err := strconv.ParseInt(string(ctx.Args[1]), 10, 32)
+	if err != nil {
+		return nil, ErrBitOffset
+	}
+	if offset < 0 {
+		return nil, ErrBitOffset
+	}
+
+	on, err := strconv.ParseInt(string(ctx.Args[2]), 10, 32)
+	if err != nil {
+		return nil, ErrBitInteger
+	}
+
+	// Bits can only be set or cleared...
+	if (on & ^1) != 0 {
+		return nil, ErrBitInteger
+	}
+
+	str, err := txn.String(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	val, err := str.SetBit(uint(on), uint(offset))
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if val != 0 {
+		return Integer(ctx.Out, 1), nil
+	}
+	return Integer(ctx.Out, 0), nil
+}

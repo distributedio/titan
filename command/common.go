@@ -62,12 +62,12 @@ func Verify(token, key []byte) ([]byte, error) {
 		return nil, errors.New("token or key is parameter illegal")
 	}
 
-	sign := make([]byte, tokenSignLen)
-	hex.Decode(sign, token[len(token)-encodedSignLen:])
+	// sign := make([]byte, tokenSignLen)
+	// hex.Decode(sign, token[len(token)-encodedSignLen:])
 
-	meta := token[:len(token)-encodedSignLen-1] //counting in the ":"
-	mac := hmac.New(sha256.New, key)
-	mac.Write(meta)
+	// meta := token[:len(token)-encodedSignLen-1] //counting in the ":"
+	// mac := hmac.New(sha256.New, key)
+	// mac.Write(meta)
 
 	strToken := string(token)
 	strKey := string(key)
@@ -79,11 +79,12 @@ func Verify(token, key []byte) ([]byte, error) {
 	// 	return nil, errors.New("token mismatch")
 	// }
 
-	var t Base
-	if err := t.UnmarshalBinary(meta); err != nil {
-		return nil, err
-	}
-	return t.Namespace, nil
+	// var t Base
+	// if err := t.UnmarshalBinary(meta); err != nil {
+	// 	return nil, err
+	// }
+	// return t.Namespace, nil
+	return token, nil
 }
 
 //Token token create through key server namespace create time

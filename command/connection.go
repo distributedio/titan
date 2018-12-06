@@ -20,13 +20,15 @@ func Auth(ctx *Context) {
 	namespace, err := Verify(token, serverauth)
 	if err != nil {
 		resp.ReplyError(ctx.Out, "ERR invalid password")
+		ctx.Client.Authenticated = false
+		return
 	}
 	ctx.Client.Authenticated = true
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(ctx.Client.Namespace).Dec()
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(string(namespace)).Inc()
 	ctx.Client.Namespace = string(namespace)
 	ctx.Client.DB.Namespace = string(namespace)
-	ctx.Client.Authenticated = true
+	//ctx.Client.Authenticated = true  //wangzongsheng note this, it's repeat
 	resp.ReplySimpleString(ctx.Out, OK)
 }
 

@@ -27,7 +27,8 @@ auth = ""
 #rules:       nonempty
 #description: pd address in tidb
 #required
-pd-addrs = ""
+#mocktikv是内存模式
+pd-addrs = "mocktikv://"
 
 [server.tikv.zt]
 

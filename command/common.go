@@ -55,12 +55,11 @@ func (t *Base) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-//Verify token auth
+//Verify token auth //wangzongsheng modify this function
 func Verify(token, key []byte) ([]byte, error) {
 	encodedSignLen := hex.EncodedLen(tokenSignLen)
-	if len(token) < encodedSignLen || len(key) == 0 {
+	if len(key) == 0 { // || len(token) < encodedSignLen
 		return nil, errors.New("token or key is parameter illegal")
-
 	}
 
 	sign := make([]byte, tokenSignLen)
@@ -70,9 +69,15 @@ func Verify(token, key []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(meta)
 
-	if !hmac.Equal(mac.Sum(nil)[:tokenSignLen], sign) {
+	strToken := string(token)
+	strKey := string(key)
+	if strToken != strKey {
 		return nil, errors.New("token mismatch")
 	}
+
+	// if !hmac.Equal(mac.Sum(nil)[:tokenSignLen], sign) {
+	// 	return nil, errors.New("token mismatch")
+	// }
 
 	var t Base
 	if err := t.UnmarshalBinary(meta); err != nil {

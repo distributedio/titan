@@ -80,7 +80,7 @@ type Hash struct {
 
 // GetHash returns a hash object, create new one if nonexists
 func GetHash(txn *Transaction, key []byte) (*Hash, error) {
-	hash := NewHash(txn, key)
+	hash := newHash(txn, key)
 	mkey := MetaKey(txn.db, key)
 	meta, err := txn.t.Get(mkey)
 	if err != nil {
@@ -100,7 +100,7 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 }
 
 //NewString  create new hash object
-func NewHash(txn *Transaction, key []byte) *Hash {
+func newHash(txn *Transaction, key []byte) *Hash {
 	hash := &Hash{txn: txn, key: key, meta: HashMeta{}}
 	now := Now()
 	hash.meta.CreatedAt = now
@@ -495,7 +495,7 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 	return hash.addLen(added)
 }
 
-// HMSet sets meta slot num
+// HMSlot sets meta slot num
 func (hash *Hash) HMSlot(metaSlot int64) error {
 
 	if hash.isMetaSlot() {

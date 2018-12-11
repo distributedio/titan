@@ -82,12 +82,6 @@ func (c *client) serve(conn net.Conn) error {
 		// 	return err
 		}
 
-		for _,v := range cmd {
-			if v == "quit" {
-				return c.conn.Close()
-			}
-		}
-
 		if c.server.servCtx.Pause > 0 {
 			time.Sleep(c.server.servCtx.Pause)
 			c.server.servCtx.Pause = 0
@@ -119,8 +113,20 @@ func (c *client) serve(conn net.Conn) error {
 				zap.String("traceid", ctx.TraceID),
 				zap.String("command", ctx.Name))
 		}
-		c.exec.Execute(ctx)
-		cancel()
+			
+		quit := false
+		for _,v := range cmd {
+			if v == "quit" {
+				quit = true
+				
+			}
+		}	
+		if quit {
+			return c.conn.Close()
+		} else {
+			c.exec.Execute(ctx)
+		    cancel()
+		}
 	}
 }
 

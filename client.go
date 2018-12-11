@@ -59,7 +59,7 @@ func (c *client) serve(conn net.Conn) error {
 		for {
 			cmd, err := c.readCommand()
 			if err != nil {
-				//errc <- err
+				//errc <- err    //the err element maybe got before cmd element from cmdc
 				cmdc <- []string{"quit"} 
 				rootCancel() 
 				return
@@ -75,11 +75,17 @@ func (c *client) serve(conn net.Conn) error {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
 		case cmd = <-cmdc:
-		// case err = <-errc:  //the err element maybe got before cmd element from cmdc
+		// case err = <-errc:  
 		// 	zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
 		// 		zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
 		// 	c.conn.Close()
 		// 	return err
+		}
+
+		for _,v := range cmd {
+			if v == "quit" {
+				return c.conn.Close()
+			}
 		}
 
 		if c.server.servCtx.Pause > 0 {

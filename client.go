@@ -54,13 +54,14 @@ func (c *client) serve(conn net.Conn) error {
 	// then we can detect a closed connection as soon as possible.
 	// It only works when the cmd channel is not blocked
 	cmdc := make(chan []string, 128)
-	errc := make(chan error)
+	//errc := make(chan error)
 	go func() {
 		for {
 			cmd, err := c.readCommand()
 			if err != nil {
-				errc <- err
-				rootCancel()
+				//errc <- err
+				cmdc <- []string{"exit"} 
+				rootCancel() 
 				return
 			}
 			cmdc <- cmd
@@ -74,11 +75,11 @@ func (c *client) serve(conn net.Conn) error {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
 		case cmd = <-cmdc:
-		case err = <-errc:
-			zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
-				zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
-			c.conn.Close()
-			return err
+		// case err = <-errc:
+		// 	zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+		// 		zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+		// 	c.conn.Close()
+		// 	return err
 		}
 
 		if c.server.servCtx.Pause > 0 {

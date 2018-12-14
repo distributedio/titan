@@ -31,6 +31,18 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 
 [Roadmap](docs/roadmap.md)
 
+## Can't wait to experiment Titan?
+
+```
+curl -s -O https://raw.githubusercontent.com/meitu/titan/master/docker-compose.yml
+docker-compose up
+
+# Then connect to titan use redis-cli
+redis-cli -p 7369
+
+# Enjoy!
+```
+
 ## Installing
 
 [Deploy Titan](docs/ops/deploy.md)

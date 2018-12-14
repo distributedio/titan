@@ -13,9 +13,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// var (
-//     SOCKET_CLOSE_FLAG = "socket_eof"
-// )
+var (
+    SOCKET_CLOSE_FLAG = "socket_eof"
+)
 
 type client struct {
 	cliCtx *context.ClientContext
@@ -58,14 +58,14 @@ func (c *client) serve(conn net.Conn) error {
 	// then we can detect a closed connection as soon as possible.
 	// It only works when the cmd channel is not blocked
 	cmdc := make(chan []string, 128)
-	errc := make(chan error)   // no longer use errc channel
+	//errc := make(chan error)   // no longer use errc channel
 	go func() {
 		for {
 			cmd, err := c.readCommand()
 			if err != nil {
-				//cmdc <- []string{SOCKET_CLOSE_FLAG} // SOCKET_CLOSE_FLAG identifying closing socket 
-				errc <- err    //the err element maybe got before cmd element from cmdc
-				rootCancel() 
+				cmdc <- []string{SOCKET_CLOSE_FLAG} // SOCKET_CLOSE_FLAG identifying closing socket 
+				//errc <- err    //the err element maybe got before cmd element from cmdc
+				//rootCancel() 
 				return
 			}
 			cmdc <- cmd
@@ -79,17 +79,17 @@ func (c *client) serve(conn net.Conn) error {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
 		case cmd = <-cmdc:
-		case err = <-errc:  
-	        zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
-			zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
-			c.conn.Close()
-			return err
+		// case err = <-errc:  
+	    // zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+		// 	zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+		// 	c.conn.Close()
+		// 	return err
 		}
 
-        // if cmd[0] == SOCKET_CLOSE_FLAG {
-		    // rootCancel() 
-        //     return c.conn.Close()
-        // } 
+        if cmd[0] == SOCKET_CLOSE_FLAG {
+		    rootCancel() 
+            return c.conn.Close()
+        } 
 
 		if c.server.servCtx.Pause > 0 {
 			time.Sleep(c.server.servCtx.Pause)

@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"time"
+	"sync"
 
 	"github.com/meitu/titan/command"
 	"github.com/meitu/titan/context"
@@ -14,15 +15,18 @@ import (
 )
 
 var (
-    SOCKET_CLOSE_FLAG = "socket_eof"
+    SOCKET_CLOSE_FLAG = "EOF"
 )
 
 type client struct {
-	cliCtx *context.ClientContext
-	server *Server
-	conn   net.Conn
-	exec   *command.Executor
-	r      *bufio.Reader
+	cliCtx  *context.ClientContext
+	server  *Server
+	conn    net.Conn
+	exec    *command.Executor
+	r       *bufio.Reader
+	
+	eofLock sync.Mutex	//the lock of reading_writing 'eof'
+	eof   	bool		//is over when read data from socket
 }
 
 func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
@@ -30,7 +34,22 @@ func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor)
 		cliCtx: cliCtx,
 		server: s,
 		exec:   exec,
+		eof:    false,
 	}
+}
+
+func (c *client)readEof() {
+	c.eofLock.Lock()
+	defer c.eofLock.Unlock()
+	
+	c.eof = true
+}
+
+func (c *client)isEof() bool {
+	c.eofLock.Lock()
+	defer c.eofLock.Unlock()
+	
+	return c.eof
 }
 
 // Write to conn and log error if needed
@@ -63,6 +82,7 @@ func (c *client) serve(conn net.Conn) error {
 		for {
 			cmd, err := c.readCommand()
 			if err != nil {
+				c.readEof()
 				cmdc <- []string{SOCKET_CLOSE_FLAG} // SOCKET_CLOSE_FLAG identifying closing socket 
 				//errc <- err    //the err element maybe got before cmd element from cmdc
 				//rootCancel() 
@@ -73,7 +93,7 @@ func (c *client) serve(conn net.Conn) error {
 	}()
 
 	var cmd []string
-	var err error
+	//var err error
 	for {
 		select {
 		case <-c.cliCtx.Done:
@@ -87,8 +107,10 @@ func (c *client) serve(conn net.Conn) error {
 		}
 
         if cmd[0] == SOCKET_CLOSE_FLAG {
-		    rootCancel() 
-            return c.conn.Close()
+			if c.isEof() {
+				rootCancel() 
+            	return c.conn.Close()
+			}
         } 
 
 		if c.server.servCtx.Pause > 0 {

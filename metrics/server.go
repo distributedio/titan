@@ -31,6 +31,7 @@ func NewServer(config *conf.Status) *Server {
 // Serve accepts incoming connections on the Listener l
 func (s *Server) Serve(lis net.Listener) error {
 	zap.L().Info("status server start", zap.String("addr", s.addr))
+	MetricsHandle()
 	return s.statusServer.Serve(lis)
 }
 
@@ -70,5 +71,5 @@ func (s *Server) ListenAndServe(addr string) error {
 		return err
 	}
 	zap.L().Info("status server start", zap.String("addr", s.addr))
-	return s.statusServer.Serve(lis)
+	return s.Serve(lis)
 }

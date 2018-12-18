@@ -163,18 +163,23 @@ func (kv *Kv) FlushDB() error {
 		}
 		
 		var count int = 0
-		for iter.Valid() && iter.Key().HasPrefix(prefix) {
-			if err := txn.Delete(iter.Key()); err != nil {
-				return err
-			}
-			if err := iter.Next(); err != nil {
-				return err
-			}
-			count++
-			if count > 10 * 1000 {
-				break
+		for {
+			if iter.Valid() && iter.Key().HasPrefix(prefix) {
+				if err := txn.Delete(iter.Key()); err != nil {
+					return err
+				}
+				if err := iter.Next(); err != nil {
+					return err
+				}
+				count++
+				if count > 10 * 1000 {
+					break
+				}
+			} else {
+				return nil
 			}
 		}
+		
 	}
 	
 	return nil
@@ -192,18 +197,22 @@ func (kv *Kv) FlushAll() error {
 		}
 		
 		var count int = 0
-		for iter.Valid() && iter.Key().HasPrefix(prefix) {
-			if err := txn.Delete(iter.Key()); err != nil {
-				return err
-			}
-			if err := iter.Next(); err != nil {
-				return err
-			}
-			count++
-			if count > 10 * 1000 {
-				break
-			}
-		}	
+		for {
+			if iter.Valid() && iter.Key().HasPrefix(prefix) {
+				if err := txn.Delete(iter.Key()); err != nil {
+					return err
+				}
+				if err := iter.Next(); err != nil {
+					return err
+				}
+				count++
+				if count > 10 * 1000 {
+					break
+				}
+			} else {
+				return nil
+			}	
+		}
 	}
 	
 	return nil

@@ -156,32 +156,18 @@ func (kv *Kv) FlushDB() error {
 	prefix := kv.txn.db.Prefix()
 	txn := kv.txn.t
 
-	for {
-		iter, err := txn.Seek(prefix)
-		if err != nil {
+	iter, err := txn.Seek(prefix)
+	if err != nil {
+		return err
+	}
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		if err := txn.Delete(iter.Key()); err != nil {
 			return err
 		}
-		
-		var count int = 0
-		for {
-			if iter.Valid() && iter.Key().HasPrefix(prefix) {
-				if err := txn.Delete(iter.Key()); err != nil {
-					return err
-				}
-				if err := iter.Next(); err != nil {
-					return err
-				}
-				count++
-				if count > 10 * 1000 {
-					break
-				}
-			} else {
-				return nil
-			}
+		if err := iter.Next(); err != nil {
+			return err
 		}
-		
 	}
-	
 	return nil
 }
 
@@ -190,32 +176,20 @@ func (kv *Kv) FlushAll() error {
 	prefix := []byte(kv.txn.db.Namespace + ":")
 	txn := kv.txn.t
 
-	for {
-		iter, err := txn.Seek(prefix)
-		if err != nil {
+	iter, err := txn.Seek(prefix)
+	if err != nil {
+		return err
+	}
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		if err := txn.Delete(iter.Key()); err != nil {
 			return err
 		}
-		
-		var count int = 0
-		for {
-			if iter.Valid() && iter.Key().HasPrefix(prefix) {
-				if err := txn.Delete(iter.Key()); err != nil {
-					return err
-				}
-				if err := iter.Next(); err != nil {
-					return err
-				}
-				count++
-				if count > 10 * 1000 {
-					break
-				}
-			} else {
-				return nil
-			}	
+		if err := iter.Next(); err != nil {
+			return err
 		}
 	}
-	
 	return nil
+
 }
 
 // RandomKey return a key from current db randomly

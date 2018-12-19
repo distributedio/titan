@@ -334,9 +334,27 @@ func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
+//flushdb2 is no transaction version
+func FlushDB2(ctx *Context) {
+	kv := ctx.Client.Txn.Kv()
+	if err := kv.FlushDB(); err != nil {
+		return nil, err
+	}
+	return SimpleString(ctx.Out, "OK"), nil
+}
+
 // FlushAll cleans up all databases
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
+	if err := kv.FlushAll(); err != nil {
+		return nil, err
+	}
+	return SimpleString(ctx.Out, "OK"), nil
+}
+
+//flushall2 is no transaction version
+func FlushAll2(ctx *Context) {
+	kv := ctx.Client.Txn.Kv()
 	if err := kv.FlushAll(); err != nil {
 		return nil, err
 	}

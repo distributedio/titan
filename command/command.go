@@ -153,7 +153,7 @@ func Call(ctx *Context) {
 	if ctx.Name == "flushdb" || ctx.Name == "flushall" {
 		for {
 			err := cmdInfoCommand.Proc2(ctx)
-			if err != nil && err.Error() == "MAX_FLUSH_COUNT" {
+			if err != nil && err.Error() == db.ERR_MAX_FLUSH_COUNT {
 				continue
 			} else {
 				break

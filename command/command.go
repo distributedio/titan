@@ -150,7 +150,7 @@ func Call(ctx *Context) {
 	feedMonitors(ctx)
 	start := time.Now()
 	//wangzongsheng add below
-	if ctx.Name == "flushdb" || ctx.Name == "flushdb" {
+	if ctx.Name == "flushdb" || ctx.Name == "flushall" {
 		for {
 			err := cmdInfoCommand.Proc2(ctx)
 			if err != nil && err.Error() == "MAX_FLUSH_COUNT" {
@@ -159,7 +159,6 @@ func Call(ctx *Context) {
 				break
 			}
 		}
-		
 	} else {
 		cmdInfoCommand.Proc(ctx)
 	}

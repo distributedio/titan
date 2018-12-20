@@ -25,7 +25,7 @@ type Context struct {
 }
 
 // Command is a redis command implementation
-type Command func(ctx *Context)
+type Command func(ctx *Context) error
 
 // OnCommit returns by TxnCommand and will be called after a transaction being committed
 type OnCommit func()
@@ -166,8 +166,8 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // AutoCommit commits to database after run a txn command
 func AutoCommit(cmd TxnCommand) Command {
-	return func(ctx *Context) {
-		retry.Ensure(ctx, func() error {
+	return func(ctx *Context) error {
+		return retry.Ensure(ctx, func() error {
 			mt := metrics.GetMetrics()
 			txn, err := ctx.Client.DB.Begin()
 			if err != nil {

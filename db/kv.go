@@ -7,6 +7,8 @@ import (
 	"github.com/meitu/titan/db/store"
 )
 
+const MAX_FLUSH_COUNT uint32 = 50000 
+
 // Kv supplies key releated operations
 type Kv struct {
 	txn *Transaction
@@ -160,6 +162,8 @@ func (kv *Kv) FlushDB() error {
 	if err != nil {
 		return err
 	}
+
+	var count uint32 = 0
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
@@ -167,7 +171,12 @@ func (kv *Kv) FlushDB() error {
 		if err := iter.Next(); err != nil {
 			return err
 		}
+		count++
+		if count >= MAX_FLUSH_COUNT {
+			return errors.New("MAX_FLUSH_COUNT")
+		}
 	}
+
 	return nil
 }
 
@@ -180,6 +189,8 @@ func (kv *Kv) FlushAll() error {
 	if err != nil {
 		return err
 	}
+	
+	var count uint32 = 0
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
@@ -187,9 +198,13 @@ func (kv *Kv) FlushAll() error {
 		if err := iter.Next(); err != nil {
 			return err
 		}
+		count++
+		if count >= MAX_FLUSH_COUNT {
+			return errors.New("MAX_FLUSH_COUNT")
+		}
 	}
-	return nil
 
+	return nil
 }
 
 // RandomKey return a key from current db randomly

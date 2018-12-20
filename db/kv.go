@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"math/rand"
+	"errors"
 
 	"github.com/meitu/titan/db/store"
 )

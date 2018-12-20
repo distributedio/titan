@@ -25,7 +25,10 @@ type Context struct {
 }
 
 // Command is a redis command implementation
-type Command func(ctx *Context) error
+type Command func(ctx *Context)
+
+// Command2 is a redis command implementation and return error, for flushdb and flushall
+type Command2 func(ctx *Context) error
 
 // OnCommit returns by TxnCommand and will be called after a transaction being committed
 type OnCommit func()
@@ -146,7 +149,21 @@ func Call(ctx *Context) {
 
 	feedMonitors(ctx)
 	start := time.Now()
-	cmdInfoCommand.Proc(ctx)
+	//wangzongsheng add below
+	if ctx.Name == "flushdb" || ctx.Name == "flushdb" {
+		for {
+			err := cmdInfoCommand.Proc2(ctx)
+			if err != nil && err.Error() == "MAX_FLUSH_COUNT" {
+				continue
+			} else {
+				break
+			}
+		}
+		
+	} else {
+		cmdInfoCommand.Proc(ctx)
+	}
+	//////
 	cost := time.Since(start)
 
 	cmdInfoCommand.Stat.Calls++
@@ -166,6 +183,76 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // AutoCommit commits to database after run a txn command
 func AutoCommit(cmd TxnCommand) Command {
+	return func(ctx *Context) {
+		retry.Ensure(ctx, func() error {
+			mt := metrics.GetMetrics()
+			txn, err := ctx.Client.DB.Begin()
+			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				zap.L().Error("txn begin failed",
+					zap.Int64("clientid", ctx.Client.ID),
+					zap.String("command", ctx.Name),
+					zap.String("traceid", ctx.TraceID),
+					zap.Error(err))
+				return err
+			}
+
+			onCommit, err := cmd(ctx, txn)
+			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				resp.ReplyError(ctx.Out, err.Error())
+				txn.Rollback()
+				zap.L().Error("command process failed",
+					zap.Int64("clientid", ctx.Client.ID),
+					zap.String("command", ctx.Name),
+					zap.String("traceid", ctx.TraceID),
+					zap.Error(err))
+				return err
+			}
+
+			start := time.Now()
+			mtFunc := func() {
+				cost := time.Since(start).Seconds()
+				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			}
+			if err := txn.Commit(ctx); err != nil {
+				txn.Rollback()
+				if db.IsConflictError(err) {
+					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				}
+				if db.IsRetryableError(err) {
+					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mtFunc()
+					zap.L().Error("txn commit retry",
+						zap.Int64("clientid", ctx.Client.ID),
+						zap.String("command", ctx.Name),
+						zap.String("traceid", ctx.TraceID),
+						zap.Error(err))
+					return retry.Retriable(err)
+				}
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				mtFunc()
+				zap.L().Error("txn commit failed",
+					zap.Int64("clientid", ctx.Client.ID),
+					zap.String("command", ctx.Name),
+					zap.String("traceid", ctx.TraceID),
+					zap.Error(err))
+				return err
+			}
+
+			if onCommit != nil {
+				onCommit()
+			}
+			mtFunc()
+			return nil
+		})
+	}
+}
+
+// AutoCommit2 commits to database after run a txn command
+func AutoCommit2(cmd TxnCommand) Command2 {
 	return func(ctx *Context) error {
 		return retry.Ensure(ctx, func() error {
 			mt := metrics.GetMetrics()
@@ -276,7 +363,8 @@ func (e *Executor) Execute(ctx *Context) {
 
 // Desc describes a command with constraints
 type Desc struct {
-	Proc Command
-	Stat Statistic
-	Cons Constraint
+	Proc  Command
+	Proc2 Command2
+	Stat  Statistic
+	Cons  Constraint
 }

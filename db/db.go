@@ -111,8 +111,8 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
 	go StartZT(sysdb, &conf.ZT)
-	if conf.MetaSlot != defaultHashMetaSlot {
-		defaultHashMetaSlot = conf.MetaSlot
+	if conf.HashMetaSlot != defaultHashMetaSlot {
+		defaultHashMetaSlot = conf.HashMetaSlot
 	}
 	return rds, nil
 }

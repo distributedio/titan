@@ -154,7 +154,7 @@ func slotGC(txn *Transaction, objID []byte) error {
 	return nil
 }
 
-func (hash *Hash) calculateSlotID(limit int64) int64 {
+func (hash *Hash) getSlotID(limit int64) int64 {
 	if !hash.isMetaSlot() || limit <= 1 {
 		return 0
 	}
@@ -174,6 +174,9 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 		keys [][]byte
 		num  int64
 	)
+	if !hash.exists {
+		return 0, nil
+	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for _, field := range fields {
 		keys = append(keys, hashItemKey(dkey, field))
@@ -181,9 +184,6 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	values, hlen, err := hash.delHash(keys)
 	if err != nil {
 		return 0, err
-	}
-	if hlen == 0 {
-		return 0, nil
 	}
 	vlen := int64(len(values))
 	if vlen >= hlen {
@@ -193,10 +193,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 		return vlen, nil
 	}
 
-	for k, v := range values {
-		if v == nil {
-			continue
-		}
+	for k := range values {
 		if err := hash.txn.t.Delete([]byte(k)); err != nil {
 			return 0, err
 		}
@@ -209,6 +206,11 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	// update Len and UpdateAt
 	if err := hash.addLen(-num); err != nil {
 		return 0, err
+	}
+	if !hash.isMetaSlot() || !hash.exists {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
 	}
 	return num, nil
 }
@@ -235,7 +237,7 @@ func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, int64, error) {
 		}
 	}
 	if isMetaSlot && len(slots) > 0 {
-		slot, err := hash.calculateSlot(&slots)
+		slot, err := hash.mergeSlot(&slots)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -248,26 +250,31 @@ func (hash *Hash) delHash(keys [][]byte) (map[string][]byte, int64, error) {
 func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	exist := true
-
+	newField := false
 	_, err := hash.txn.t.Get(ikey)
 	if err != nil {
 		if !IsErrNotFound(err) {
 			return 0, err
 		}
-		exist = false
+		newField = true
 	}
 
 	if err := hash.txn.t.Set(ikey, value); err != nil {
 		return 0, err
 	}
 
-	if exist {
+	if !newField {
 		return 0, nil
 	}
 	if err := hash.addLen(1); err != nil {
 		return 0, err
 	}
+	if !hash.isMetaSlot() || !hash.exists {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
+	}
+
 	return 1, nil
 }
 
@@ -279,7 +286,8 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	_, err := hash.txn.t.Get(ikey)
 	if err == nil {
 		return 0, nil
-	} else if !IsErrNotFound(err) {
+	}
+	if !IsErrNotFound(err) {
 		return 0, err
 	}
 	if err := hash.txn.t.Set(ikey, value); err != nil {
@@ -288,11 +296,20 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	if err := hash.addLen(1); err != nil {
 		return 0, err
 	}
+	if !hash.isMetaSlot() || !hash.exists {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
+	}
+
 	return 1, nil
 }
 
 // HGet returns the value associated with field in the hash stored at key
 func (hash *Hash) HGet(field []byte) ([]byte, error) {
+	if !hash.exists {
+		return nil, nil
+	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 	val, err := hash.txn.t.Get(ikey)
@@ -307,6 +324,9 @@ func (hash *Hash) HGet(field []byte) ([]byte, error) {
 
 // HGetAll returns all fields and values of the hash stored at key
 func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
+	if !hash.exists {
+		return nil, nil, nil
+	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := append(dkey, ':')
 	iter, err := hash.txn.t.Iter(prefix, nil)
@@ -315,23 +335,21 @@ func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 	}
 	var fields [][]byte
 	var vals [][]byte
-	count, err := hash.HLen()
-	if err != nil {
-		return nil, nil, err
-	}
-	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		fields = append(fields, []byte(iter.Key()[len(prefix):]))
 		vals = append(vals, iter.Value())
 		if err := iter.Next(); err != nil {
 			return nil, nil, err
 		}
-		count--
 	}
 	return fields, vals, nil
 }
 
 // Destroy the hash store
 func (hash *Hash) Destroy() error {
+	if !hash.exists {
+		return nil
+	}
 	metaKey := MetaKey(hash.txn.db, hash.key)
 	dataKey := DataKey(hash.txn.db, hash.meta.ID)
 	if err := hash.txn.t.Delete(metaKey); err != nil {
@@ -357,6 +375,9 @@ func (hash *Hash) Destroy() error {
 
 // HExists returns if field is an existing field in the hash stored at key
 func (hash *Hash) HExists(field []byte) (bool, error) {
+	if !hash.exists {
+		return false, nil
+	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 	if _, err := hash.txn.t.Get(ikey); err != nil {
@@ -371,33 +392,43 @@ func (hash *Hash) HExists(field []byte) (bool, error) {
 // HIncrBy increments the number stored at field in the hash stored at key by increment
 func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 	var n int64
-	var exist bool
-
+	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	val, err := hash.txn.t.Get(ikey)
-	if err != nil && !IsErrNotFound(err) {
-		return 0, err
-	}
-	if err == nil {
-		exist = true
-		n, err = strconv.ParseInt(string(val), 10, 64)
+
+	if hash.exists {
+		val, err := hash.txn.t.Get(ikey)
 		if err != nil {
-			return 0, err
+			if !IsErrNotFound(err) {
+				return 0, err
+			}
+			newField = true
+		} else {
+			n, err = strconv.ParseInt(string(val), 10, 64)
+			if err != nil {
+				return 0, err
+			}
+
 		}
 	}
 	n += v
 
-	val = []byte(strconv.FormatInt(n, 10))
+	val := []byte(strconv.FormatInt(n, 10))
 	if err := hash.txn.t.Set(ikey, val); err != nil {
 		return 0, err
 	}
 
-	if !exist {
+	if newField {
 		if err := hash.addLen(1); err != nil {
 			return 0, err
 		}
 	}
+	if (newField && !hash.isMetaSlot()) || !hash.exists {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
+	}
+
 	return n, nil
 }
 
@@ -405,46 +436,56 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 // and representing a floating point number, by the specified increment
 func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	var n float64
-	var exist bool
-
+	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	val, err := hash.txn.t.Get(ikey)
-	if err != nil && !IsErrNotFound(err) {
-		return 0, err
-	}
-	if err == nil {
-		exist = true
-		n, err = strconv.ParseFloat(string(val), 64)
+	if hash.exists {
+		val, err := hash.txn.t.Get(ikey)
 		if err != nil {
-			return 0, err
+			if !IsErrNotFound(err) {
+				return 0, err
+			}
+			newField = true
+		} else {
+			n, err = strconv.ParseFloat(string(val), 64)
+			if err != nil {
+				return 0, err
+			}
+
 		}
 	}
 	n += v
 
-	val = []byte(strconv.FormatFloat(n, 'f', -1, 64))
+	val := []byte(strconv.FormatFloat(n, 'f', -1, 64))
 	if err := hash.txn.t.Set(ikey, val); err != nil {
 		return 0, err
 	}
 
-	if !exist {
+	if newField {
 		if err := hash.addLen(1); err != nil {
 			return 0, err
 		}
 	}
+	if (newField && !hash.isMetaSlot()) || !hash.exists {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
+	}
+
 	return n, nil
 }
 
 // HLen returns the number of fields contained in the hash stored at key
 func (hash *Hash) HLen() (int64, error) {
+	if !hash.exists {
+		return 0, nil
+	}
 	if hash.isMetaSlot() {
 		slot, err := hash.getAllSlot()
-		if err == nil {
-			return slot.Len, nil
-		}
-		if err != ErrKeyNotFound {
+		if err != nil {
 			return 0, err
 		}
+		return slot.Len, nil
 	}
 	return hash.meta.Len, nil
 }
@@ -452,20 +493,21 @@ func (hash *Hash) HLen() (int64, error) {
 // Object new object from hash
 func (hash *Hash) Object() (*Object, error) {
 	obj := hash.meta.Object
-	if hash.isMetaSlot() {
+	if hash.isMetaSlot() && hash.exists {
 		slot, err := hash.getAllSlot()
-		if err == nil {
-			obj.UpdatedAt = slot.UpdatedAt
-		}
-		if err != ErrKeyNotFound {
+		if err != nil {
 			return nil, err
 		}
+		obj.UpdatedAt = slot.UpdatedAt
 	}
 	return &obj, nil
 }
 
 // HMGet returns the values associated with the specified fields in the hash stored at key
 func (hash *Hash) HMGet(fields [][]byte) ([][]byte, error) {
+	if !hash.exists {
+		return nil, nil
+	}
 	ikeys := make([][]byte, len(fields))
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for i := range fields {
@@ -477,7 +519,7 @@ func (hash *Hash) HMGet(fields [][]byte) ([][]byte, error) {
 
 // HMSet sets the specified fields to their respective values in the hash stored at key
 func (hash *Hash) HMSet(fields, values [][]byte) error {
-	added := int64(0)
+	var added int64
 	oldValues, err := hash.HMGet(fields)
 	if err != nil {
 		return err
@@ -488,27 +530,25 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 		if err := hash.txn.t.Set(ikey, values[i]); err != nil {
 			return err
 		}
-		if oldValues[i] == nil {
+		if len(oldValues) == 0 || oldValues[i] == nil {
 			added++
 		}
 	}
-	return hash.addLen(added)
+	if added <= 0 {
+		return nil
+	}
+	if err := hash.addLen(added); err != nil {
+		return err
+	}
+	if !hash.isMetaSlot() || !hash.exists {
+		return hash.updateMeta()
+	}
+	return nil
 }
 
 // HMSlot sets meta slot num
 func (hash *Hash) HMSlot(metaSlot int64) error {
 
-	if hash.isMetaSlot() {
-		slot, err := hash.getAllSlot()
-
-		if err == ErrKeyNotFound {
-			slot = &Slot{Len: 0, UpdatedAt: Now()}
-		} else if err != nil {
-			return err
-		}
-		hash.meta.Len = slot.Len
-		hash.meta.UpdatedAt = slot.UpdatedAt
-	}
 	if err := hash.autoUpdateSlot(metaSlot); err != nil {
 		return err
 	}
@@ -520,9 +560,8 @@ func (hash *Hash) HMSlot(metaSlot int64) error {
 }
 
 func (hash *Hash) addLen(len int64) error {
-	isDirty := false
 	if hash.isMetaSlot() {
-		slotID := hash.calculateSlotID(hash.meta.MetaSlot)
+		slotID := hash.getSlotID(hash.meta.MetaSlot)
 		if err := hash.addSlotLen(slotID, len); err != nil {
 			return err
 		}
@@ -532,25 +571,19 @@ func (hash *Hash) addLen(len int64) error {
 		if err := hash.autoUpdateSlot(defaultHashMetaSlot); err == nil {
 			hash.meta.MetaSlot = defaultHashMetaSlot
 		}
-		isDirty = true
-	}
-	if isDirty || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return err
-		}
 	}
 	return nil
 }
 
-func (hash *Hash) autoUpdateSlot(metaSlot int64) error {
+func (hash *Hash) autoUpdateSlot(newSlot int64) error {
 	isMetaSlot := hash.isMetaSlot()
-	if metaSlot < 0 {
+	if newSlot < 0 {
 		return ErrInteger
 	}
-	if metaSlot == hash.meta.MetaSlot {
+	if newSlot == hash.meta.MetaSlot {
 		return nil
 	}
-	if metaSlot > hash.meta.MetaSlot {
+	if newSlot > hash.meta.MetaSlot {
 		if !isMetaSlot && hash.meta.Len > 0 {
 			slot := &Slot{Len: hash.meta.Len, UpdatedAt: Now()}
 			if err := hash.updateSlot(0, slot); err != nil {
@@ -560,19 +593,19 @@ func (hash *Hash) autoUpdateSlot(metaSlot int64) error {
 		return nil
 	}
 
-	if metaSlot < hash.meta.MetaSlot {
-		slot, err := hash.getSliceSlot(metaSlot-1, hash.meta.MetaSlot-1)
+	if newSlot < hash.meta.MetaSlot {
+		slot, err := hash.getSliceSlot(newSlot)
 		if err != nil {
 			if err == ErrKeyNotFound {
 				return nil
 			}
 			return err
 		}
-		sid := hash.calculateSlotID(metaSlot)
+		sid := hash.getSlotID(newSlot)
 		if err := hash.addSlotLen(sid, slot.Len); err != nil {
 			return err
 		}
-		if err := hash.clearSliceSlot(metaSlot, hash.meta.MetaSlot-1); err != nil {
+		if err := hash.clearSliceSlot(newSlot, hash.meta.MetaSlot-1); err != nil {
 			return err
 		}
 	}
@@ -622,7 +655,14 @@ func (hash *Hash) getSlot(slotID int64) (*Slot, error) {
 
 func (hash *Hash) updateMeta() error {
 	meta := hash.meta.Encode()
-	return hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
+	err := hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
+	if err != nil {
+		return err
+	}
+	if !hash.exists {
+		hash.exists = true
+	}
+	return nil
 }
 
 func (hash *Hash) updateSlot(slotID int64, slot *Slot) error {
@@ -642,31 +682,26 @@ func (hash *Hash) getMetaSlotKeys() [][]byte {
 }
 
 func (hash *Hash) getAllSlot() (*Slot, error) {
-	return hash.getSliceSlot(0, hash.meta.MetaSlot-1)
+	return hash.getSliceSlot(0)
 }
 
-func (hash *Hash) getSliceSlot(start, end int64) (*Slot, error) {
-	if start >= end {
-		return nil, ErrOutOfRange
-	}
+func (hash *Hash) getSliceSlot(index int64) (*Slot, error) {
 	var rawSlots [][]byte
 	prefixKey := MetaSlotKey(hash.txn.db, hash.meta.ID, nil)
-	startKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(start))
+	startKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(index))
 	iter, err := hash.txn.t.Seek(startKey)
 	if err != nil {
 		return nil, err
 	}
-	count := start
-	for iter.Valid() && iter.Key().HasPrefix(prefixKey) && count <= end {
+	for iter.Valid() && iter.Key().HasPrefix(prefixKey) {
 		rawSlots = append(rawSlots, iter.Value())
 		if err := iter.Next(); err != nil {
 			break
 		}
-		count++
 	}
 
 	if len(rawSlots) > 0 {
-		slot, err := hash.calculateSlot(&rawSlots)
+		slot, err := hash.mergeSlot(&rawSlots)
 		if err != nil {
 			return nil, err
 		}
@@ -676,19 +711,19 @@ func (hash *Hash) getSliceSlot(start, end int64) (*Slot, error) {
 	return nil, ErrKeyNotFound
 }
 
-func (hash *Hash) calculateSlot(vals *[][]byte) (*Slot, error) {
+func (hash *Hash) mergeSlot(vals *[][]byte) (*Slot, error) {
 	slot := &Slot{}
 	for _, val := range *vals {
 		if val == nil {
 			continue
 		}
-		meta, err := DecodeSlot(val)
+		s, err := DecodeSlot(val)
 		if err != nil {
 			return nil, err
 		}
-		slot.Len += meta.Len
-		if meta.UpdatedAt > slot.UpdatedAt {
-			slot.UpdatedAt = meta.UpdatedAt
+		slot.Len += s.Len
+		if s.UpdatedAt > slot.UpdatedAt {
+			slot.UpdatedAt = s.UpdatedAt
 		}
 	}
 	return slot, nil

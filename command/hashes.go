@@ -11,7 +11,7 @@ import (
 func HDel(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	hash, err := txn.Hash([]byte(ctx.Args[0]))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	var fields [][]byte
@@ -20,7 +20,7 @@ func HDel(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	c, err := hash.HDel(fields)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, c), nil
 }
@@ -33,12 +33,12 @@ func HSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	status, err := hash.HSet(field, value)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(status)), nil
 }
@@ -51,12 +51,12 @@ func HSetNX(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	status, err := hash.HSetNX(field, value)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(status)), nil
 }
@@ -68,11 +68,11 @@ func HGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	val, err := hash.HGet(field)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if val == nil {
 		return NullBulkString(ctx.Out), nil
@@ -85,11 +85,11 @@ func HGetAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	fields, vals, err := hash.HGetAll()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	var results [][]byte
@@ -107,11 +107,11 @@ func HExists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	exist, err := hash.HExists(field)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if exist {
 		return Integer(ctx.Out, 1), nil
@@ -125,17 +125,17 @@ func HIncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	incr, err := strconv.ParseInt(ctx.Args[2], 10, 64)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	val, err := hash.HIncrBy(field, incr)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, val), err
 }
@@ -147,17 +147,17 @@ func HIncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	incr, err := strconv.ParseFloat(ctx.Args[2], 64)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	val, err := hash.HIncrByFloat(field, incr)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return BulkString(ctx.Out, strconv.FormatFloat(val, 'f', -1, 64)), nil
 }
@@ -167,11 +167,11 @@ func HKeys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	fields, _, err := hash.HGetAll()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return BytesArray(ctx.Out, fields), nil
 }
@@ -181,11 +181,11 @@ func HVals(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	_, vals, err := hash.HGetAll()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return BytesArray(ctx.Out, vals), nil
 
@@ -197,11 +197,11 @@ func HLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	len, err = hash.HLen()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, len), nil
 }
@@ -212,11 +212,11 @@ func HStrLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	val, err := hash.HGet(field)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return Integer(ctx.Out, int64(len(val))), nil
 }
@@ -231,12 +231,12 @@ func HMGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	vals, err := hash.HMGet(fields)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return BytesArray(ctx.Out, vals), nil
 }
@@ -245,16 +245,17 @@ func HMGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	var (
-		fields  [][]byte
-		values  [][]byte
-		mapping = make(map[string][]byte)
 		key     = []byte(ctx.Args[0])
 		kvs     = ctx.Args[1:]
+		mapping = make(map[string][]byte)
+		fields  [][]byte
+		values  [][]byte
 	)
-
 	if len(kvs)%2 != 0 {
 		return nil, errors.New("ERR wrong number of arguments for HMSET")
 	}
+
+	// filter repeate fields
 	for i := 0; i < len(kvs)-1; i += 2 {
 		mapping[kvs[i]] = []byte(kvs[i+1])
 	}
@@ -266,16 +267,16 @@ func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 
 	if err := hash.HMSet(fields, values); err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-// HMSlot
+// HMSlot specify the meta slot for hashes itself
 func HMSlot(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	count, err := strconv.ParseInt(ctx.Args[1], 10, 64)

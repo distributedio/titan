@@ -21,9 +21,9 @@ type Server struct {
 
 //Tikv config is the config of tikv sdk
 type Tikv struct {
-	PdAddrs  string `cfg:"pd-addrs;required; ;pd address in tidb"`
-	MetaSlot int64  `cfg:"meta-slot;0;numeric;hashes slot key count"`
-	ZT       ZT     `cfg:"zt"`
+	PdAddrs      string `cfg:"pd-addrs;required; ;pd address in tidb"`
+	HashMetaSlot int64  `cfg:"hash-meta-slot;0;numeric;hashes slot key count"`
+	ZT           ZT     `cfg:"zt"`
 }
 
 //ZT config is the config of zlist

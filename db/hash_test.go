@@ -64,7 +64,7 @@ func Test_newHash(t *testing.T) {
 				key: []byte("TestNewHash"),
 			},
 			want: &Hash{
-				meta: HashMeta{
+				meta: &HashMeta{
 					Len:      0,
 					MetaSlot: defaultHashMetaSlot,
 				},
@@ -95,7 +95,7 @@ func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) err
 		Len:      1,
 		MetaSlot: metaSlot,
 	}
-	meta := hm.Encode()
+	meta := EncodeHashMeta(hm)
 	err := txn.t.Set(mkey, meta)
 	assert.NoError(t, err)
 	assert.NotNil(t, txn)
@@ -186,7 +186,7 @@ func TestGetHash(t *testing.T) {
 			},
 			want: want{
 				hash: &Hash{
-					meta: HashMeta{
+					meta: &HashMeta{
 						Object: Object{
 							Type: ObjectHash,
 						},
@@ -208,7 +208,7 @@ func TestGetHash(t *testing.T) {
 				txn: txn,
 				key: []byte("TestGetHashExistKey")},
 			want: want{
-				hash: &Hash{meta: HashMeta{
+				hash: &Hash{meta: &HashMeta{
 					Object: Object{
 						Type: ObjectHash,
 					},
@@ -230,7 +230,7 @@ func TestGetHash(t *testing.T) {
 				txn: txn,
 				key: []byte("TestGetHashSlotKey")},
 			want: want{
-				hash: &Hash{meta: HashMeta{
+				hash: &Hash{meta: &HashMeta{
 					Object: Object{
 						Type: ObjectHash,
 					},
@@ -813,6 +813,63 @@ func TestHashHLen(t *testing.T) {
 			got1, err := hashslot.HLen()
 			txn.Commit(context.TODO())
 			assert.Equal(t, got1, tt.want)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestHash_HScan(t *testing.T) {
+	hash, txn, err := getHash(t, []byte("TestHashHScan"))
+	assert.NoError(t, err)
+	assert.NotNil(t, txn)
+	assert.NotNil(t, hash)
+
+	hash.HSet([]byte("TestHashHScanFiled1"), []byte("TestHashHScanValue1"))
+	hash.HSet([]byte("TestHashHScanFiled2"), []byte("TestHashHScanValue2"))
+	hash.HSet([]byte("TestHashHScanFiled3"), []byte("TestHashHScanValue3"))
+
+	txn.Commit(context.TODO())
+
+	type args struct {
+		cursor []byte
+		f      func(key, val []byte) bool
+	}
+	var value [][]byte
+	count := 2
+
+	tests := []struct {
+		name string
+		args args
+		want [][]byte
+	}{
+		{
+			name: "TestHashHScan",
+			args: args{
+				cursor: []byte("TestHashHScanFiled"),
+				f: func(key, val []byte) bool {
+					if count == 0 {
+						return false
+					}
+					value = append(value, key, val)
+					count--
+					return true
+
+				},
+			},
+			want: append(value, []byte("TestHashHScanFiled1"), []byte("TestHashHScanValue1"), []byte("TestHashHScanFiled2"), []byte("TestHashHScanValue2")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash, txn, err := getHash(t, []byte("TestHashHScan"))
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+			assert.NotNil(t, hash)
+
+			err = hash.HScan(tt.args.cursor, tt.args.f)
+			txn.Commit(context.TODO())
+
+			assert.Equal(t, value, tt.want)
 			assert.NoError(t, err)
 		})
 	}

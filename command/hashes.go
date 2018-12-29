@@ -1,10 +1,13 @@
 package command
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/meitu/titan/db"
+	"github.com/meitu/titan/encoding/resp"
 )
 
 // HDel removes the specified fields from the hash stored at key
@@ -292,4 +295,89 @@ func HMSlot(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, "OK"), nil
+}
+
+//HScan incrementally iterate hash fields and associated values
+func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	var (
+		key        []byte
+		cursor     []byte
+		lastCursor = []byte("0")
+		count      = uint64(defaultScanCount)
+		pattern    []byte
+		prefix     []byte
+		isAll      bool
+		err        error
+	)
+	key = []byte(ctx.Args[0])
+	if strings.Compare(ctx.Args[1], "0") != 0 {
+		cursor = []byte(ctx.Args[1])
+	}
+
+	if len(ctx.Args)%2 != 0 {
+		return nil, ErrInteger
+	}
+
+	for i := 2; i < len(ctx.Args); i += 2 {
+		arg := strings.ToLower(ctx.Args[i])
+		next := ctx.Args[i+1]
+		switch arg {
+		case "count":
+			if count, err = strconv.ParseUint(next, 10, 64); err != nil {
+				return nil, ErrInteger
+			}
+			if count > ScanMaxCount {
+				count = ScanMaxCount
+			}
+			if count == 0 {
+				count = uint64(defaultScanCount)
+			}
+		case "match":
+			pattern = []byte(next)
+			isAll = (pattern[0] == '*' && len(pattern) == 1)
+		}
+	}
+
+	if len(pattern) == 0 {
+		isAll = true
+	} else {
+		prefix = globMatchPrefix(pattern)
+		if cursor == nil && prefix != nil {
+			cursor = prefix
+		}
+	}
+
+	hash, err := txn.Hash(key)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	list := [][]byte{}
+	f := func(key, val []byte) bool {
+		if count <= 0 {
+			lastCursor = key
+			return false
+		}
+		if prefix != nil && !bytes.HasPrefix(key, prefix) {
+			return false
+		}
+		if isAll || globMatch(pattern, key, false) {
+			list = append(list, key)
+			list = append(list, val)
+			count--
+		}
+		return true
+	}
+
+	if err := hash.HScan(cursor, f); err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return func() {
+		resp.ReplyArray(ctx.Out, 2)
+		resp.ReplyBulkString(ctx.Out, string(lastCursor))
+		resp.ReplyArray(ctx.Out, len(list))
+		for i := range list {
+			resp.ReplyBulkString(ctx.Out, string(list[i]))
+		}
+	}, nil
+
 }

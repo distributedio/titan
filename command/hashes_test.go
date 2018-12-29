@@ -722,3 +722,20 @@ func TestHMSlot(t *testing.T) {
 	clearList(t, key)
 
 }
+
+func TestHScan(t *testing.T) {
+	// init
+	key := "hash-key"
+	ctx := ContextTest("hmset", key, "field1", "1", "field2", "1", "field3", "1", "field4", "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "+OK", lines[0])
+
+	//case1
+	ctx = ContextTest("hscan", key, "0", "match", "field*", "count", "2")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "$6", lines[1])
+	assert.Equal(t, "field3", lines[2])
+	assert.Equal(t, "*4", lines[3])
+}

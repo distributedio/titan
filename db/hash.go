@@ -548,7 +548,9 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 
 // HMSlot sets meta slot num
 func (hash *Hash) HMSlot(metaSlot int64) error {
-
+	if !hash.exists {
+		return ErrKeyNotFound
+	}
 	if err := hash.autoUpdateSlot(metaSlot); err != nil {
 		return err
 	}

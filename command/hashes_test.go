@@ -571,10 +571,154 @@ func TestHMSet(t *testing.T) {
 	clearHashes(t, key)
 }
 
-func TestHExists(t *testing.T)      {}
-func TestHIncrBy(t *testing.T)      {}
-func TestHIncrByFloat(t *testing.T) {}
-func TestHKeys(t *testing.T)        {}
-func TestHStrLen(t *testing.T)      {}
-func TestHVals(t *testing.T)        {}
-func TestHMSlot(t *testing.T)       {}
+func TestHExists(t *testing.T) {
+	// init
+	key := "hash-key"
+	initHashes(t, key, 3)
+
+	// case 1
+	ctx := ContextTest("hexists", key, "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+
+	//case 2
+	ctx = ContextTest("hdel", key, "1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	ctx = ContextTest("hexists", key, "1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+
+	//case 3
+	ctx = ContextTest("hexists", "hash_no_exists_key", "1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+	clearList(t, key)
+}
+
+func TestHIncrBy(t *testing.T) {
+	// init
+	key := "hash-key"
+
+	// case 1
+	ctx := ContextTest("hincrby", key, "one", "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+
+	// case 2
+	ctx = ContextTest("hincrby", key, "one", "-2")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":-1", lines[0])
+	clearList(t, key)
+
+}
+
+func TestHIncrByFloat(t *testing.T) {
+	// init
+	key := "hash-key"
+
+	// case 1
+	ctx := ContextTest("hincrbyfloat", key, "one", "1.1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "1.1", lines[1])
+
+	// case 2
+	ctx = ContextTest("hincrbyfloat", key, "one", "-2.2")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "-1.1", lines[1])
+	clearList(t, key)
+
+}
+
+func TestHKeys(t *testing.T) {
+	// init
+	key := "hash-key"
+	initHashes(t, key, 3)
+
+	// case 1
+	ctx := ContextTest("hkeys", key)
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "*3", lines[0])
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "2", lines[4])
+	assert.Equal(t, "3", lines[6])
+
+	// case 2
+	ctx = ContextTest("hdel", key, "1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	ctx = ContextTest("hkeys", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "3", lines[4])
+
+	clearList(t, key)
+
+}
+func TestHStrLen(t *testing.T) {
+	// init
+	key := "hash-key"
+
+	// case 1
+	ctx := ContextTest("hset", key, "1", "abc")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	ctx = ContextTest("hstrlen", key, "1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":3", lines[0])
+
+	clearList(t, key)
+}
+func TestHVals(t *testing.T) {
+	// init
+	key := "hash-key"
+	initHashes(t, key, 3)
+
+	// case 1
+	ctx := ContextTest("hvals", key)
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "bar", lines[2])
+	assert.Equal(t, "bar", lines[4])
+	assert.Equal(t, "bar", lines[6])
+
+	clearList(t, key)
+
+}
+func TestHMSlot(t *testing.T) {
+	// init
+	key := "hash-key"
+
+	// case 1
+	ctx := ContextTest("hmslot", key, "20")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "-ERR key not found", lines[0])
+
+	//case 2
+	ctx = ContextTest("hset", key, "1", "abc")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	ctx = ContextTest("hmslot", key, "20")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "+OK", lines[0])
+
+	clearList(t, key)
+
+}

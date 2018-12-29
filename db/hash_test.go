@@ -21,7 +21,7 @@ func compareGetHash(want, get *Hash) error {
 	case want.meta.MetaSlot != get.meta.MetaSlot:
 		return fmt.Errorf("meta.MeyaSlot not equal, want=%v, get=%v", want.meta.MetaSlot, get.meta.MetaSlot)
 	case want.meta.Type != get.meta.Type:
-		return fmt.Errorf("meta.Type not equal, want=%v, get=%v", want.meta.MetaSlot, get.meta.MetaSlot)
+		return fmt.Errorf("meta.Type not equal, want=%v, get=%v", want.meta.Type, get.meta.Type)
 	case want.exists != get.exists:
 		return fmt.Errorf("exists not equal, want=%v, get=%v", want.exists, get.exists)
 	}
@@ -926,10 +926,18 @@ func TestHashHMSet(t *testing.T) {
 }
 
 func TestHashHMSlot(t *testing.T) {
+	hash, txn, err := getHash(t, []byte("TestHashHMSlot"))
+	assert.NoError(t, err)
+	assert.NotNil(t, txn)
+	assert.NotNil(t, hash)
+
+	hash.HSet([]byte("TestHashMSlotFiled1"), []byte("TestHashHMSlotValue1"))
+	txn.Commit(context.TODO())
 
 	type args struct {
 		metaSlot int64
 	}
+
 	type want struct {
 		len int64
 	}

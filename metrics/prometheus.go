@@ -36,7 +36,7 @@ var (
 	gm *Metrics
 )
 
-//Metrics prometheus statistics
+// Metrics prometheus statistics
 type Metrics struct {
 	//biz
 	ConnectionOnlineGaugeVec *prometheus.GaugeVec
@@ -61,7 +61,7 @@ type Metrics struct {
 	LogMetricsCounterVec *prometheus.CounterVec
 }
 
-//init create global object
+// init create global object
 func init() {
 	gm = &Metrics{}
 
@@ -165,16 +165,19 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
-
-	http.Handle("/titan/metrics", prometheus.Handler())
 }
 
-//GetMetrics return metrics object
+// GetMetrics return metrics object
 func GetMetrics() *Metrics {
 	return gm
 }
 
-//Measure logger level rate
+// MetricsHandle register the metrics handle
+func MetricsHandle() {
+	http.Handle("/metrics", prometheus.Handler())
+}
+
+// Measure logger level rate
 func Measure(e zapcore.Entry) error {
 	label := e.LoggerName + "_" + e.Level.String()
 	gm.LogMetricsCounterVec.WithLabelValues(label).Inc()

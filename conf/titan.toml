@@ -75,6 +75,38 @@ pd-addrs = ""
 #interval = "1s"
 
 
+[server.tikv.tikv-gc]
+
+#type:        time.Duration
+#description: tikv gc work interval
+#default:     1m
+#interval = "1m0s"
+
+#type:        time.Duration
+#description: lease flush interval
+#default:     2m
+#lease-flush-interval = "2m0s"
+
+#type:        time.Duration
+#description: safe point life time
+#default:     10m
+#safe-point-life-time = "10m0s"
+
+#type:        int
+#description: gc work concurrency
+#default:     2
+#concurrency = 2
+
+
+[status]
+
+#type:        string
+#rules:       nonempty
+#description: listen address of http server
+#default:     0.0.0.0:7345
+#listen = "0.0.0.0:7345"
+
+
 [tikv-logger]
 
 #type:        string

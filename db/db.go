@@ -113,6 +113,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
 	go StartZT(sysdb, &conf.ZT)
+	go StartTikvGC(sysdb, &conf.TikvGC)
 	return rds, nil
 }
 

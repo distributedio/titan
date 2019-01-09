@@ -32,7 +32,7 @@ func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 			continue
 		}
 		if !isLeader {
-			zap.L().Debug("[TikvGC] not TikvGC leader")
+			zap.L().Info("[TikvGC] not TikvGC leader")
 			continue
 		}
 		if err := runTikvGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {
@@ -47,6 +47,7 @@ func runTikvGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration,
 	if err != nil {
 		return err
 	}
+
 	lastPoint, err := getLastSafePoint(db)
 	if err != nil {
 		return err

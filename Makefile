@@ -15,10 +15,10 @@ LDFLAGS += -X "$(PKG)/context.GitBranch=$(shell git rev-parse --abbrev-ref HEAD)
 all: build
 
 test:
-	go test -short ${PKG_LIST}
+	env GO111MODULE=on go test -short ${PKG_LIST}
 
 coverage:
-	go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
+	env GO111MODULE=on go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
 
 build:
 	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/

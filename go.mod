@@ -7,6 +7,7 @@ require (
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8 // indirect
 	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434 // indirect
 	github.com/golang/protobuf v1.2.0
+	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
@@ -27,6 +28,7 @@ require (
 	github.com/shafreeck/toml v0.0.0-20160718194341-4ad33e231a16 // indirect
 	github.com/sirupsen/logrus v1.3.0
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72 // indirect
+	github.com/stretchr/testify v1.2.2
 	github.com/twinj/uuid v1.0.0
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

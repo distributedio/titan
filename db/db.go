@@ -343,6 +343,9 @@ func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, e
 		label = "GC"
 	case bytes.Equal(leader, sysExpireLeader):
 		label = "EX"
+	case bytes.Equal(leader, sysTikvGCLeader):
+		label = "TGC"
+
 	}
 
 	for {

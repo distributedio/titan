@@ -36,10 +36,10 @@ type Tikv struct {
 }
 
 type TikvGC struct {
-	Interval           time.Duration `cfg:"interval;1m;;tikv gc work interval"`
-	LeaseFlushInterval time.Duration `cfg:"lease-flush-interval;2m;;lease flush interval"`
-	SafePointLifeTime  time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
-	Concurrency        int           `cfg:"concurrency;2;;gc work concurrency"`
+	Interval          time.Duration `cfg:"interval;1m;;gc work tick interval"`
+	LeaderLifeTime    time.Duration `cfg:"leader-life-time;5m;;lease flush leader interval"`
+	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
+	Concurrency       int           `cfg:"concurrency;2;;gc work concurrency"`
 }
 
 //ZT config is the config of zlist

@@ -78,14 +78,14 @@ pd-addrs = ""
 [server.tikv.tikv-gc]
 
 #type:        time.Duration
-#description: tikv gc work interval
+#description: gc work tick interval
 #default:     1m
 #interval = "1m0s"
 
 #type:        time.Duration
-#description: lease flush interval
-#default:     2m
-#lease-flush-interval = "2m0s"
+#description: lease flush leader interval
+#default:     5m
+#leader-life-time = "5m0s"
 
 #type:        time.Duration
 #description: safe point life time

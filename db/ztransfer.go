@@ -162,7 +162,7 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 		zap.L().Error("[ZT] error in kv begin", zap.Error(err))
 		return toZTKey(nil), nil
 	}
-	iter, err := txn.t.Seek(prefix)
+	iter, err := txn.t.Iter(prefix, nil)
 	if err != nil {
 		zap.L().Error("[ZT] error in seek", zap.ByteString("prefix", prefix), zap.Error(err))
 		return toZTKey(nil), err

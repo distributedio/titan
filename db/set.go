@@ -102,7 +102,7 @@ func (set *Set) SMembers() ([][]byte, error) {
 	count := set.meta.Len
 	members := make([][]byte, 0, count)
 
-	iter, err := set.txn.t.Seek(prefix)
+	iter, err := set.txn.t.Iter(prefix, nil)
 	if err != nil {
 		return nil, err
 	}

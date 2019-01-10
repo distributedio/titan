@@ -128,7 +128,7 @@ func HIncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	incr, err := strconv.ParseInt(ctx.Args[2], 10, 64)
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrInteger
 	}
 
 	hash, err := txn.Hash(key)
@@ -150,7 +150,7 @@ func HIncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	incr, err := strconv.ParseFloat(ctx.Args[2], 64)
 	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
+		return nil, ErrFloat
 	}
 
 	hash, err := txn.Hash(key)

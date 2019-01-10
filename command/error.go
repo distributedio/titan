@@ -43,6 +43,9 @@ var (
 	// ErrInteger value is not an integer or out of range
 	ErrInteger = errors.New("ERR value is not an integer or out of range")
 
+	// ErrFloat value is not a valid float
+	ErrFloat = errors.New("ERR value is not a valid float")
+
 	// ErrBitInteger bit is not an integer or out of range
 	ErrBitInteger = errors.New("ERR bit is not an integer or out of range")
 

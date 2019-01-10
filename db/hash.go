@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math/rand"
 	"strconv"
 
@@ -423,7 +424,7 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 		} else {
 			n, err = strconv.ParseInt(string(val), 10, 64)
 			if err != nil {
-				return 0, err
+				return 0, errors.New("hash value is not an integer")
 			}
 
 		}
@@ -466,7 +467,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 		} else {
 			n, err = strconv.ParseFloat(string(val), 64)
 			if err != nil {
-				return 0, err
+				return 0, errors.New("hash value is not an float")
 			}
 
 		}

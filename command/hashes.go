@@ -196,17 +196,17 @@ func HVals(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // HLen returns the number of fields contained in the hash stored at key
 func HLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var len int64
+	var size int64
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	len, err = hash.HLen()
+	size, err = hash.HLen()
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return Integer(ctx.Out, len), nil
+	return Integer(ctx.Out, size), nil
 }
 
 // HStrLen returns the string length of the value associated with field in the hash stored at key
@@ -304,6 +304,7 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		cursor     []byte
 		lastCursor = []byte("0")
 		count      = uint64(defaultScanCount)
+		kvs        = [][]byte{}
 		pattern    []byte
 		prefix     []byte
 		isAll      bool
@@ -314,8 +315,27 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		cursor = []byte(ctx.Args[1])
 	}
 
+	// define return result
+	result := func() {
+		resp.ReplyArray(ctx.Out, 2)
+		resp.ReplyBulkString(ctx.Out, string(lastCursor))
+		resp.ReplyArray(ctx.Out, len(kvs))
+		for i := range kvs {
+			resp.ReplyBulkString(ctx.Out, string(kvs[i]))
+		}
+	}
+	hash, err := txn.Hash(key)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	//check if hash is not exits return result
+	if !hash.Exists() {
+		return result, nil
+	}
+
 	if len(ctx.Args)%2 != 0 {
-		return nil, ErrInteger
+		return nil, ErrSyntax
 	}
 
 	for i := 2; i < len(ctx.Args); i += 2 {
@@ -347,11 +367,6 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 	}
 
-	hash, err := txn.Hash(key)
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	list := [][]byte{}
 	f := func(key, val []byte) bool {
 		if count <= 0 {
 			lastCursor = key
@@ -361,8 +376,8 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return false
 		}
 		if isAll || globMatch(pattern, key, false) {
-			list = append(list, key)
-			list = append(list, val)
+			kvs = append(kvs, key)
+			kvs = append(kvs, val)
 			count--
 		}
 		return true
@@ -371,13 +386,6 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err := hash.HScan(cursor, f); err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return func() {
-		resp.ReplyArray(ctx.Out, 2)
-		resp.ReplyBulkString(ctx.Out, string(lastCursor))
-		resp.ReplyArray(ctx.Out, len(list))
-		for i := range list {
-			resp.ReplyBulkString(ctx.Out, string(list[i]))
-		}
-	}, nil
+	return result, nil
 
 }

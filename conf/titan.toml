@@ -28,11 +28,16 @@ auth = ""
 #required
 pd-addrs = ""
 
+[server.tikv.db]
+
+[server.tikv.db.hash]
+
 #type:        int64
 #rules:       numeric
 #description: hashes slot key count
 #default:     0
-#hash-meta-slot = 0
+#meta-slot = 0
+
 
 [server.tikv.zt]
 

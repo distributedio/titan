@@ -92,12 +92,14 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 type DB struct {
 	Namespace string
 	ID        DBID
+	conf      *conf.DB
 	kv        *RedisStore
 }
 
 // RedisStore wraps store.Storage
 type RedisStore struct {
 	store.Storage
+	conf *conf.Tikv
 }
 
 // Open a storage instance
@@ -106,20 +108,17 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	rds := &RedisStore{s}
+	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
 	go StartZT(sysdb, &conf.ZT)
-	if conf.HashMetaSlot != defaultHashMetaSlot {
-		defaultHashMetaSlot = conf.HashMetaSlot
-	}
 	return rds, nil
 }
 
 // DB returns a DB object with sepcific ID
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
+	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds, conf: &rds.conf.DB}
 }
 
 // Close the storage instance

@@ -448,7 +448,7 @@ func TestHashdelHash(t *testing.T) {
 			assert.NotNil(t, txn)
 			assert.NoError(t, err)
 			assert.NotNil(t, hash)
-			got, got1, err := hash.delHash(tt.args.keys)
+			got, got1, err := hash.getHashFieldAndLength(tt.args.keys)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			assert.NotNil(t, got1)

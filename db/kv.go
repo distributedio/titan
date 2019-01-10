@@ -81,13 +81,13 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 			if obj.Type == ObjectHash {
 				hash, err := kv.txn.Hash(mapping[k])
 				if err != nil {
-					continue
+					return count, err
 				}
 				if err := hash.Destroy(); err != nil {
-					continue
+					return count, err
 				}
 			} else if err := kv.txn.Destory(obj, mapping[k]); err != nil {
-				continue
+				return count, err
 			}
 			count++
 		}

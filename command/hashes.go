@@ -258,11 +258,13 @@ func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR wrong number of arguments for HMSET")
 	}
 
-	// filter repeate fields
+	// When there are multiple groups of the same field/val,
+	// take the last valid fields/val pair and save it in mapping
 	for i := 0; i < len(kvs)-1; i += 2 {
 		mapping[kvs[i]] = []byte(kvs[i+1])
 	}
 
+	// Iterate mapping to get the field and value after de-duplication
 	for field, val := range mapping {
 		fields = append(fields, []byte(field))
 		values = append(values, val)

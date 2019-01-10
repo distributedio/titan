@@ -21,16 +21,26 @@ auth = ""
 #default:     1000
 #max-connection = 1000
 
-[server.tikv]
+
+[status]
+
+#type:        string
+#rules:       nonempty
+#description: listen address of http server
+#default:     0.0.0.0:7345
+#listen = "0.0.0.0:7345"
+
+
+[tikv]
 
 #type:        string
 #description: pd address in tidb
 #required
 pd-addrs = ""
 
-[server.tikv.db]
+[tikv.db]
 
-[server.tikv.db.hash]
+[tikv.db.hash]
 
 #type:        int64
 #rules:       numeric
@@ -39,7 +49,7 @@ pd-addrs = ""
 #meta-slot = 0
 
 
-[server.tikv.zt]
+[tikv.zt]
 
 #type:        int
 #rules:       numeric
@@ -63,15 +73,6 @@ pd-addrs = ""
 #description: Queue fill interval in milsecond
 #default:     1000ms
 #interval = "1s"
-
-
-[status]
-
-#type:        string
-#rules:       nonempty
-#description: listen address of http server
-#default:     0.0.0.0:7345
-#listen = "0.0.0.0:7345"
 
 
 [tikv-logger]

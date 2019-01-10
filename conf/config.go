@@ -6,6 +6,7 @@ import "time"
 type Titan struct {
 	Server      Server     `cfg:"server"`
 	Status      Status     `cfg:"status"`
+	Tikv        Tikv       `cfg:"tikv"`
 	TikvLog     TikvLogger `cfg:"tikv-logger"`
 	Logger      Logger     `cfg:"logger"`
 	PIDFileName string     `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
@@ -21,7 +22,6 @@ type Hash struct {
 
 //Server config is the config of titan server
 type Server struct {
-	Tikv          Tikv   `cfg:"tikv"`
 	Auth          string `cfg:"auth;;;client connetion auth"`
 	Listen        string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
 	MaxConnection int64  `cfg:"max-connection;1000;numeric;client connection count"`

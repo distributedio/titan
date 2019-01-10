@@ -96,7 +96,9 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	if hmeta.Type != ObjectHash {
 		return nil, ErrTypeMismatch
 	}
-
+	if IsExpired(&hash.meta.Object, Now()) {
+		return hash, nil
+	}
 	hash.meta = hmeta
 	hash.exists = true
 	return hash, nil
@@ -104,26 +106,22 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 
 //NewString  create new hash object
 func newHash(txn *Transaction, key []byte) *Hash {
-	hash := &Hash{txn: txn, key: key}
-	metaSlot := txn.db.conf.Hash.MetaSlot
-	hash.meta = newHashMeta(metaSlot)
-	return hash
-
-}
-
-func newHashMeta(metaSlot int64) *HashMeta {
 	now := Now()
-	return &HashMeta{
-		Object: Object{
-			ID:        UUID(),
-			CreatedAt: now,
-			UpdatedAt: now,
-			ExpireAt:  0,
-			Type:      ObjectHash,
-			Encoding:  ObjectEncodingHT,
+	return &Hash{
+		txn: txn,
+		key: key,
+		meta: &HashMeta{
+			Object: Object{
+				ID:        UUID(),
+				CreatedAt: now,
+				UpdatedAt: now,
+				ExpireAt:  0,
+				Type:      ObjectHash,
+				Encoding:  ObjectEncodingHT,
+			},
+			Len:      0,
+			MetaSlot: txn.db.conf.Hash.MetaSlot,
 		},
-		Len:      0,
-		MetaSlot: metaSlot,
 	}
 }
 
@@ -186,7 +184,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 		fieldKeys [][]byte
 		num       int64
 	)
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return 0, nil
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -267,11 +265,6 @@ func (hash *Hash) getHashFieldAndLength(keys [][]byte) (map[string][]byte, int64
 
 // HSet sets field in the hash stored at key to value
 func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
-	if IsExpired(&hash.meta.Object, Now()) {
-		if err := hash.resetHash(); err != nil {
-			return 0, err
-		}
-	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 	newField := false
@@ -304,11 +297,6 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 
 // HSetNX sets field in the hash stored at key to value, only if field does not yet exist
 func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
-	if IsExpired(&hash.meta.Object, Now()) {
-		if err := hash.resetHash(); err != nil {
-			return 0, err
-		}
-	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 
@@ -336,7 +324,7 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 
 // HGet returns the value associated with field in the hash stored at key
 func (hash *Hash) HGet(field []byte) ([]byte, error) {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return nil, nil
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -353,7 +341,7 @@ func (hash *Hash) HGet(field []byte) ([]byte, error) {
 
 // HGetAll returns all fields and values of the hash stored at key
 func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return nil, nil, nil
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -376,7 +364,7 @@ func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 
 // Destroy the hash store
 func (hash *Hash) Destroy() error {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return nil
 	}
 	metaKey := MetaKey(hash.txn.db, hash.key)
@@ -404,7 +392,7 @@ func (hash *Hash) Destroy() error {
 
 // HExists returns if field is an existing field in the hash stored at key
 func (hash *Hash) HExists(field []byte) (bool, error) {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return false, nil
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -420,17 +408,12 @@ func (hash *Hash) HExists(field []byte) (bool, error) {
 
 // HIncrBy increments the number stored at field in the hash stored at key by increment
 func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
-	if IsExpired(&hash.meta.Object, Now()) {
-		if err := hash.resetHash(); err != nil {
-			return 0, err
-		}
-	}
 	var n int64
 	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 
-	if hash.exists {
+	if hash.Exists() {
 		val, err := hash.txn.t.Get(ikey)
 		if err != nil {
 			if !IsErrNotFound(err) {
@@ -469,11 +452,6 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 // HIncrByFloat increment the specified field of a hash stored at key,
 // and representing a floating point number, by the specified increment
 func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
-	if IsExpired(&hash.meta.Object, Now()) {
-		if err := hash.resetHash(); err != nil {
-			return 0, err
-		}
-	}
 	var n float64
 	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -516,7 +494,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 
 // HLen returns the number of fields contained in the hash stored at key
 func (hash *Hash) HLen() (int64, error) {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return 0, nil
 	}
 	if hash.MetaSlotEnabled() {
@@ -544,8 +522,9 @@ func (hash *Hash) Object() (*Object, error) {
 
 // HMGet returns the values associated with the specified fields in the hash stored at key
 func (hash *Hash) HMGet(fields [][]byte) ([][]byte, error) {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
-		return nil, nil
+	values := make([][]byte, len(fields))
+	if !hash.Exists() {
+		return values, nil
 	}
 	ikeys := make([][]byte, len(fields))
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -558,11 +537,6 @@ func (hash *Hash) HMGet(fields [][]byte) ([][]byte, error) {
 
 // HMSet sets the specified fields to their respective values in the hash stored at key
 func (hash *Hash) HMSet(fields, values [][]byte) error {
-	if IsExpired(&hash.meta.Object, Now()) {
-		if err := hash.resetHash(); err != nil {
-			return err
-		}
-	}
 	var added int64
 	oldValues, err := hash.HMGet(fields)
 	if err != nil {
@@ -574,11 +548,11 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 		if err := hash.txn.t.Set(ikey, values[i]); err != nil {
 			return err
 		}
-		if len(oldValues) == 0 || oldValues[i] == nil {
+		if oldValues[i] == nil {
 			added++
 		}
 	}
-	if added <= 0 {
+	if added == 0 {
 		return nil
 	}
 	if err := hash.addLength(added); err != nil {
@@ -592,7 +566,7 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 
 // HMSlot sets meta slot num
 func (hash *Hash) HMSlot(metaSlot int64) error {
-	if !hash.exists || IsExpired(&hash.meta.Object, Now()) {
+	if !hash.Exists() {
 		return ErrKeyNotFound
 	}
 	if err := hash.updateMetaSlot(metaSlot); err != nil {
@@ -607,7 +581,7 @@ func (hash *Hash) HMSlot(metaSlot int64) error {
 
 // HScan incrementally iterate hash fields and associated values
 func (hash *Hash) HScan(cursor []byte, f func(key, val []byte) bool) error {
-	if !hash.exists {
+	if !hash.Exists() {
 		return nil
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
@@ -742,21 +716,6 @@ func (hash *Hash) updateMeta() error {
 	if !hash.exists {
 		hash.exists = true
 	}
-	return nil
-}
-
-func (hash *Hash) resetHash() error {
-	mkey := MetaKey(hash.txn.db, hash.key)
-	dkey := DataKey(hash.txn.db, hash.meta.ID)
-	if err := unExpireAt(hash.txn.t, mkey, hash.meta.ExpireAt); err != nil {
-		return err
-	}
-	if err := gc(hash.txn.t, dkey); err != nil {
-		return err
-	}
-	metaSlot := hash.txn.db.conf.Hash.MetaSlot
-	hash.meta = newHashMeta(metaSlot)
-	hash.exists = false
 	return nil
 }
 

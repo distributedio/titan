@@ -296,6 +296,14 @@ func TestHMGet(t *testing.T) {
 	assert.Equal(t, "$4", lines[3])
 	assert.Equal(t, "haha", lines[4])
 
+	//case 3
+	ctx = ContextTest("hmget", key, "ccc", "bbb")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$-1", lines[1])
+	assert.Equal(t, "$-1", lines[2])
+
 	// end
 	clearHashes(t, key)
 }

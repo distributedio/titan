@@ -127,7 +127,7 @@ func runExpire(db *DB) {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
 		return
 	}
-	iter, err := txn.t.Seek(expireKeyPrefix)
+	iter, err := txn.t.Iter(expireKeyPrefix, nil)
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
 		txn.Rollback()

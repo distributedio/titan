@@ -208,7 +208,7 @@ func (l *LList) LPop() (data []byte, err error) {
 	leftKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...)
 
 	// find the left object
-	iter, err := l.txn.t.Seek(leftKey)
+	iter, err := l.txn.t.Iter(leftKey, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +247,7 @@ func (l *LList) RPop() ([]byte, error) {
 	rightKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)
 
 	// find the left object
-	iter, err := l.txn.t.SeekReverse(rightKey)
+	iter, err := l.txn.t.IterReverse(rightKey)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func (l *LList) LTrim(start int64, stop int64) error {
 	lIndex := l.Lindex
 	rIndex := l.Rindex
 	var err error
-	// Seek from left to start, when start is 0, do not need to seek
+	// Iter from left to start, when start is 0, do not need to seek
 	if start > 0 {
 		lIndex, err = l.remove(l.LListMeta.Lindex, start)
 		if err != nil {
@@ -357,7 +357,7 @@ func (l *LList) LTrim(start int64, stop int64) error {
 // seekIndex will return till we get the last element not larger than index
 func (l *LList) seekIndex(index int64) (Iterator, error) {
 	key := append(l.rawDataKeyPrefix, EncodeFloat64(l.Lindex)...)
-	iter, err := l.txn.t.Seek(key)
+	iter, err := l.txn.t.Iter(key, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +373,7 @@ func (l *LList) seekIndex(index int64) (Iterator, error) {
 // remove n elements from start, return next index after delete
 func (l *LList) remove(start float64, n int64) (float64, error) {
 	startKey := append(l.rawDataKeyPrefix, EncodeFloat64(start)...)
-	iter, err := l.txn.t.Seek(startKey)
+	iter, err := l.txn.t.Iter(startKey, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -460,7 +460,7 @@ func (l *LList) LRem(v []byte, n int64) (int, error) {
 	// TODO maybe we can find a new way to avoid these seek
 	// update list index and left right index
 	rightKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)
-	iter, err := l.txn.t.SeekReverse(rightKey)
+	iter, err := l.txn.t.IterReverse(rightKey)
 	if err != nil {
 		return 0, err
 	}
@@ -470,7 +470,7 @@ func (l *LList) LRem(v []byte, n int64) (int, error) {
 	l.LListMeta.Rindex = DecodeFloat64(iter.Key()[len(l.rawDataKeyPrefix):]) // trim prefix with list data key
 
 	leftKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...)
-	iter, err = l.txn.t.Seek(leftKey)
+	iter, err = l.txn.t.Iter(leftKey, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -487,11 +487,11 @@ func (l *LList) indexValueN(v []byte, n int64) (realidxs []float64, err error) {
 	var iter kv.Iterator
 	if n < 0 {
 		n = -n
-		if iter, err = l.txn.t.SeekReverse(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)); err != nil {
+		if iter, err = l.txn.t.IterReverse(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)); err != nil {
 			return nil, err
 		}
 	} else if n > 0 {
-		if iter, err = l.txn.t.Seek(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...)); err != nil {
+		if iter, err = l.txn.t.Iter(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...), nil); err != nil {
 			return nil, err
 		}
 	} else {
@@ -512,7 +512,7 @@ func (l *LList) indexValueN(v []byte, n int64) (realidxs []float64, err error) {
 // indexValue return the [befor, real, after] index and value of the given list data value.
 func (l *LList) indexValue(v []byte) (realidxs []float64, err error) {
 	realidxs = []float64{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64}
-	iter, err := l.txn.t.Seek(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...))
+	iter, err := l.txn.t.Iter(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...), nil)
 	if err != nil { // dup
 		return nil, err
 	}
@@ -562,7 +562,7 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 
 	// seek start indecate the seek first key start time.
 	start := time.Now()
-	iter, err := l.txn.t.Seek(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...))
+	iter, err := l.txn.t.Iter(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...), nil)
 
 	var idx int64
 	// for loop iterate all objects to get the next data object and check if valid

@@ -15,23 +15,16 @@ LDFLAGS += -X "$(PKG)/context.GitBranch=$(shell git rev-parse --abbrev-ref HEAD)
 all: build
 
 test:
-	go test -short ${PKG_LIST}
+	env GO111MODULE=on go test -short ${PKG_LIST}
 
 coverage:
-	go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
+	env GO111MODULE=on go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
 
 build:
-	go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/
+	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/
 
 clean:
 	rm -f ./titan
-
-cleanvendor:
-	find vendor \( -type f -or -type l \)  -not -name "*.go" -not -name "LICENSE" -not -name "*.s" -not -name "PATENTS" | xargs -I {} rm {}
-	find vendor -type f -name "*_generated.go" | xargs -I {} rm {}
-	find vendor -type f -name "*_test.go" | xargs -I {} rm {}
-	find vendor -type d -name "_vendor" | xargs -I {} rm -rf {}
-	find vendor -type d -empty | xargs -I {} rm -rf {}
 
 lint:
 	gometalinter --fast -t --errors --enable-gc ${GO_FILES}

@@ -154,7 +154,7 @@ func (hash *Hash) HGet(field []byte) ([]byte, error) {
 func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := append(dkey, ':')
-	iter, err := hash.txn.t.Seek(prefix)
+	iter, err := hash.txn.t.Iter(prefix, nil)
 	if err != nil {
 		return nil, nil, err
 	}

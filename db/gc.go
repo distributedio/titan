@@ -41,7 +41,7 @@ func gcGetPrefix(txn store.Transaction) ([]byte, error) {
 	gcPrefix = append(gcPrefix, sysNamespace...)
 	gcPrefix = append(gcPrefix, ':', byte(sysDatabaseID))
 	gcPrefix = append(gcPrefix, ':', 'G', 'C', ':')
-	itr, err := txn.Seek(gcPrefix)
+	itr, err := txn.Iter(gcPrefix, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func gcGetPrefix(txn store.Transaction) ([]byte, error) {
 
 func gcDeleteRange(txn store.Transaction, prefix []byte, limit int64) (int64, error) {
 	count := int64(0)
-	itr, err := txn.Seek(prefix)
+	itr, err := txn.Iter(prefix, nil)
 	if err != nil {
 		return count, err
 	}

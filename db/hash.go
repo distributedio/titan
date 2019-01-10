@@ -134,14 +134,6 @@ func hashItemKey(key []byte, field []byte) []byte {
 	return append(dkey, field...)
 }
 
-func slotGC(txn *Transaction, objID []byte) error {
-	key := MetaSlotKey(txn.db, objID, nil)
-	if err := gc(txn.t, key); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (hash *Hash) calculateSlotID(limit int64) int64 {
 	if !hash.isMetaSlot() || limit <= 1 {
 		return 0
@@ -588,7 +580,7 @@ func (hash *Hash) HScan(cursor []byte, f func(key, val []byte) bool) error {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := hashItemKey(dkey, nil)
 	ikey := hashItemKey(dkey, cursor)
-	iter, err := hash.txn.t.Seek(ikey)
+	iter, err := hash.txn.t.Iter(ikey, nil)
 	if err != nil {
 		return err
 	}
@@ -744,7 +736,7 @@ func (hash *Hash) getSliceSlot(index int64) (*Slot, error) {
 	var rawSlots [][]byte
 	prefixKey := MetaSlotKey(hash.txn.db, hash.meta.ID, nil)
 	startKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(index))
-	iter, err := hash.txn.t.Seek(startKey)
+	iter, err := hash.txn.t.Iter(startKey, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@ import (
 var (
 	sysZTLeader              = []byte("$sys:0:ZTL:ZTLeader")
 	sysZTKeyPrefixLength     = len(toZTKey([]byte{}))
-	sysZTLeaderFlushInterval = 10
+	sysZTLeaderFlushInterval = 10 * time.Second
 
 	ztQueue chan []byte
 )
@@ -197,7 +197,7 @@ func StartZT(db *DB, conf *conf.ZT) {
 	tick := time.Tick(conf.Interval)
 	id := UUID()
 	for range tick {
-		isLeader, err := isLeader(db, sysZTLeader, id, time.Duration(sysZTLeaderFlushInterval))
+		isLeader, err := isLeader(db, sysZTLeader, id, sysZTLeaderFlushInterval)
 		if err != nil {
 			zap.L().Error("[ZT] check ZT leader failed",
 				zap.Int64("dbid", int64(db.ID)),

@@ -270,7 +270,7 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)
-	ts := uint64((time.Now().Add(interval * time.Second).Unix()))
+	ts := uint64((time.Now().Add(interval).Unix()))
 	binary.BigEndian.PutUint64(databytes[16:], ts)
 
 	if err := txn.Set(key, databytes); err != nil {

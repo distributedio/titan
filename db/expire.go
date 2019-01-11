@@ -18,7 +18,7 @@ const (
 var (
 	expireKeyPrefix              = []byte("$sys:0:at:")
 	sysExpireLeader              = []byte("$sys:0:EXL:EXLeader")
-	sysExpireLeaderFlushInterval = 10
+	sysExpireLeaderFlushInterval = 10 * time.Second
 
 	// $sys:0:at:{ts}:{metaKey}
 	expireTimestampOffset = len(expireKeyPrefix)
@@ -89,7 +89,7 @@ func StartExpire(db *DB) error {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
-		isLeader, err := isLeader(db, sysExpireLeader, id, time.Duration(sysExpireLeaderFlushInterval))
+		isLeader, err := isLeader(db, sysExpireLeader, id, sysExpireLeaderFlushInterval)
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
 			continue

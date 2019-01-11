@@ -22,7 +22,6 @@ const (
 
 func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 	ticker := time.Tick(tikvCfg.Interval)
-	zap.L().Info("[TikvGC]create tick time", zap.Int64("interval", int64(tikvCfg.Interval)))
 	uuid := UUID()
 	ctx := context.Background()
 	for range ticker {
@@ -32,7 +31,7 @@ func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 			continue
 		}
 		if !isLeader {
-			zap.L().Info("[TikvGC] not TikvGC leader")
+			zap.L().Debug("[TikvGC] not TikvGC leader")
 			continue
 		}
 		if err := runTikvGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {

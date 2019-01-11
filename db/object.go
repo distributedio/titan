@@ -129,7 +129,6 @@ func (txn *Transaction) Object(key []byte) (*Object, error) {
 	if IsExpired(obj, Now()) {
 		return nil, ErrKeyNotFound
 	}
-
 	return obj, nil
 }
 

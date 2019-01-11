@@ -219,10 +219,20 @@ func Debug(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 }
 func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := ctx.Args[1]
-	obj, err := txn.Object([]byte(key))
+	key := []byte(ctx.Args[1])
+	obj, err := txn.Object(key)
 	if err != nil {
 		return nil, err
+	}
+	if obj.Type == db.ObjectHash {
+		hash, err := txn.Hash(key)
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
+		obj, err = hash.Object()
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
 	}
 	return SimpleString(ctx.Out, obj.String()), nil
 }

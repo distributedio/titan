@@ -156,21 +156,21 @@ redis-cli -p 7369
 - [ ] brpoplpush
 
 ### Hashes
-- [ ] hset
-- [ ] hget
-- [ ] hgetall
-- [ ] hdel
-- [ ] hexists
-- [ ] hincrby
-- [ ] hincrbyfloat
-- [ ] hkeys
-- [ ] hlen
-- [ ] hmget
-- [ ] hmset
-- [ ] hscan
-- [ ] hsetnx
-- [ ] hstrlen
-- [ ] hvals
+- [x] hset
+- [x] hget
+- [x] hgetall
+- [x] hdel
+- [x] hexists
+- [x] hincrby
+- [x] hincrbyfloat
+- [x] hkeys
+- [x] hlen
+- [x] hmget
+- [x] hmset
+- [x] hscan
+- [x] hsetnx
+- [x] hstrlen
+- [x] hvals
 
 ### Sets
 

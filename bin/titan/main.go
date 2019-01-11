@@ -45,7 +45,7 @@ func main() {
 		os.Exit(1)
 	}
 	if pdAddrs != "" {
-		config.Server.Tikv.PdAddrs = pdAddrs
+		config.Tikv.PdAddrs = pdAddrs
 	}
 
 	if err := ConfigureZap(config.Logger.Name, config.Logger.Path, config.Logger.Level,
@@ -60,7 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	store, err := db.Open(&config.Server.Tikv)
+	store, err := db.Open(&config.Tikv)
 	if err != nil {
 		zap.L().Fatal("open db failed", zap.Error(err))
 		os.Exit(1)

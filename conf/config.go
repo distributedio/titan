@@ -36,8 +36,8 @@ type Tikv struct {
 }
 
 type TikvGC struct {
-	Interval          time.Duration `cfg:"interval;1m;;gc work tick interval"`
-	LeaderLifeTime    time.Duration `cfg:"leader-life-time;5m;;lease flush leader interval"`
+	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
+	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
 	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
 	Concurrency       int           `cfg:"concurrency;2;;gc work concurrency"`
 }

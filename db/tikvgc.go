@@ -20,6 +20,7 @@ const (
 	tikvGcTimeFormat = "20060102-15:04:05 -0700 MST"
 )
 
+// StartTikvGC start tikv gcwork
 func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 	ticker := time.Tick(tikvCfg.Interval)
 	uuid := UUID()

@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // compareSet skip CreatedAt UpdatedAt ID compare
@@ -20,6 +22,8 @@ func compareSet(want, got *Set) error {
 		return fmt.Errorf("meta.Encoding not equal, want=%v, got=%v", want.meta.Encoding, got.meta.Encoding)
 	case want.meta.Len != got.meta.Len:
 		return fmt.Errorf("meta.Len not equal, want=%v, got=%v", want.meta.Len, got.meta.Len)
+	case want.exists != got.exists:
+		return fmt.Errorf("exists not equal, want=%v, get=%v", want.exists, got.exists)
 	}
 	return nil
 }
@@ -45,35 +49,47 @@ func testAddData(t *testing.T, key []byte, values [][]byte) {
 	}
 }
 
-func TestGetSet(t *testing.T) {
-	var testNotExistSetKey = []byte("not_exist_key")
-	var testExistSetKey = []byte("exist_key")
-	var testSetValue = [][]byte{[]byte("set value")}
-	testAddData(t, testExistSetKey, testSetValue)
-
-	txn, err := mockDB.Begin()
-	if err != nil {
-		t.Errorf("TestGetSet db.Begin error %s", err)
+func setSetMeta(t *testing.T, txn *Transaction, key []byte) error {
+	h := newSet(txn, key)
+	mkey := MetaKey(txn.db, key)
+	sm := &SetMeta{
+		Object: h.meta.Object,
+		Len:    1,
 	}
+	meta := EncodeSetMeta(sm)
+	err := txn.t.Set(mkey, meta)
+	assert.NoError(t, err)
+	assert.NotNil(t, txn)
+	return nil
+}
+func destorySetMeta(t *testing.T, txn *Transaction, key []byte) error {
+	mkey := MetaKey(txn.db, key)
+	if err := txn.t.Delete(mkey); err != nil {
+		return err
+	}
+	return nil
+}
+func Test_newSet(t *testing.T) {
+	txn, err := mockDB.Begin()
+	assert.NotNil(t, txn)
+	assert.NoError(t, err)
 	type args struct {
 		txn *Transaction
 		key []byte
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *Set
-		wantErr bool
+		name string
+		args args
+		want *Set
 	}{
 		{
-			name: "not exist set",
+			name: "TestNewSet",
 			args: args{
 				txn: txn,
-				key: testNotExistSetKey,
+				key: []byte("TestNewSet"),
 			},
 			want: &Set{
-				key: testNotExistSetKey,
-				meta: SetMeta{
+				meta: &SetMeta{
 					Object: Object{
 						ExpireAt: 0,
 						Type:     ObjectSet,
@@ -81,8 +97,69 @@ func TestGetSet(t *testing.T) {
 					},
 					Len: 0,
 				},
+				key: []byte("TestNewSet"),
+				txn: txn,
 			},
-			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			txn, err := mockDB.Begin()
+			assert.NotNil(t, txn)
+			assert.NoError(t, err)
+			got := newSet(tt.args.txn, tt.args.key)
+			txn.Commit(context.TODO())
+			if compareSet(tt.want, got); err != nil {
+				t.Errorf("newSet() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+	txn.Commit(context.TODO())
+}
+
+func TestGetSet(t *testing.T) {
+	var testNotExistSetKey = []byte("not_exist_key")
+	var testExistSetKey = []byte("exist_key")
+
+	txn, err := mockDB.Begin()
+	assert.NotNil(t, txn)
+	assert.NoError(t, err)
+	setSetMeta(t, txn, testExistSetKey)
+	type args struct {
+		txn *Transaction
+		key []byte
+	}
+	type want struct {
+		set *Set
+		err *error
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "not exist set",
+			args: args{
+				txn: txn,
+				key: testNotExistSetKey,
+			},
+			want: want{
+				set: &Set{
+					key: testNotExistSetKey,
+					meta: &SetMeta{
+						Object: Object{
+							ExpireAt: 0,
+							Type:     ObjectSet,
+							Encoding: ObjectEncodingHT,
+						},
+						Len: 0,
+					},
+					exists: false,
+					txn:    txn,
+				},
+				err: nil,
+			},
 		},
 		{
 			name: "exist set",
@@ -90,33 +167,41 @@ func TestGetSet(t *testing.T) {
 				txn: txn,
 				key: testExistSetKey,
 			},
-			want: &Set{
-				key: testExistSetKey,
-				meta: SetMeta{
-					Object: Object{
-						ExpireAt: 0,
-						Type:     ObjectSet,
-						Encoding: ObjectEncodingHT,
+			want: want{
+				set: &Set{
+					key: testExistSetKey,
+					meta: &SetMeta{
+						Object: Object{
+							ExpireAt: 0,
+							Type:     ObjectSet,
+							Encoding: ObjectEncodingHT,
+						},
+						Len: 1,
 					},
-					Len: 1,
+					exists: true,
+					txn:    txn,
 				},
+				err: nil,
 			},
-			wantErr: false,
 		},
-		//TODO type mismatch
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			txn, err := mockDB.Begin()
+			assert.NotNil(t, txn)
+			assert.NoError(t, err)
 			got, err := GetSet(tt.args.txn, tt.args.key)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetSet() error = %v, wantErr %v", err, tt.wantErr)
+			if err = txn.Commit(context.TODO()); err != nil {
+				t.Errorf("GetString() txn.Commit error = %v", err)
 				return
 			}
-			if err := compareSet(tt.want, got); err != nil {
-				t.Errorf("%v", err)
+			if err := compareSet(tt.want.set, got); err != nil {
+				t.Errorf("GetSet() = %v, want %v", got, tt.want)
 			}
 		})
 	}
+	destorySetMeta(t, txn, testExistSetKey)
+	txn.Commit(context.TODO())
 }
 
 func TestSet_SAdd(t *testing.T) {
@@ -126,60 +211,49 @@ func TestSet_SAdd(t *testing.T) {
 		key     []byte
 		members [][]byte
 		want    int64
-		wantErr bool
 	}{
 		{
 			name:    "empty",
 			key:     testSetSAddKey,
 			members: [][]byte{[]byte("value1")},
 			want:    1,
-			wantErr: false,
 		},
 		{
 			name:    "duplicate",
 			key:     testSetSAddKey,
 			members: [][]byte{[]byte("value1")},
 			want:    0,
-			wantErr: false,
 		},
 		{
 			name:    "set_mutil",
 			key:     testSetSAddKey,
 			members: [][]byte{[]byte("value2"), []byte("value3"), []byte("value4")},
 			want:    3,
-			wantErr: false,
 		},
 		{
 			name:    "set_duplicate_some",
 			key:     testSetSAddKey,
 			members: [][]byte{[]byte("value4"), []byte("value5"), []byte("value6")},
 			want:    2,
-			wantErr: false,
 		},
 	}
-	var txn *Transaction
-	var err error
-	var set *Set
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if txn, err = mockDB.Begin(); err != nil {
-				t.Errorf("TestGetSet db.Begin error %s", err)
-			}
-			if set, err = GetSet(txn, tt.key); err != nil {
-				t.Errorf("Set.SAdd() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			txn, err := mockDB.Begin()
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+
+			set, err := GetSet(txn, tt.key)
+			assert.NoError(t, err)
+			assert.NotNil(t, set)
+
 			got, err := set.SAdd(tt.members)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Set.SAdd() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set.SAdd() txn.Commit error = %v", err)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Set.SAdd() = %v, want %v", got, tt.want)
-			}
+			assert.NoError(t, err)
+			assert.NotNil(t, got)
+
+			txn.Commit(context.TODO())
+
+			assert.Equal(t, got, tt.want)
 		})
 	}
 }
@@ -191,57 +265,45 @@ func TestSet_SMembers(t *testing.T) {
 	testAddData(t, testSetSMembersKeyOne, [][]byte{[]byte("value1")})
 	testAddData(t, testSetSMembersKeyTwo, [][]byte{[]byte("value1"), []byte("value2")})
 	tests := []struct {
-		name    string
-		key     []byte
-		want    [][]byte
-		wantErr bool
+		name string
+		key  []byte
+		want [][]byte
 	}{
 		{
-			name:    "empty",
-			key:     testSetSMembersKeyEmpty,
-			want:    [][]byte{},
-			wantErr: false,
+			name: "empty",
+			key:  testSetSMembersKeyEmpty,
+			want: [][]byte{},
 		},
 		{
-			name:    "one",
-			key:     testSetSMembersKeyOne,
-			want:    [][]byte{[]byte("value1")},
-			wantErr: false,
+			name: "one",
+			key:  testSetSMembersKeyOne,
+			want: [][]byte{[]byte("value1")},
 		},
 		{
-			name:    "two",
-			key:     testSetSMembersKeyTwo,
-			want:    [][]byte{[]byte("value1"), []byte("value2")},
-			wantErr: false,
+			name: "two",
+			key:  testSetSMembersKeyTwo,
+			want: [][]byte{[]byte("value1"), []byte("value2")},
 		},
 	}
-	var txn *Transaction
-	var err error
-	var set *Set
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if txn, err = mockDB.Begin(); err != nil {
-				t.Errorf("TestGetSet db.Begin error %s", err)
-			}
-			if set, err = GetSet(txn, tt.key); err != nil {
-				t.Errorf("Set.Smembers() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			txn, err := mockDB.Begin()
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+
+			set, err := GetSet(txn, tt.key)
+			assert.NoError(t, err)
+			assert.NotNil(t, set)
+
 			got, err := set.SMembers()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Set.Smembers() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set.Smembers() txn.Commit error = %v", err)
-				return
-			}
-			if len(got) != len(tt.want) {
-				t.Errorf("Set.Smembers() = %v, want %v", len(got), len(tt.want))
-			}
+			assert.NoError(t, err)
+
+			txn.Commit(context.TODO())
+
+			assert.Equal(t, len(got), len(tt.want))
+
 			for i := range got {
-				if !bytes.Equal(got[i], tt.want[i]) {
-					t.Errorf("Set.Smembers() = %v, want %v", got, tt.want)
-				}
+				assert.Equal(t, got[i], tt.want[i])
 			}
 		})
 	}

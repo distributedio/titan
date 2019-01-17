@@ -20,6 +20,7 @@ const (
 	labelName = "level"
 	gckeys    = "gckeys"
 	expire    = "expire"
+	tikvGC    = "tikvgc"
 )
 
 var (
@@ -31,6 +32,7 @@ var (
 	ztInfoLabel  = []string{ztinfo}
 	gcKeysLabel  = []string{gckeys}
 	expireLabel  = []string{expire}
+	tikvGCLabel  = []string{tikvGC}
 
 	// global prometheus object
 	gm *Metrics
@@ -49,6 +51,9 @@ type Metrics struct {
 
 	//expire
 	ExpireKeysTotal *prometheus.CounterVec
+
+	//tikvGC
+	TikvGCTotal *prometheus.CounterVec
 
 	//command biz
 	CommandCallHistogramVec *prometheus.HistogramVec
@@ -148,11 +153,19 @@ func init() {
 		}, expireLabel)
 	prometheus.MustRegister(gm.ExpireKeysTotal)
 
+	gm.TikvGCTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "tikv_gc_total",
+			Help:      "the number of tikv gc total by exec",
+		}, tikvGCLabel)
+	prometheus.MustRegister(gm.TikvGCTotal)
+
 	gm.IsLeaderGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "is_leader",
-			Help:      "mark titan is leader for gc/expire/zt",
+			Help:      "mark titan is leader for gc/expire/zt/tikvgc",
 		}, leaderLabel)
 	prometheus.MustRegister(gm.IsLeaderGaugeVec)
 

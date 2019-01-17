@@ -16,7 +16,7 @@ var (
 
 const (
 	sysGCBurst              = 256
-	sysGCLeaseFlushInterval = 10
+	sysGCLeaseFlushInterval = 10 * time.Second
 )
 
 func toTikvGCKey(key []byte) []byte {

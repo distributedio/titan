@@ -113,6 +113,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	go StartGC(sysdb)
 	go StartExpire(sysdb)
 	go StartZT(sysdb, &conf.ZT)
+	go StartTikvGC(sysdb, &conf.TikvGC)
 	return rds, nil
 }
 
@@ -269,7 +270,7 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)
-	ts := uint64((time.Now().Add(interval * time.Second).Unix()))
+	ts := uint64((time.Now().Add(interval).Unix()))
 	binary.BigEndian.PutUint64(databytes[16:], ts)
 
 	if err := txn.Set(key, databytes); err != nil {
@@ -342,6 +343,9 @@ func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, e
 		label = "GC"
 	case bytes.Equal(leader, sysExpireLeader):
 		label = "EX"
+	case bytes.Equal(leader, sysTikvGCLeader):
+		label = "TGC"
+
 	}
 
 	for {

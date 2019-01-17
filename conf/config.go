@@ -32,6 +32,14 @@ type Tikv struct {
 	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
 	DB      DB     `cfg:"db"`
 	ZT      ZT     `cfg:"zt"`
+	TikvGC  TikvGC `cfg:"tikv-gc"`
+}
+
+type TikvGC struct {
+	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
+	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
+	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
+	Concurrency       int           `cfg:"concurrency;2;;gc work concurrency"`
 }
 
 //ZT config is the config of zlist

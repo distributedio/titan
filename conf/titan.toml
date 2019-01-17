@@ -75,6 +75,29 @@ pd-addrs = ""
 #interval = "1s"
 
 
+[tikv.tikv-gc]
+
+#type:        time.Duration
+#description: gc work tick interval
+#default:     20m
+#interval = "20m0s"
+
+#type:        time.Duration
+#description: lease flush leader interval
+#default:     30m
+#leader-life-time = "30m0s"
+
+#type:        time.Duration
+#description: safe point life time
+#default:     10m
+#safe-point-life-time = "10m0s"
+
+#type:        int
+#description: gc work concurrency
+#default:     2
+#concurrency = 2
+
+
 [tikv-logger]
 
 #type:        string

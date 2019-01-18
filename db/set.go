@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"encoding/binary"
 )
 
@@ -184,4 +185,121 @@ func (set *Set) SMembers() ([][]byte, error) {
 		count--
 	}
 	return members, nil
+}
+
+// SCard returns the set cardinality (number of elements) of the set stored at key
+func (set *Set) SCard() (int64, error) {
+	if !set.Exists() {
+		return 0, nil
+	}
+	return set.meta.Len, nil
+}
+
+// SIsmember returns if member is a member of the set stored at key
+func (set *Set) SIsmember(member []byte) (int64, error) {
+	if !set.Exists() {
+		return 0, nil
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+	ikey := setItemKey(dkey, member)
+	count := set.meta.Len
+
+	iter, err := set.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer iter.Close()
+	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
+		if bytes.Equal(iter.Key(), ikey) {
+			return 1, nil
+		}
+		if err := iter.Next(); err != nil {
+			return 0, err
+		}
+		count--
+	}
+	return 0, nil
+}
+
+// SPop removes and returns one or more random elements from the set value store at key.
+func (set *Set) SPop(count int64) (members [][]byte, err error) {
+	// TODO BUG  No rand
+	if !set.Exists() {
+		return nil, nil
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+
+	ms := make([][]byte, 0, count)
+
+	iter, err := set.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+
+	if count == 0 {
+		if iter.Valid() && iter.Key().HasPrefix(prefix) {
+			ms = append(ms, iter.Key()[len(prefix):])
+		}
+	} else {
+		for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
+			ms = append(ms, iter.Key()[len(prefix):])
+			if err := iter.Next(); err != nil {
+				return nil, err
+			}
+			count--
+		}
+	}
+	if count < set.meta.Len {
+		set.meta.Len -= count
+	} else {
+		set.meta.Len = 0
+
+	}
+	if err := set.updateMeta(); err != nil {
+		return nil, err
+	}
+
+	return ms, nil
+}
+
+//SRem removes the specified members from the set stored at key.
+func (set *Set) SRem(members [][]byte) (int64, error) {
+	var num int64
+	if !set.Exists() {
+		return 0, nil
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+	ms := removeRepByMap(members)
+	ikeys := make([][]byte, len(ms))
+	for i := range ms {
+		ikeys[i] = setItemKey(dkey, ms[i])
+	}
+
+	iter, err := set.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer iter.Close()
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		for i := range ikeys {
+			if bytes.Equal(iter.Key(), ikeys[i]) {
+				if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+					return 0, err
+				}
+				num++
+			}
+		}
+		if err := iter.Next(); err != nil {
+			return 0, err
+		}
+	}
+	set.meta.Len -= num
+	if err := set.updateMeta(); err != nil {
+		return 0, err
+	}
+	return num, nil
 }

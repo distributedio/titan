@@ -227,7 +227,7 @@ func (r *Decoder) BulkString() (string, error) {
 	}
 
 	remain, err := strconv.Atoi(string(hdr[1 : l-2]))
-	if err != nil {
+	if err != nil || remain < 0 {
 		return "", ErrInvalidProtocol
 	}
 
@@ -256,7 +256,7 @@ func (r *Decoder) Array() (int, error) {
 		return -1, ErrInvalidProtocol
 	}
 	remain, err := strconv.Atoi(string(hdr[1 : l-2]))
-	if err != nil {
+	if err != nil || remain < 0 {
 		return -1, ErrInvalidProtocol
 	}
 	return remain, nil

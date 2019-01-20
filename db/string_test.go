@@ -565,11 +565,11 @@ func TestStringIncrf(t *testing.T) {
 
 func TestStringSetBit(t *testing.T) {
 	type args struct {
-		on  uint
-		off uint
+		on  int
+		off int
 	}
 	type want struct {
-		retval uint
+		retval int
 		value  []byte
 	}
 	tests := []struct {

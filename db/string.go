@@ -98,7 +98,6 @@ func (s *String) Exist() bool {
 // Append append a value to key
 func (s *String) Append(value []byte) (int, error) {
 	s.Meta.Value = append(s.Meta.Value, value...)
-	s.Meta.ExpireAt = 0
 	if err := s.txn.t.Set(MetaKey(s.txn.db, s.key), s.encode()); err != nil {
 		return 0, err
 	}
@@ -190,17 +189,17 @@ func (s *String) Incrf(delta float64) (float64, error) {
 
 // SetBit key offset bitvalue
 // return the off postion of value
-func (s *String) SetBit(on, off uint) (uint, error) {
+func (s *String) SetBit(on, offset int) (int, error) {
 	val := s.Meta.Value
-	bitoff := off >> 3
+	bitoff := offset >> 3
 	llen := int(bitoff) - len(val) + 1
 	if llen > 0 {
 		val = append(val, make([]byte, llen)...)
 	}
 
 	/* Get current values */
-	byteval := uint(val[bitoff])
-	bit := uint(7 - (off & 0x7))
+	byteval := int(val[bitoff])
+	bit := uint(7 - (offset & 0x7))
 	bitval := byteval & (1 << bit)
 
 	/* Update byte with new bit value and return original value */

@@ -33,7 +33,7 @@ func setSets(t *testing.T, args ...string) []string {
 }
 
 func TestAdd(t *testing.T) {
-	key := "set-add"
+	key := "set-sadd"
 	//initSets(t, key, 3)
 
 	//case1
@@ -45,20 +45,19 @@ func TestAdd(t *testing.T) {
 	//case 2
 	lines = setSets(t, key, "1", "2")
 	assert.Equal(t, ":0", lines[0])
-	/*
-		//case 3
-		lines = setSets(t, key, "3", "4")
-		assert.Equal(t, ":1", lines[0])
-	*/
+
+	//case 3
+	lines = setSets(t, key, "3", "4")
+	assert.Equal(t, ":1", lines[0])
+
 	// end
-	clearHashes(t, key)
+	clearSets(t, key)
 
 }
 
-/*
 func TestSCard(t *testing.T) {
 	// init
-	key := "set-key"
+	key := "set-scard"
 	initSets(t, key, 3)
 
 	// case 1
@@ -84,42 +83,172 @@ func TestSCard(t *testing.T) {
 	assert.Equal(t, ":6", lines[0])
 
 	// end
-	clearHashes(t, key)
+	clearSets(t, key)
 }
 
-/*
 func TestSMembers(t *testing.T) {
 	// init
-	key := "set-key"
-	initSets(t, key, 3)
+	key := "set-smembers"
 
 	//case1
-	ctx := ContextTest("smembers", key)
+	ctx := ContextTest("sadd", key, "1", "2", "3")
+	Call(ctx)
+	ctx = ContextTest("smembers", key)
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
-	assert.Equal(t, "1", lines[0])
-	assert.Equal(t, "2", lines[1])
-	assert.Equal(t, "3", lines[2])
-	//case2
-
-	//case3
+	assert.Equal(t, "*3", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "2", lines[4])
+	assert.Equal(t, "$1", lines[5])
+	assert.Equal(t, "3", lines[6])
 
 	//end
+	clearSets(t, key)
+}
 
-}*/
+func TestSIsmember(t *testing.T) {
 
-func TestIsmembers(t *testing.T) {
+	key := "set-ismember"
 
+	ctx := ContextTest("sadd", key, "1", "2", "3")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("sismember", key, "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+	//case 2
+	ctx = ContextTest("sismember", key, "4")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+
+	//end
+	clearSets(t, key)
 }
 func TestSPop(t *testing.T) {
 
 }
 func TestSRem(t *testing.T) {
 
+	key := "set-ismember"
+
+	ctx := ContextTest("sadd", key, "1", "2", "3")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("srem", key, "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+	//case 2
+	ctx = ContextTest("srem", key, "5")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+
+	//end
+	clearSets(t, key)
 }
 func TestSUion(t *testing.T) {
+	key1 := "set-suion1"
+	key2 := "set-suion2"
+	key3 := "set-suion3"
 
+	ctx := ContextTest("sadd", key1, "a", "b", "c", "d")
+	Call(ctx)
+	ctx = ContextTest("sadd", key2, "c", "d", "e")
+	Call(ctx)
+	ctx = ContextTest("sadd", key3, "")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("suion", key1, key2)
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "*5", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "a", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "b", lines[4])
+	assert.Equal(t, "$1", lines[5])
+	assert.Equal(t, "c", lines[6])
+	assert.Equal(t, "$1", lines[7])
+	assert.Equal(t, "d", lines[8])
+	assert.Equal(t, "$1", lines[9])
+	assert.Equal(t, "e", lines[10])
+
+	//case 2
+	ctx = ContextTest("suion", key1, key3)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*5", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "a", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "b", lines[4])
+	assert.Equal(t, "$1", lines[5])
+	assert.Equal(t, "c", lines[6])
+	assert.Equal(t, "$1", lines[7])
+	assert.Equal(t, "d", lines[8])
+	assert.Equal(t, "$0", lines[9])
+	assert.Equal(t, "", lines[10])
+	//end
+	clearSets(t, key1)
+
+	clearSets(t, key2)
+
+	clearSets(t, key3)
 }
 func TestSInter(t *testing.T) {
+	key1 := "set-sinter1"
+	key2 := "set-sinter2"
+	key3 := "set-sinter3"
+
+	ctx := ContextTest("sadd", key1, "a", "b", "c", "d")
+	Call(ctx)
+	ctx = ContextTest("sadd", key2, "c")
+	Call(ctx)
+	ctx = ContextTest("sadd", key3, "a", "c", "e")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("sinter", key1, key2, key3)
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "*1", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "c", lines[2])
+
+	//case 2
+	ctx = ContextTest("sinter", key1, key2, key3)
+	Call(ctx)
+	//end
+	clearSets(t, key1)
+
+	clearSets(t, key2)
+
+	clearSets(t, key3)
 
 }

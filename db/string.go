@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -210,6 +211,25 @@ func (s *String) SetBit(on, offset int) (int, error) {
 	if err := s.Set(val); err != nil {
 		return 0, err
 	}
+	fmt.Printf("%v\n", val)
+	return bitval, nil
+}
+
+// GetBit key offset bitvalye
+// offset / 8 > the index of value
+// offset mod 8 +1
+func (s *String) GetBit(offset int) (int, error) {
+	val := s.Meta.Value
+	bitoff := offset >> 3
+	if int(bitoff) > len(val)-1 {
+		return 0, nil
+	}
+
+	/* Get current values */
+	byteval := int(val[bitoff])
+	bit := uint(7 - (offset & 0x7))
+	bitval := byteval & (1 << bit)
+	fmt.Printf("%#v %v %v %v", val, byteval, bit, bitval)
 	return bitval, nil
 }
 

@@ -638,3 +638,68 @@ func TestStringSetBit(t *testing.T) {
 		})
 	}
 }
+
+func TestStringGetBit(t *testing.T) {
+	key := []byte("get-bits")
+	callFunc := func(txn *Transaction) {
+		s, err := GetString(txn, key)
+		assert.NoError(t, err)
+		s.SetBit(0, 1)
+	}
+	MockTest(t, callFunc)
+
+	type args struct {
+		off int
+	}
+	type want struct {
+		retval int
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		/*
+			{
+				name: "one",
+				args: args{
+					off: 1,
+				},
+				want: want{
+					retval: 0,
+				},
+			},
+			{
+				name: "two",
+				args: args{
+					off: 100,
+				},
+				want: want{
+					retval: 0,
+				},
+			},
+		*/
+		{
+			name: "three",
+			args: args{
+				off: 0,
+			},
+			want: want{
+				retval: 1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, key)
+				assert.NoError(t, err)
+				want, err := s.GetBit(tt.args.off)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want.retval, want)
+			}
+			MockTest(t, callFunc)
+		})
+	}
+}

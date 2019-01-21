@@ -549,3 +549,45 @@ func TestStringSetBit(t *testing.T) {
 		})
 	}
 }
+
+func TestStringGetBit(t *testing.T) {
+	CallTest("setbit", "5", "1")
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "1",
+			args: []string{"getbit", "1", "0", "0"},
+			want: "-ERR wrong number of arguments for 'setbit' command",
+		},
+		{
+			name: "2",
+			args: []string{"getbit", "x"},
+			want: ErrBitInteger.Error(),
+		},
+		{
+			name: "3",
+			args: []string{"getbit", "1"},
+			want: ":0",
+		},
+		{
+			name: "5",
+			args: []string{"getbit", "5"},
+			want: ":1",
+		},
+		{
+			name: "6",
+			args: []string{"getbit", "10", "0"},
+			want: ":0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := CallTest("setbit", tt.args...)
+			assert.Contains(t, out.String(), tt.want)
+		})
+	}
+}

@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -13,21 +12,15 @@ import (
 func SAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 
-	fmt.Println("command SAdd", string(key))
-
 	var members [][]byte
 	for _, member := range ctx.Args[1:] {
 		members = append(members, []byte(member))
-	}
-	for i := range members {
-		fmt.Println("command BatchGetValues members", string(members[i]))
 	}
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
 	added, err := set.SAdd(members)
-	fmt.Println("command SAdd", added)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}

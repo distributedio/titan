@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 )
 
 // SetNilValue is the value set to a tikv key for tikv do not support a real empty value
@@ -92,8 +91,11 @@ func EncodeSetMeta(meta *SetMeta) []byte {
 	return append(b, m...)
 }
 func setItemKey(key []byte, member []byte) []byte {
-	key = append(key, ':')
-	return append(key, member...)
+	var ikeys []byte
+	ikeys = append(ikeys, key...)
+	ikeys = append(ikeys, ':')
+	ikeys = append(ikeys, member...)
+	return ikeys
 }
 func (set *Set) updateMeta() error {
 	meta := EncodeSetMeta(set.meta)
@@ -109,35 +111,25 @@ func (set *Set) updateMeta() error {
 
 // SAdd adds the specified members to the set stored at key
 func (set *Set) SAdd(members [][]byte) (int64, error) {
-	for i := range members {
-		fmt.Println("db SAdd members", members[i])
-	}
 	// Namespace:DBID:D:ObjectID
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	// Remove the duplicate
-	//	ms := RemoveRepByMap(members)
-	ikeys := make([][]byte, len(members))
-	for i := range members {
-		ikeys[i] = setItemKey(dkey, members[i])
+	ms := RemoveRepByMap(members)
+	ikeys := make([][]byte, len(ms))
+	for i := range ms {
+		ikeys[i] = setItemKey(dkey, ms[i])
 	}
 	// {Namespace}:{DBID}:{D}:{ObjectID}:{ms[i]}
-	for i := range ikeys {
-		fmt.Println("db BatchGetValues ikey", ikeys[i])
-	}
 
 	values, err := BatchGetValues(set.txn, ikeys)
 
 	if err != nil {
 		return 0, nil
 	}
-	for i := range values {
-		fmt.Println("db BatchGetValues", values[i])
-	}
 	added := int64(0)
 	for i := range ikeys {
 		if values[i] == nil {
 			added++
-			fmt.Println("db added", added)
 		}
 		if err := set.txn.t.Set(ikeys[i], SetNilValue); err != nil {
 			return 0, err

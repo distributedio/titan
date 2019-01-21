@@ -59,7 +59,12 @@ func runTikvGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration,
 		return nil
 	}
 
-	zap.L().Info("[TikvGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
+	if lastPoint == nil {
+		zap.L().Info("[TikvGC] current safe point ", zap.Time("current", *newPoint))
+	} else {
+		zap.L().Info("[TikvGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
+	}
+
 	if err := saveLastSafePoint(ctx, db, newPoint); err != nil {
 		zap.L().Error("[TikvGC] save last safe point err ", zap.Time("current", *newPoint))
 		return err

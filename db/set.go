@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 )
 
 // SetNilValue is the value set to a tikv key for tikv do not support a real empty value
@@ -108,30 +109,41 @@ func (set *Set) updateMeta() error {
 
 // SAdd adds the specified members to the set stored at key
 func (set *Set) SAdd(members [][]byte) (int64, error) {
+	for i := range members {
+		fmt.Println("db SAdd members", members[i])
+	}
 	// Namespace:DBID:D:ObjectID
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	// Remove the duplicate
-	ms := removeRepByMap(members)
-	ikeys := make([][]byte, len(ms))
-	for i := range ms {
-		ikeys[i] = setItemKey(dkey, ms[i])
+	//	ms := RemoveRepByMap(members)
+	ikeys := make([][]byte, len(members))
+	for i := range members {
+		ikeys[i] = setItemKey(dkey, members[i])
 	}
 	// {Namespace}:{DBID}:{D}:{ObjectID}:{ms[i]}
+	for i := range ikeys {
+		fmt.Println("db BatchGetValues ikey", ikeys[i])
+	}
+
 	values, err := BatchGetValues(set.txn, ikeys)
+
 	if err != nil {
 		return 0, nil
 	}
-
+	for i := range values {
+		fmt.Println("db BatchGetValues", values[i])
+	}
 	added := int64(0)
 	for i := range ikeys {
 		if values[i] == nil {
 			added++
+			fmt.Println("db added", added)
 		}
 		if err := set.txn.t.Set(ikeys[i], SetNilValue); err != nil {
 			return 0, err
 		}
 	}
-
+	//fmt.Println("db sadd ", added)
 	set.meta.Len += added
 	if err := set.updateMeta(); err != nil {
 		return 0, err
@@ -141,7 +153,7 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 }
 
 // RemoveRepByMap filters duplicate elements through the map's unique primary key feature
-func removeRepByMap(members [][]byte) [][]byte {
+func RemoveRepByMap(members [][]byte) [][]byte {
 	result := [][]byte{}
 	// tempMap saves non-repeating primary keys
 	//tempMap := make(map[string]int)
@@ -273,7 +285,7 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-	ms := removeRepByMap(members)
+	ms := RemoveRepByMap(members)
 	ikeys := make([][]byte, len(ms))
 	for i := range ms {
 		ikeys[i] = setItemKey(dkey, ms[i])

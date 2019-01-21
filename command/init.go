@@ -80,8 +80,15 @@ func init() {
 		"hscan":        HScan,
 
 		// sets
-		"sadd":     SAdd,
-		"smembers": SMembers,
+		"sadd":      SAdd,
+		"smembers":  SMembers,
+		"scard":     SCard,
+		"sismember": SIsmember,
+		"spop":      SPop,
+		"srem":      SRem,
+		"suion":     SUion,
+		"sinter":    SInter,
+		//"sdiff":     SDiff,
 	}
 
 	// commands contains all commands that open to clients
@@ -178,7 +185,14 @@ func init() {
 		"hscan":        Desc{Proc: AutoCommit(HScan), Cons: Constraint{-3, flags("rR"), 0, 0, 0}},
 
 		// sets
-		"sadd":     Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
-		"smembers": Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
+		"sadd":      Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"smembers":  Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
+		"scard":     Desc{Proc: AutoCommit(SCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"sismember": Desc{Proc: AutoCommit(SIsmember), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
+		"spop":      Desc{Proc: AutoCommit(SPop), Cons: Constraint{-2, flags("wrF"), 1, 1, 1}},
+		"srem":      Desc{Proc: AutoCommit(SRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
+		"suion":     Desc{Proc: AutoCommit(SUion), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		"sinter":    Desc{Proc: AutoCommit(SInter), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		//"sdiff":     Desc{Proc: AutoCommit(SDiff), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
 	}
 }

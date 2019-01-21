@@ -580,8 +580,8 @@ func TestStringSetBit(t *testing.T) {
 		{
 			name: "one",
 			args: args{
-				on:  1,
 				off: 1,
+				on:  1,
 			},
 			want: want{
 				retval: 0,
@@ -591,8 +591,8 @@ func TestStringSetBit(t *testing.T) {
 		{
 			name: "two",
 			args: args{
-				on:  5,
-				off: 1,
+				off: 5,
+				on:  1,
 			},
 			want: want{
 				retval: 0,
@@ -602,8 +602,8 @@ func TestStringSetBit(t *testing.T) {
 		{
 			name: "three",
 			args: args{
-				on:  5,
-				off: 0,
+				off: 5,
+				on:  0,
 			},
 			want: want{
 				retval: 0x4,
@@ -613,8 +613,8 @@ func TestStringSetBit(t *testing.T) {
 		{
 			name: "four",
 			args: args{
-				on:  12,
-				off: 1,
+				off: 12,
+				on:  1,
 			},
 			want: want{
 				retval: 0,
@@ -644,7 +644,7 @@ func TestStringGetBit(t *testing.T) {
 	callFunc := func(txn *Transaction) {
 		s, err := GetString(txn, key)
 		assert.NoError(t, err)
-		s.SetBit(0, 1)
+		s.SetBit(4, 1)
 	}
 	MockTest(t, callFunc)
 
@@ -659,33 +659,31 @@ func TestStringGetBit(t *testing.T) {
 		args args
 		want want
 	}{
-		/*
-			{
-				name: "one",
-				args: args{
-					off: 1,
-				},
-				want: want{
-					retval: 0,
-				},
+		{
+			name: "one",
+			args: args{
+				off: 1,
 			},
-			{
-				name: "two",
-				args: args{
-					off: 100,
-				},
-				want: want{
-					retval: 0,
-				},
+			want: want{
+				retval: 0,
 			},
-		*/
+		},
+		{
+			name: "two",
+			args: args{
+				off: 100,
+			},
+			want: want{
+				retval: 0,
+			},
+		},
 		{
 			name: "three",
 			args: args{
-				off: 0,
+				off: 4,
 			},
 			want: want{
-				retval: 1,
+				retval: 8,
 			},
 		},
 	}

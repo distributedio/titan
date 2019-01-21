@@ -551,7 +551,7 @@ func TestStringSetBit(t *testing.T) {
 }
 
 func TestStringGetBit(t *testing.T) {
-	CallTest("setbit", "5", "1")
+	CallTest("setbit", "getbit", "5", "1")
 	tests := []struct {
 		name string
 		args []string
@@ -560,12 +560,12 @@ func TestStringGetBit(t *testing.T) {
 		{
 			name: "1",
 			args: []string{"getbit", "1", "0", "0"},
-			want: "-ERR wrong number of arguments for 'setbit' command",
+			want: "-ERR wrong number of arguments for 'getbit' command",
 		},
 		{
 			name: "2",
 			args: []string{"getbit", "x"},
-			want: ErrBitInteger.Error(),
+			want: ErrBitOffset.Error(),
 		},
 		{
 			name: "3",
@@ -579,14 +579,14 @@ func TestStringGetBit(t *testing.T) {
 		},
 		{
 			name: "6",
-			args: []string{"getbit", "10", "0"},
+			args: []string{"getbit", "10"},
 			want: ":0",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out := CallTest("setbit", tt.args...)
+			out := CallTest("getbit", tt.args...)
 			assert.Contains(t, out.String(), tt.want)
 		})
 	}

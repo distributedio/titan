@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -190,7 +189,7 @@ func (s *String) Incrf(delta float64) (float64, error) {
 
 // SetBit key offset bitvalue
 // return the off postion of value
-func (s *String) SetBit(on, offset int) (int, error) {
+func (s *String) SetBit(offset, on int) (int, error) {
 	val := s.Meta.Value
 	bitoff := offset >> 3
 	llen := int(bitoff) - len(val) + 1
@@ -207,11 +206,9 @@ func (s *String) SetBit(on, offset int) (int, error) {
 	byteval &= (^(1 << bit))
 	byteval = byteval | ((on & 0x1) << bit)
 	val[bitoff] = byte(byteval)
-
 	if err := s.Set(val); err != nil {
 		return 0, err
 	}
-	fmt.Printf("%v\n", val)
 	return bitval, nil
 }
 
@@ -229,7 +226,7 @@ func (s *String) GetBit(offset int) (int, error) {
 	byteval := int(val[bitoff])
 	bit := uint(7 - (offset & 0x7))
 	bitval := byteval & (1 << bit)
-	fmt.Printf("%#v %v %v %v", val, byteval, bit, bitval)
+
 	return bitval, nil
 }
 

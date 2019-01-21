@@ -498,7 +498,7 @@ func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	val, err := str.SetBit(on, offset)
+	val, err := str.SetBit(offset, on)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -528,5 +528,9 @@ func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	return Integer(ctx.Out, int64(val)), nil
+
+	if val != 0 {
+		return Integer(ctx.Out, 1), nil
+	}
+	return Integer(ctx.Out, 0), nil
 }

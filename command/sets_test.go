@@ -134,7 +134,7 @@ func TestSPop(t *testing.T) {
 }
 func TestSRem(t *testing.T) {
 
-	key := "set-ismember"
+	key := "set-srem"
 
 	ctx := ContextTest("sadd", key, "1", "2", "3")
 	Call(ctx)
@@ -170,6 +170,58 @@ func TestSRem(t *testing.T) {
 
 	//end
 	clearSets(t, key)
+}
+func TestSMove(t *testing.T) {
+
+	key := "set-smove"
+	destkey := "set-dest-key"
+	ctx := ContextTest("sadd", key, "1", "2", "3")
+	Call(ctx)
+	ctx = ContextTest("sadd", destkey, "3", "4")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("smove", key, destkey, "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+	ctx = ContextTest("smembers", destkey)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*3", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+	assert.Equal(t, "$1", lines[5])
+	assert.Equal(t, "4", lines[6])
+	//case 2
+	ctx = ContextTest("smove", key, destkey, "5")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":0", lines[0])
+
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+
+	//end
+	clearSets(t, key)
+	clearSets(t, destkey)
 }
 func TestSUion(t *testing.T) {
 	key1 := "set-suion1"

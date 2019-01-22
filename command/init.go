@@ -88,7 +88,7 @@ func init() {
 		"srem":      SRem,
 		"suion":     SUion,
 		"sinter":    SInter,
-		//"sdiff":     SDiff,
+		"sdiff":     SDiff,
 	}
 
 	// commands contains all commands that open to clients
@@ -193,6 +193,6 @@ func init() {
 		"srem":      Desc{Proc: AutoCommit(SRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
 		"suion":     Desc{Proc: AutoCommit(SUion), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
 		"sinter":    Desc{Proc: AutoCommit(SInter), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
-		//"sdiff":     Desc{Proc: AutoCommit(SDiff), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		"sdiff":     Desc{Proc: AutoCommit(SDiff), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
 	}
 }

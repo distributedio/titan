@@ -242,8 +242,56 @@ func TestSInter(t *testing.T) {
 	assert.Equal(t, "c", lines[2])
 
 	//case 2
-	ctx = ContextTest("sinter", key1, key2, key3)
+	ctx = ContextTest("sinter", key1, key3)
 	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "a", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "c", lines[4])
+
+	//end
+	clearSets(t, key1)
+
+	clearSets(t, key2)
+
+	clearSets(t, key3)
+
+}
+func TestSDiff(t *testing.T) {
+	key1 := "set-sdiff1"
+	key2 := "set-sdiff2"
+	key3 := "set-sdiff3"
+
+	ctx := ContextTest("sadd", key1, "a", "b", "c", "d")
+	Call(ctx)
+	ctx = ContextTest("sadd", key2, "c")
+	Call(ctx)
+	ctx = ContextTest("sadd", key3, "a", "c", "e")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("sdiff", key1, key2)
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "*3", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "a", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "b", lines[4])
+	assert.Equal(t, "$1", lines[5])
+	assert.Equal(t, "d", lines[6])
+
+	//case 2
+	ctx = ContextTest("sdiff", key1, key2, key3)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "b", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "d", lines[4])
 	//end
 	clearSets(t, key1)
 

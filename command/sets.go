@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -142,24 +143,22 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var keys [][]byte
 	var members [][]byte
 
-	//取第一个
 	key := []byte(ctx.Args[0])
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
+
 	if !set.Exists() {
 		return nil, nil
 	}
 	if n, _ := set.SCard(); n == 0 {
 		return nil, nil
 	}
-
 	members, err = set.SMembers()
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	//遍历之后的
 	for _, key := range ctx.Args[1:] {
 		keys = append(keys, []byte(key))
 	}
@@ -178,19 +177,65 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
-		members = sliceIntersect(members, ms)
+		members = sliceInter(members, ms)
 
 	}
 	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
 }
 
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
-//func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-//	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
-//}
+func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	var keys [][]byte
+	var members [][]byte
 
-// InSliceIface checks given interface in interface slice.
-func inSliceIface(v []byte, sl [][]byte) bool {
+	key := []byte(ctx.Args[0])
+	set, err := txn.Set(key)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !set.Exists() {
+		return nil, nil
+	}
+	if n, _ := set.SCard(); n == 0 {
+		return nil, nil
+	}
+
+	members, err = set.SMembers()
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	for _, key := range ctx.Args[1:] {
+		keys = append(keys, []byte(key))
+	}
+
+	for i := range keys {
+		set, err := txn.Set(keys[i])
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
+		if !set.Exists() {
+			continue
+		}
+		if n, _ := set.SCard(); n == 0 {
+			continue
+		}
+		ms, err := set.SMembers()
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
+		fmt.Println("members1:", members)
+		fmt.Println("ms:", ms)
+		members = sliceDiff(members, ms)
+
+		fmt.Println("members2:", members)
+
+	}
+	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
+}
+
+// InSliceInter checks given interface in interface slice.
+func inSliceInter(v []byte, sl [][]byte) bool {
 	for _, vv := range sl {
 		if bytes.Equal(vv, v) {
 			return true
@@ -200,11 +245,32 @@ func inSliceIface(v []byte, sl [][]byte) bool {
 }
 
 // SliceIntersect returns slice that are present in all the slice1 and slice2.
-func sliceIntersect(slice1, slice2 [][]byte) (diffslice [][]byte) {
+func sliceInter(slice1, slice2 [][]byte) (interslice [][]byte) {
 	for _, v := range slice1 {
-		if inSliceIface(v, slice2) {
-			diffslice = append(diffslice, v)
+		if inSliceInter(v, slice2) {
+			interslice = append(interslice, v)
 		}
 	}
 	return
+}
+
+// InSliceDiff checks given interface in interface slice.
+func inSliceDiff(v []byte, sl [][]byte) bool {
+	for _, vv := range sl {
+		if bytes.Equal(vv, v) {
+			return false
+		}
+	}
+	return true
+}
+
+// SliceIntersect returns all slices in slice1 that are not present in slice2.
+func sliceDiff(slice1, slice2 [][]byte) [][]byte {
+	var diffslice [][]byte
+	for _, v := range slice1 {
+		if inSliceDiff(v, slice2) {
+			diffslice = append(diffslice, v)
+		}
+	}
+	return diffslice
 }

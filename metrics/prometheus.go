@@ -5,7 +5,7 @@ import (
 
 	"go.uber.org/zap/zapcore"
 
-	"github.com/pingcap/tidb/metrics"
+	sdk_metrics "github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -179,7 +179,7 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
-	metrics.RegisterMetrics()
+	sdk_metrics.RegisterMetrics()
 }
 
 // GetMetrics return metrics object

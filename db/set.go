@@ -306,20 +306,35 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 
 // SMove movies member from the set at source to the set at destination.
 func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
+
 	if !set.Exists() {
 		return 0, nil
 	}
-
-	destset, _ := GetSet(set.txn, destination)
-	res, err := destset.SIsmember(member)
+	res, err := set.SIsmember(member)
 	if err != nil {
 		return 0, err
+	}
+	if res == 0 {
+		return 0, nil
+	}
+	destset, _ := GetSet(set.txn, destination)
+	res, err = destset.SIsmember(member)
+	if err != nil {
+		return 0, err
+	}
+	if res == 0 {
+		if _, err := destset.SAdd([][]byte{member}); err != nil {
+			return 0, err
+		}
+		destset.meta.Len += 1
+		if err := destset.updateMeta(); err != nil {
+			return 0, err
+		}
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
 	ikey := setItemKey(dkey, member)
 	count := set.meta.Len
-
 	iter, err := set.txn.t.Iter(prefix, nil)
 	if err != nil {
 		return 0, err
@@ -327,12 +342,11 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 	defer iter.Close()
 	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
 		if bytes.Equal(iter.Key(), ikey) {
-			if res != 1 {
-				if _, err := destset.SAdd([][]byte{member}); err != nil {
-					return 0, err
-				}
-			}
 			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+				return 0, err
+			}
+			set.meta.Len -= 1
+			if err := set.updateMeta(); err != nil {
 				return 0, err
 			}
 			return 1, nil
@@ -341,10 +355,6 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 			return 0, err
 		}
 		count--
-	}
-	set.meta.Len -= 1
-	if err := set.updateMeta(); err != nil {
-		return 0, err
 	}
 	return 0, nil
 }

@@ -1,47 +1,39 @@
 package db
 
 import (
-	"bytes"
-	"context"
-	"fmt"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // compareGetString skip CreatedAt UpdatedAt ID compare
-func compareGetString(want, get *String) error {
-	switch {
-	case !bytes.Equal(want.key, get.key):
-		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want.key), string(get.key))
-	case want.Meta.ExpireAt != get.Meta.ExpireAt:
-		return fmt.Errorf("meta.ExpireAt not equal, want=%v, get=%v", want.Meta.ExpireAt, get.Meta.ExpireAt)
-	case want.Meta.Type != get.Meta.Type:
-		return fmt.Errorf("meta.Type not equal, want=%v, get=%v", want.Meta.Type, get.Meta.Type)
-	case want.Meta.Encoding != get.Meta.Encoding:
-		return fmt.Errorf("meta.Encoding not equal, want=%v, get=%v", want.Meta.Encoding, get.Meta.Encoding)
-	case !bytes.Equal(want.Meta.Value, get.Meta.Value):
-		return fmt.Errorf("meta.Value not equal, want=%v, get=%v", want.Meta.Value, get.Meta.Value)
-	}
-	return nil
+func compareGetString(t *testing.T, want, get *String) {
+	assert.Equal(t, want.key, get.key)
+	assert.Equal(t, want.Meta.ExpireAt, get.Meta.ExpireAt)
+	assert.Equal(t, want.Meta.Type, get.Meta.Type)
+	assert.Equal(t, want.Meta.Encoding, get.Meta.Encoding)
+	assert.Equal(t, want.Meta.Value, get.Meta.Value)
 }
+
 func setValue(t *testing.T, TestKey []byte, value []byte) {
-	txn, err := mockDB.Begin()
-	if err != nil {
-		t.Errorf("db.Begin error %s", err)
+	callFunc := func(txn *Transaction) {
+		s, err := GetString(txn, TestKey)
+		assert.NoError(t, err)
+		err = s.Set(value)
 	}
-	s, err := GetString(txn, TestKey)
-	if err != nil {
-		t.Errorf("String.GetString() error = %v", err)
+	MockTest(t, callFunc)
+}
+
+func getValue(t *testing.T, key []byte, value []byte) {
+	callFunc := func(txn *Transaction) {
+		s, err := GetString(txn, key)
+		assert.NoError(t, err)
+		val, err := s.Get()
+		assert.NoError(t, err)
+		assert.Equal(t, value, val)
 	}
-	err = s.Set(value)
-	if err != nil {
-		t.Errorf("String_Set() error = %v", err)
-	}
-	if err = txn.Commit(context.TODO()); err != nil {
-		t.Errorf("Set() txn.Commit error = %v", err)
-		return
-	}
+	MockTest(t, callFunc)
 }
 
 var (
@@ -57,9 +49,7 @@ var (
 
 func TestGetString(t *testing.T) {
 	txn, err := mockDB.Begin()
-	if err != nil {
-		t.Errorf("db.Begin error %s", err)
-	}
+	assert.NoError(t, err)
 	NewString(txn, TestExistKey)
 	type args struct {
 		txn *Transaction
@@ -68,14 +58,11 @@ func TestGetString(t *testing.T) {
 	type want struct {
 		key *String
 		val []byte
-		err error
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    want
-		err     error
-		wantErr bool
+		name string
+		args args
+		want want
 	}{
 		{
 			name: "GetExistString",
@@ -89,10 +76,7 @@ func TestGetString(t *testing.T) {
 					txn: txn,
 				},
 				val: value,
-				err: nil,
 			},
-			err:     nil,
-			wantErr: false,
 		},
 		{
 			name: "GetNoExistString",
@@ -106,87 +90,56 @@ func TestGetString(t *testing.T) {
 					txn: txn,
 				},
 				val: nil,
-				err: nil,
 			},
-			err:     nil,
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				got, err := GetString(tt.args.txn, tt.args.key)
+				assert.NoError(t, err)
+				compareGetString(t, tt.want.key, got)
 			}
-			got, err := GetString(tt.args.txn, tt.args.key)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("GetString() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetString() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if err := compareGetString(tt.want.key, got); err != nil {
-				t.Errorf("GetString() = %v, want %v", got, tt.want)
-			}
-			if tt.want.err != tt.err {
-				t.Errorf("GetString() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-func TestString_Get(t *testing.T) {
-	setValue(t, TestExistKey, value)
-	tests := []struct {
-		name    string
-		key     []byte
-		value   []byte
-		want    []byte
-		wantErr bool
-	}{
-		{
-			name:    "TestString_GetExitKey",
-			key:     TestExistKey,
-			value:   value,
-			want:    value,
-			wantErr: false,
-		},
-		{
-			name:    "TestString_GetNoExitKey",
-			key:     TestNoExistKey,
-			value:   nil,
-			want:    nil,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
-			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.Set() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			got, err := s.Get()
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.Get() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("String.Get() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_Set(t *testing.T) {
+func TestStringGet(t *testing.T) {
+	setValue(t, TestExistKey, value)
+	tests := []struct {
+		name  string
+		key   []byte
+		value []byte
+		want  []byte
+	}{
+		{
+			name:  "TestString_GetExitKey",
+			key:   TestExistKey,
+			value: value,
+			want:  value,
+		},
+		{
+			name:  "TestString_GetNoExitKey",
+			key:   TestNoExistKey,
+			value: nil,
+			want:  nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				got, err := s.Get()
+				assert.Equal(t, got, tt.want)
+			}
+			MockTest(t, callFunc)
+		})
+	}
+}
+
+func TestStringSet(t *testing.T) {
 	var exp = []int64{int64(2 * time.Second)}
 	type args struct {
 		val    []byte
@@ -197,11 +150,10 @@ func TestString_Set(t *testing.T) {
 		err error
 	}
 	tests := []struct {
-		name    string
-		key     []byte
-		args    args
-		want    want
-		wantErr bool
+		name string
+		key  []byte
+		args args
+		want want
 	}{
 		{
 			name: "set no expire",
@@ -214,7 +166,6 @@ func TestString_Set(t *testing.T) {
 				val: value,
 				err: nil,
 			},
-			wantErr: false,
 		},
 		{
 			name: "set expire",
@@ -227,113 +178,73 @@ func TestString_Set(t *testing.T) {
 				val: nil,
 				err: ErrKeyNotFound,
 			},
-			wantErr: false,
 		},
 	}
-	var txn *Transaction
-	var err error
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if txn, err = mockDB.Begin(); err != nil {
-				t.Errorf("TestGetSet db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				err = s.Set(tt.args.val, tt.args.expire...)
+				assert.NoError(t, err)
 			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.Set() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			err = s.Set(tt.args.val, tt.args.expire...)
-			if err != nil {
-				t.Errorf("String_Set() error = %v", err)
-			}
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
+			MockTest(t, callFunc)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.Set() error = %v, wantErr %v", err, tt.wantErr)
-			}
 			if len(tt.args.expire) != 0 {
-				if txn, err = mockDB.Begin(); err != nil {
-					t.Errorf("TestGetSet db.Begin error %s", err)
+				callFunc = func(txn *Transaction) {
+					s, err := GetString(txn, tt.key)
+					assert.NoError(t, err)
+					val, err := s.Get()
+					assert.NoError(t, err)
+					assert.Equal(t, tt.args.val, val)
 				}
-				s, err = GetString(txn, tt.key)
-				if err != nil {
-					t.Errorf("String.Set() error = %v, wantErr %v", err, tt.wantErr)
-				}
-				if val, err := s.Get(); !bytes.Equal(val, tt.args.val) || err != nil {
-					t.Errorf("String.Get() key=%s error = %v,value = %v", string(tt.key), err, string(val))
-				}
-				if err = txn.Commit(context.TODO()); err != nil {
-					t.Errorf("Set() txn.Commit error = %v", err)
-					return
-				}
-
+				MockTest(t, callFunc)
 				time.Sleep(3 * time.Second)
 			}
-			if txn, err = mockDB.Begin(); err != nil {
-				t.Errorf("TestGetSet db.Begin error %s", err)
+			callFunc = func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				val, err := s.Get()
+				assert.Equal(t, tt.want.err, err)
+				assert.Equal(t, tt.want.val, val)
 			}
-			s, err = GetString(txn, tt.key)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if val, err := s.Get(); !bytes.Equal(val, tt.want.val) || err != tt.want.err {
-				t.Errorf("String.Get() key=%s error = %v,value = %v", string(tt.key), err, string(val))
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_Len(t *testing.T) {
+func TestStringLen(t *testing.T) {
 	setValue(t, TestExistKey, value)
 	tests := []struct {
-		name    string
-		key     []byte
-		want    int
-		wantErr bool
+		name string
+		key  []byte
+		want int
 	}{
 		{
-			name:    "TestString_Len",
-			key:     TestExistKey,
-			want:    11,
-			wantErr: false,
+			name: "TestString_Len",
+			key:  TestExistKey,
+			want: 11,
 		},
 		{
-			name:    "TestString_Len",
-			key:     TestNoExistKey,
-			want:    0,
-			wantErr: false,
+			name: "TestString_Len",
+			key:  TestNoExistKey,
+			want: 0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("TestGetSet db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				got, err := s.Len()
+				assert.Equal(t, tt.want, got)
 			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.GetString error = %v, wantErr %v", err, tt.wantErr)
-			}
-			got, err := s.Len()
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.Len() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("String.Len() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_Exist(t *testing.T) {
+func TestStringExist(t *testing.T) {
 	setValue(t, TestExistKey, value)
 	// write exist string
 	tests := []struct {
@@ -354,147 +265,105 @@ func TestString_Exist(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				got := s.Exist()
+				assert.Equal(t, tt.want, got)
 			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
-			}
-			got := s.Exist()
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-
-			if got != tt.want {
-				t.Errorf("String.Exist() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 
 }
 
-func TestString_Append(t *testing.T) {
+func TestStringAppend(t *testing.T) {
 	setValue(t, TestExistKey, value)
 	type args struct {
 		value []byte
 	}
 	tests := []struct {
-		name    string
-		args    args
-		key     []byte
-		want    int
-		wantErr bool
+		name string
+		args args
+		key  []byte
+		want int
 	}{
 		{
 			name: "TestString_AppendExistKey",
 			args: args{
 				value: value,
 			},
-			key:     TestExistKey,
-			want:    22,
-			wantErr: false,
+			key:  TestExistKey,
+			want: 22,
 		},
 		{
 			name: "TestString_AppendNoExistKey",
 			args: args{
 				value: value,
 			},
-			key:     TestNoExistKey,
-			want:    11,
-			wantErr: false,
+			key:  TestNoExistKey,
+			want: 11,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				got, err := s.Append(tt.args.value)
+				assert.Equal(t, tt.want, got)
 			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
-			}
-			got, err := s.Append(tt.args.value)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.Append() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("String.Append() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_GetSet(t *testing.T) {
+func TestStringGetSet(t *testing.T) {
 	setValue(t, []byte("GetSetExistKey"), value)
 	type args struct {
 		value []byte
 	}
 	tests := []struct {
-		name    string
-		args    args
-		key     []byte
-		want    []byte
-		wantErr bool
+		name string
+		args args
+		key  []byte
+		want []byte
 	}{
 		{
 			name: "GetSet_ExistKey",
 			args: args{
 				value: []byte("NewVlaue"),
 			},
-			key:     []byte("GetSetExistKey"),
-			want:    value,
-			wantErr: false,
+			key:  []byte("GetSetExistKey"),
+			want: value,
 		},
 		{
 			name: "GetSet_NoExistKey",
 			args: args{
 				value: []byte("NewVlaue"),
 			},
-			key:     []byte("GetSetNoExistKey"),
-			want:    nil,
-			wantErr: false,
+			key:  []byte("GetSetNoExistKey"),
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				got, err := s.GetSet(tt.args.value)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+				value, err := s.Get()
+				assert.NoError(t, err)
+				assert.Equal(t, value, []byte("NewVlaue"))
 			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
-			}
-			got, err := s.GetSet(tt.args.value)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.GetSet() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if string(got) != string(tt.want) {
-				t.Errorf("String.GetSet() = %v, want %v", got, tt.want)
-			}
-			value, err := s.Get()
-			if err != nil || string(value) != "NewVlaue" {
-				t.Error("get failed", err)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_GetRange(t *testing.T) {
+func TestStringGetRange(t *testing.T) {
 	type args struct {
 		start int
 		end   int
@@ -567,31 +436,20 @@ func TestString_GetRange(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, []byte("GetRangeExistKey"))
+				assert.NoError(t, err)
+				err = s.Set(value)
+				assert.NoError(t, err)
+				got := s.GetRange(tt.args.start, tt.args.end)
+				assert.Equal(t, tt.want, got)
 			}
-			s, err := GetString(txn, []byte("GetRangeExistKey"))
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
-			}
-			err = s.Set(value)
-			if err != nil {
-				t.Errorf("String.set() error = %v", err)
-			}
-			got := s.GetRange(tt.args.start, tt.args.end)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("String.GetRange() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_SetRange(t *testing.T) {
+func TestStringSetRange(t *testing.T) {
 	setValue(t, []byte("SetRangeExistKey"), value)
 	type args struct {
 		offset int64
@@ -599,11 +457,10 @@ func TestString_SetRange(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		key     []byte
-		want    []byte
-		wantErr bool
+		name string
+		args args
+		key  []byte
+		want []byte
 	}{
 		{
 			name: "SetRange_ExistKey",
@@ -611,9 +468,8 @@ func TestString_SetRange(t *testing.T) {
 				offset: 6,
 				value:  []byte("lllll"),
 			},
-			key:     []byte("SetRangeExistKey"),
-			want:    []byte("Stringlllll"),
-			wantErr: false,
+			key:  []byte("SetRangeExistKey"),
+			want: []byte("Stringlllll"),
 		},
 		{
 			name: "SetRange_NoExistKey",
@@ -621,131 +477,164 @@ func TestString_SetRange(t *testing.T) {
 				offset: 6,
 				value:  []byte("lllll"),
 			},
-			key:     []byte("SetRangeNoExistKey"),
-			want:    []byte("\x00\x00\x00\x00\x00\x00lllll"),
-			wantErr: false,
+			key:  []byte("SetRangeNoExistKey"),
+			want: []byte("\x00\x00\x00\x00\x00\x00lllll"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, tt.key)
+				assert.NoError(t, err)
+				got, err := s.SetRange(tt.args.offset, tt.args.value)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
-			s, err := GetString(txn, tt.key)
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
-			}
-
-			got, err := s.SetRange(tt.args.offset, tt.args.value)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.SetRange() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if string(got) != string(tt.want) {
-				t.Errorf("String.SetRange() = %v, want %v", string(got), string(tt.want))
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_Incr(t *testing.T) {
+func TestStringIncr(t *testing.T) {
 	type args struct {
 		delta int64
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    int64
-		wantErr bool
+		name string
+		args args
+		want int64
 	}{
 		{
 			name: "Incr",
 			args: args{
 				delta: 10,
 			},
-			want:    int64(20),
-			wantErr: false,
+			want: int64(20),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, value)
+				assert.NoError(t, err)
+				err = s.Set([]byte("10"))
+				assert.NoError(t, err)
+				got, err := s.Incr(tt.args.delta)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
-			s, err := GetString(txn, value)
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
-			}
-			err = s.Set([]byte("10"))
-			if err != nil {
-				t.Errorf("String.Set error = %v", err)
-			}
-			got, err := s.Incr(tt.args.delta)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.Incr() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("String.Incr() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
 		})
 	}
 }
 
-func TestString_Incrf(t *testing.T) {
+func TestStringIncrf(t *testing.T) {
 	type args struct {
 		delta float64
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    float64
-		wantErr bool
+		name string
+		args args
+		want float64
 	}{
 		{
 			name: "Incr",
 			args: args{
 				delta: float64(0.2),
 			},
-			want:    float64(10.3),
-			wantErr: false,
+			want: float64(10.3),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			txn, err := mockDB.Begin()
-			if err != nil {
-				t.Errorf("db.Begin error %s", err)
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, value)
+				assert.NoError(t, err)
+				err = s.Set([]byte("10.1"))
+				assert.NoError(t, err)
+				got, err := s.Incrf(tt.args.delta)
+				assert.NoError(t, err)
+				if got < tt.want-0.000000000000001 {
+					t.Errorf("String.Incrf() = %v, want %v", got, tt.want)
+				}
 			}
-			s, err := GetString(txn, value)
-			if err != nil {
-				t.Errorf("String.GetString error = %v", err)
+			MockTest(t, callFunc)
+		})
+	}
+}
+
+func TestStringSetBit(t *testing.T) {
+	type args struct {
+		on  int
+		off int
+	}
+	type want struct {
+		retval int
+		value  []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "one",
+			args: args{
+				on:  1,
+				off: 1,
+			},
+			want: want{
+				retval: 0,
+				value:  []byte{0x40},
+			},
+		},
+		{
+			name: "two",
+			args: args{
+				on:  5,
+				off: 1,
+			},
+			want: want{
+				retval: 0,
+				value:  []byte{0x44},
+			},
+		},
+		{
+			name: "three",
+			args: args{
+				on:  5,
+				off: 0,
+			},
+			want: want{
+				retval: 0x4,
+				value:  []byte{0x40},
+			},
+		},
+		{
+			name: "four",
+			args: args{
+				on:  12,
+				off: 1,
+			},
+			want: want{
+				retval: 0,
+				value:  []byte{0x40, 0x08},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key := []byte("set-bit")
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, key)
+				assert.NoError(t, err)
+				want, err := s.SetBit(tt.args.off, tt.args.on)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want.retval, want)
 			}
-			err = s.Set([]byte("10.1"))
-			if err != nil {
-				t.Errorf("String.Set error = %v", err)
-			}
-			got, err := s.Incrf(tt.args.delta)
-			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("Set() txn.Commit error = %v", err)
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("String.Incrf() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got < tt.want-0.000000000000001 {
-				t.Errorf("String.Incrf() = %v, want %v", got, tt.want)
-			}
+			MockTest(t, callFunc)
+			getValue(t, key, tt.want.value)
 		})
 	}
 }

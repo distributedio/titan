@@ -497,11 +497,55 @@ func TestStringAppend(t *testing.T) {
 	args[0] = "Append"
 	args[1] = "Ap"
 
-	ctx := ContextTest("append", args...)
-	Call(ctx)
-	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(len(args[1])))
+	out := CallTest("append", args...)
+	assert.Contains(t, out.String(), strconv.Itoa(len(args[1])))
 
-	ctx = ContextTest("append", args...)
-	Call(ctx)
-	assert.Contains(t, ctxString(ctx.Out), strconv.Itoa(len(args[1])*2))
+	out = CallTest("append", args...)
+	assert.Contains(t, out.String(), strconv.Itoa(len(args[1])*2))
+}
+
+func TestStringSetBit(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "1",
+			args: []string{"setbit", "1", "0", "0"},
+			want: "-ERR wrong number of arguments for 'setbit' command",
+		},
+		{
+			name: "2",
+			args: []string{"setbit", "x", "0"},
+			want: ErrBitOffset.Error(),
+		},
+		{
+			name: "3",
+			args: []string{"setbit", "1", "x"},
+			want: ErrBitInteger.Error(),
+		},
+		{
+			name: "4",
+			args: []string{"setbit", "1", "2"},
+			want: ErrBitInteger.Error(),
+		},
+		{
+			name: "5",
+			args: []string{"setbit", "1", "1"},
+			want: ":0",
+		},
+		{
+			name: "6",
+			args: []string{"setbit", "1", "0"},
+			want: ":1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := CallTest("setbit", tt.args...)
+			assert.Contains(t, out.String(), tt.want)
+		})
+	}
 }

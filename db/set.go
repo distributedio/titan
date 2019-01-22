@@ -120,7 +120,6 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 		ikeys[i] = setItemKey(dkey, ms[i])
 	}
 	// {Namespace}:{DBID}:{D}:{ObjectID}:{ms[i]}
-
 	values, err := BatchGetValues(set.txn, ikeys)
 
 	if err != nil {
@@ -135,7 +134,6 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 			return 0, err
 		}
 	}
-	//fmt.Println("db sadd ", added)
 	set.meta.Len += added
 	if err := set.updateMeta(); err != nil {
 		return 0, err
@@ -148,7 +146,6 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 func RemoveRepByMap(members [][]byte) [][]byte {
 	result := [][]byte{}
 	// tempMap saves non-repeating primary keys
-	//tempMap := make(map[string]int)
 	tempMap := map[string]int{}
 	for _, m := range members {
 		l := len(tempMap)
@@ -260,7 +257,6 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 		set.meta.Len -= count
 	} else {
 		set.meta.Len = 0
-
 	}
 	if err := set.updateMeta(); err != nil {
 		return nil, err
@@ -269,7 +265,7 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 	return ms, nil
 }
 
-//SRem removes the specified members from the set stored at key.
+// SRem removes the specified members from the set stored at key.
 func (set *Set) SRem(members [][]byte) (int64, error) {
 	var num int64
 	if !set.Exists() {
@@ -306,4 +302,52 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 		return 0, err
 	}
 	return num, nil
+}
+
+// SMove movies member from the set at source to the set at destination.
+func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
+	//如果源集不存在或不包含指定的元素，则不执行任何操作并返回0。否则，元素将从源集中删除并添加到目标集中。当目标集中已经存在指定的元素时，只从源集中删除该元素。
+	//如果源或目标不保存设定值，则返回错误
+	if !set.Exists() {
+		return 0, nil
+	}
+
+	destset, _ := GetSet(set.txn, destination)
+	res, err := destset.SIsmember(member)
+	if err != nil {
+		return 0, err
+	}
+
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+	ikey := setItemKey(dkey, member)
+	count := set.meta.Len
+
+	iter, err := set.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer iter.Close()
+	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
+		if bytes.Equal(iter.Key(), ikey) {
+			if res != 1 {
+				if _, err := destset.SAdd([][]byte{member}); err != nil {
+					return 0, err
+				}
+			}
+			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+				return 0, err
+			}
+			return 1, nil
+		}
+		if err := iter.Next(); err != nil {
+			return 0, err
+		}
+		count--
+	}
+	set.meta.Len -= 1
+	if err := set.updateMeta(); err != nil {
+		return 0, err
+	}
+	return 0, nil
 }

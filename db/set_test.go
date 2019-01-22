@@ -316,151 +316,6 @@ func TestSet_SMembers(t *testing.T) {
 	}
 }
 
-func TestDecodeSetMeta(t *testing.T) {
-	type args struct {
-		b []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *SetMeta
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := DecodeSetMeta(tt.args.b)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DecodeSetMeta() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DecodeSetMeta() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestEncodeSetMeta(t *testing.T) {
-	type args struct {
-		meta *SetMeta
-	}
-	tests := []struct {
-		name string
-		args args
-		want []byte
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := EncodeSetMeta(tt.args.meta); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("EncodeSetMeta() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_setItemKey(t *testing.T) {
-	type args struct {
-		key    []byte
-		member []byte
-	}
-	tests := []struct {
-		name string
-		args args
-		want []byte
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := setItemKey(tt.args.key, tt.args.member); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("setItemKey() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSet_updateMeta(t *testing.T) {
-	type fields struct {
-		meta   *SetMeta
-		key    []byte
-		exists bool
-		txn    *Transaction
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			set := &Set{
-				meta:   tt.fields.meta,
-				key:    tt.fields.key,
-				exists: tt.fields.exists,
-				txn:    tt.fields.txn,
-			}
-			if err := set.updateMeta(); (err != nil) != tt.wantErr {
-				t.Errorf("Set.updateMeta() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_removeRepByMap(t *testing.T) {
-	type args struct {
-		members [][]byte
-	}
-	tests := []struct {
-		name string
-		args args
-		want [][]byte
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := RemoveRepByMap(tt.args.members); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("removeRepByMap() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSet_Exists(t *testing.T) {
-	type fields struct {
-		meta   *SetMeta
-		key    []byte
-		exists bool
-		txn    *Transaction
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			set := &Set{
-				meta:   tt.fields.meta,
-				key:    tt.fields.key,
-				exists: tt.fields.exists,
-				txn:    tt.fields.txn,
-			}
-			if got := set.Exists(); got != tt.want {
-				t.Errorf("Set.Exists() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestSet_SCard(t *testing.T) {
 	var testSetSCardKey = []byte("SCardKey")
 	testAddData(t, testSetSCardKey, [][]byte{[]byte("ExistsValue1")})
@@ -611,7 +466,7 @@ func TestSet_SPop(t *testing.T) {
 	}
 }
 
-func TestSRem(t *testing.T) {
+func TestSet_SRem(t *testing.T) {
 	var testSRemKey = []byte("testSRemKey")
 	testAddData(t, testSRemKey, [][]byte{[]byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5")})
 	type args struct {
@@ -656,6 +511,114 @@ func TestSRem(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 
+			if err = txn.Commit(context.TODO()); err != nil {
+				t.Errorf("SIsmember() txn.Commit error = %v", err)
+				return
+			}
+			assert.Equal(t, got, tt.want)
+		})
+	}
+}
+
+func TestRemoveRepByMap(t *testing.T) {
+	type args struct {
+		members [][]byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want [][]byte
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RemoveRepByMap(tt.args.members); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RemoveRepByMap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSet_SMove(t *testing.T) {
+	var testSMoveSouceKey = []byte("testSMoveSouceKey")
+	var testSMoveDestinationKey = []byte("testSMoveDestinationKey")
+	testAddData(t, testSMoveSouceKey, [][]byte{[]byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5")})
+	testAddData(t, testSMoveDestinationKey, [][]byte{[]byte("3"), []byte("4"), []byte("5")})
+	m1 := []byte("1")
+	m2 := []byte("6")
+	m3 := []byte("3")
+	type args struct {
+		destination []byte
+		member      []byte
+	}
+	tests := []struct {
+		name string
+		key  []byte
+		args args
+		m    []byte
+		mres int64
+		want int64
+	}{
+		{
+			name: "TestSet_SMove1",
+			key:  testSMoveSouceKey,
+			args: args{
+				destination: testSMoveDestinationKey,
+				member:      m1,
+			},
+			m:    m1,
+			mres: int64(1),
+			want: 1,
+		},
+		{
+			name: "TestSet_SMove2",
+			key:  testSMoveSouceKey,
+			args: args{
+				destination: testSMoveDestinationKey,
+				member:      m2,
+			},
+			m:    m2,
+			mres: int64(0),
+			want: 0,
+		},
+		{
+			name: "TestSet_SMove3",
+			key:  testSMoveSouceKey,
+			args: args{
+				destination: testSMoveDestinationKey,
+				member:      m3,
+			},
+			m:    m3,
+			mres: int64(1),
+			want: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			txn, err := mockDB.Begin()
+			assert.NotNil(t, txn)
+			assert.NoError(t, err)
+
+			set, err := GetSet(txn, tt.key)
+			assert.NoError(t, err)
+			assert.NotNil(t, set)
+
+			got, err := set.SMove(tt.args.destination, tt.args.member)
+			assert.NoError(t, err)
+			assert.NotNil(t, got)
+
+			got, err = set.SIsmember(tt.m)
+			assert.NoError(t, err)
+			assert.Equal(t, got, int64(0))
+
+			destset, err := GetSet(txn, tt.args.destination)
+			assert.NoError(t, err)
+			assert.NotNil(t, destset)
+
+			got, err = destset.SIsmember(tt.m)
+			assert.NoError(t, err)
+			assert.Equal(t, got, tt.mres)
 			if err = txn.Commit(context.TODO()); err != nil {
 				t.Errorf("SIsmember() txn.Commit error = %v", err)
 				return

@@ -89,6 +89,7 @@ func init() {
 		"suion":     SUion,
 		"sinter":    SInter,
 		"sdiff":     SDiff,
+		"smove":     SMove,
 	}
 
 	// commands contains all commands that open to clients
@@ -194,5 +195,6 @@ func init() {
 		"suion":     Desc{Proc: AutoCommit(SUion), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
 		"sinter":    Desc{Proc: AutoCommit(SInter), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
 		"sdiff":     Desc{Proc: AutoCommit(SDiff), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		"smove":     Desc{Proc: AutoCommit(SMove), Cons: Constraint{4, flags("wF"), 1, 2, 1}},
 	}
 }

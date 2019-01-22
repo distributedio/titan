@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -102,6 +101,23 @@ func SRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 	count, err := set.SRem(members)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(count)), nil
+}
+
+func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	var member []byte
+	key := []byte(ctx.Args[0])
+	destkey := []byte(ctx.Args[1])
+	member = []byte(ctx.Args[2])
+
+	set, err := txn.Set(key)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	count, err := set.SMove(destkey, member)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -224,12 +240,7 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
-		fmt.Println("members1:", members)
-		fmt.Println("ms:", ms)
 		members = sliceDiff(members, ms)
-
-		fmt.Println("members2:", members)
-
 	}
 	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
 }

@@ -306,8 +306,6 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 
 // SMove movies member from the set at source to the set at destination.
 func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
-	//如果源集不存在或不包含指定的元素，则不执行任何操作并返回0。否则，元素将从源集中删除并添加到目标集中。当目标集中已经存在指定的元素时，只从源集中删除该元素。
-	//如果源或目标不保存设定值，则返回错误
 	if !set.Exists() {
 		return 0, nil
 	}
@@ -317,7 +315,6 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
 	ikey := setItemKey(dkey, member)

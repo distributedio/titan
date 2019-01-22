@@ -545,7 +545,7 @@ func TestSet_SMove(t *testing.T) {
 	var testSMoveDestinationKey = []byte("testSMoveDestinationKey")
 	testAddData(t, testSMoveSouceKey, [][]byte{[]byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5")})
 	testAddData(t, testSMoveDestinationKey, [][]byte{[]byte("3"), []byte("4"), []byte("5")})
-	m1 := []byte("1")
+	m1 := []byte("2")
 	m2 := []byte("6")
 	m3 := []byte("3")
 	type args struct {
@@ -556,7 +556,6 @@ func TestSet_SMove(t *testing.T) {
 		name string
 		key  []byte
 		args args
-		m    []byte
 		mres int64
 		want int64
 	}{
@@ -567,7 +566,6 @@ func TestSet_SMove(t *testing.T) {
 				destination: testSMoveDestinationKey,
 				member:      m1,
 			},
-			m:    m1,
 			mres: int64(1),
 			want: 1,
 		},
@@ -578,7 +576,6 @@ func TestSet_SMove(t *testing.T) {
 				destination: testSMoveDestinationKey,
 				member:      m2,
 			},
-			m:    m2,
 			mres: int64(0),
 			want: 0,
 		},
@@ -589,7 +586,6 @@ func TestSet_SMove(t *testing.T) {
 				destination: testSMoveDestinationKey,
 				member:      m3,
 			},
-			m:    m3,
 			mres: int64(1),
 			want: 1,
 		},
@@ -604,26 +600,27 @@ func TestSet_SMove(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, set)
 
-			got, err := set.SMove(tt.args.destination, tt.args.member)
-			assert.NoError(t, err)
-			assert.NotNil(t, got)
-
-			got, err = set.SIsmember(tt.m)
-			assert.NoError(t, err)
-			assert.Equal(t, got, int64(0))
-
 			destset, err := GetSet(txn, tt.args.destination)
 			assert.NoError(t, err)
 			assert.NotNil(t, destset)
 
-			got, err = destset.SIsmember(tt.m)
+			got, err := set.SMove(tt.args.destination, tt.args.member)
 			assert.NoError(t, err)
-			assert.Equal(t, got, tt.mres)
+			assert.NotNil(t, got)
 			if err = txn.Commit(context.TODO()); err != nil {
 				t.Errorf("SIsmember() txn.Commit error = %v", err)
 				return
 			}
+			iss, err := set.SIsmember(tt.args.member)
+			assert.NoError(t, err)
+			assert.Equal(t, iss, int64(0))
+
+			isdest, err := destset.SIsmember(tt.args.member)
+			assert.NoError(t, err)
+			assert.Equal(t, isdest, tt.mres)
+
 			assert.Equal(t, got, tt.want)
+
 		})
 	}
 }

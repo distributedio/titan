@@ -243,10 +243,16 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 	if count == 0 {
 		if iter.Valid() && iter.Key().HasPrefix(prefix) {
 			ms = append(ms, iter.Key()[len(prefix):])
+			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
 			ms = append(ms, iter.Key()[len(prefix):])
+			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+				return nil, err
+			}
 			if err := iter.Next(); err != nil {
 				return nil, err
 			}

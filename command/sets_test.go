@@ -174,6 +174,8 @@ func TestSPop(t *testing.T) {
 	assert.Equal(t, "4", lines[2])
 	assert.Equal(t, "$1", lines[3])
 	assert.Equal(t, "5", lines[4])
+
+	clearSets(t, key)
 }
 func TestSRem(t *testing.T) {
 

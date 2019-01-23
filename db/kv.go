@@ -21,7 +21,7 @@ func GetKv(txn *Transaction) *Kv {
 func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
 	mkey := MetaKey(kv.txn.db, start)
 	prefix := MetaKey(kv.txn.db, nil)
-	iter, err := kv.txn.t.Seek(mkey)
+	iter, err := kv.txn.t.Iter(mkey, nil)
 	if err != nil {
 		return err
 	}
@@ -78,8 +78,16 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 			if IsExpired(obj, now) {
 				continue
 			}
-			if err := kv.txn.Destory(obj, mapping[k]); err != nil {
-				continue
+			if obj.Type == ObjectHash {
+				hash, err := kv.txn.Hash(mapping[k])
+				if err != nil {
+					return count, err
+				}
+				if err := hash.Destroy(); err != nil {
+					return count, err
+				}
+			} else if err := kv.txn.Destory(obj, mapping[k]); err != nil {
+				return count, err
 			}
 			count++
 		}
@@ -156,7 +164,7 @@ func (kv *Kv) FlushDB() error {
 	prefix := kv.txn.db.Prefix()
 	txn := kv.txn.t
 
-	iter, err := txn.Seek(prefix)
+	iter, err := txn.Iter(prefix, nil)
 	if err != nil {
 		return err
 	}
@@ -176,7 +184,7 @@ func (kv *Kv) FlushAll() error {
 	prefix := []byte(kv.txn.db.Namespace + ":")
 	txn := kv.txn.t
 
-	iter, err := txn.Seek(prefix)
+	iter, err := txn.Iter(prefix, nil)
 	if err != nil {
 		return err
 	}
@@ -203,8 +211,8 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 	mkey := MetaKey(kv.txn.db, buf)
 	prefix := MetaKey(kv.txn.db, nil)
 
-	// Seek >= mkey
-	iter, err := kv.txn.t.Seek(mkey)
+	// Iter >= mkey
+	iter, err := kv.txn.t.Iter(mkey, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +222,7 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 	}
 	first := make([]byte, len(prefix)+1)
 	copy(first, prefix)
-	iter, err = kv.txn.t.Seek(first)
+	iter, err = kv.txn.t.Iter(first, nil)
 	if err != nil {
 		return nil, err
 	}

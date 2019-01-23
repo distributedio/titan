@@ -21,15 +21,35 @@ auth = ""
 #default:     1000
 #max-connection = 1000
 
-[server.tikv]
+
+[status]
 
 #type:        string
 #rules:       nonempty
+#description: listen address of http server
+#default:     0.0.0.0:7345
+#listen = "0.0.0.0:7345"
+
+
+[tikv]
+
+#type:        string
 #description: pd address in tidb
 #required
 pd-addrs = ""
 
-[server.tikv.zt]
+[tikv.db]
+
+[tikv.db.hash]
+
+#type:        int64
+#rules:       numeric
+#description: hashes slot key count
+#default:     0
+#meta-slot = 0
+
+
+[tikv.zt]
 
 #type:        int
 #rules:       numeric
@@ -55,13 +75,27 @@ pd-addrs = ""
 #interval = "1s"
 
 
-[status]
+[tikv.tikv-gc]
 
-#type:        string
-#rules:       nonempty
-#description: listen address of http server
-#default:     0.0.0.0:7345
-#listen = "0.0.0.0:7345"
+#type:        time.Duration
+#description: gc work tick interval
+#default:     20m
+#interval = "20m0s"
+
+#type:        time.Duration
+#description: lease flush leader interval
+#default:     30m
+#leader-life-time = "30m0s"
+
+#type:        time.Duration
+#description: safe point life time
+#default:     10m
+#safe-point-life-time = "10m0s"
+
+#type:        int
+#description: gc work concurrency
+#default:     2
+#concurrency = 2
 
 
 [tikv-logger]
@@ -104,7 +138,7 @@ pd-addrs = ""
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-#level = "debug"
+#level = "info"
 
 #type:        bool
 #rules:       boolean
@@ -116,3 +150,4 @@ pd-addrs = ""
 #description: log time rotate pattern(s m h D M W)
 #default:     0 0 0 * * *
 #time-rotate = "0 0 0 * * *"
+

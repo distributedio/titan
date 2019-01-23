@@ -31,6 +31,18 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 
 [Roadmap](docs/roadmap.md)
 
+## Can't wait to experiment Titan?
+
+```
+curl -s -O https://raw.githubusercontent.com/meitu/titan/master/docker-compose.yml
+docker-compose up
+
+# Then connect to titan use redis-cli
+redis-cli -p 7369
+
+# Enjoy!
+```
+
 ## Installing
 
 [Deploy Titan](docs/ops/deploy.md)
@@ -144,21 +156,21 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 - [ ] brpoplpush
 
 ### Hashes
-- [ ] hset
-- [ ] hget
-- [ ] hgetall
-- [ ] hdel
-- [ ] hexists
-- [ ] hincrby
-- [ ] hincrbyfloat
-- [ ] hkeys
-- [ ] hlen
-- [ ] hmget
-- [ ] hmset
-- [ ] hscan
-- [ ] hsetnx
-- [ ] hstrlen
-- [ ] hvals
+- [x] hset
+- [x] hget
+- [x] hgetall
+- [x] hdel
+- [x] hexists
+- [x] hincrby
+- [x] hincrbyfloat
+- [x] hkeys
+- [x] hlen
+- [x] hmget
+- [x] hmset
+- [x] hscan
+- [x] hsetnx
+- [x] hstrlen
+- [x] hvals
 
 ### Sets
 

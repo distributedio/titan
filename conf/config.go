@@ -6,14 +6,22 @@ import "time"
 type Titan struct {
 	Server      Server     `cfg:"server"`
 	Status      Status     `cfg:"status"`
+	Tikv        Tikv       `cfg:"tikv"`
 	TikvLog     TikvLogger `cfg:"tikv-logger"`
 	Logger      Logger     `cfg:"logger"`
 	PIDFileName string     `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
 }
 
+type DB struct {
+	Hash Hash `cfg:"hash"`
+}
+
+type Hash struct {
+	MetaSlot int64 `cfg:"meta-slot;0;numeric;hashes slot key count"`
+}
+
 //Server config is the config of titan server
 type Server struct {
-	Tikv          Tikv   `cfg:"tikv"`
 	Auth          string `cfg:"auth;;;client connetion auth"`
 	Listen        string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
 	MaxConnection int64  `cfg:"max-connection;1000;numeric;client connection count"`
@@ -22,7 +30,16 @@ type Server struct {
 //Tikv config is the config of tikv sdk
 type Tikv struct {
 	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
+	DB      DB     `cfg:"db"`
 	ZT      ZT     `cfg:"zt"`
+	TikvGC  TikvGC `cfg:"tikv-gc"`
+}
+
+type TikvGC struct {
+	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
+	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
+	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
+	Concurrency       int           `cfg:"concurrency;2;;gc work concurrency"`
 }
 
 //ZT config is the config of zlist

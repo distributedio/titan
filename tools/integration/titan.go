@@ -19,9 +19,9 @@ var (
 		Listen:        ServerAddr,
 		MaxConnection: 10000,
 		Auth:          "",
-		Tikv: conf.Tikv{
-			PdAddrs: "mocktikv://",
-		},
+	}
+	tikvConf = conf.Tikv{
+		PdAddrs: "mocktikv://",
 	}
 
 	//ServerAddr default server addr
@@ -41,7 +41,7 @@ func SetAuth(auth string) {
 func Start() {
 	zap.ReplaceGlobals(zap.NewNop())
 	var err error
-	store, err := db.Open(&cfg.Tikv)
+	store, err := db.Open(&tikvConf)
 	if err != nil {
 		log.Fatalln(err)
 	}

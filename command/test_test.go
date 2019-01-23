@@ -13,6 +13,7 @@ import (
 
 var cfg = &conf.Tikv{
 	PdAddrs: store.MockAddr,
+	DB:      conf.DB{},
 }
 var mockdb *db.RedisStore
 

@@ -96,8 +96,7 @@ func (c *client) serve(conn net.Conn) error {
 			Out:     c,
 			TraceID: GenerateTraceID(),
 		}
-		innerCtx, cancel := context.WithCancel(rootCtx)
-		ctx.Context = innerCtx
+		ctx.Context = rootCtx
 
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
@@ -113,7 +112,6 @@ func (c *client) serve(conn net.Conn) error {
 				zap.String("command", ctx.Name))
 		}
 		c.exec.Execute(ctx)
-		cancel()
 	}
 }
 

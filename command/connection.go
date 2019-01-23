@@ -20,8 +20,8 @@ func Auth(ctx *Context) {
 	namespace, err := Verify(token, serverauth)
 	if err != nil {
 		resp.ReplyError(ctx.Out, "ERR invalid password")
+		return
 	}
-	ctx.Client.Authenticated = true
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(ctx.Client.Namespace).Dec()
 	metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(string(namespace)).Inc()
 	ctx.Client.Namespace = string(namespace)

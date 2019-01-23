@@ -440,7 +440,7 @@ func TestSet_SPop(t *testing.T) {
 			args: args{
 				count: 6,
 			},
-			wantMembersCount: 5,
+			wantMembersCount: 2,
 		},
 	}
 	for _, tt := range tests {

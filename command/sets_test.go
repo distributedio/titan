@@ -130,7 +130,50 @@ func TestSIsmember(t *testing.T) {
 	clearSets(t, key)
 }
 func TestSPop(t *testing.T) {
+	key := "set-spop"
 
+	ctx := ContextTest("sadd", key, "1", "2", "3", "4", "5")
+	Call(ctx)
+
+	//case 1
+	ctx = ContextTest("spop", key)
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "*1", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "1", lines[2])
+
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*4", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+	assert.Equal(t, "$1", lines[5])
+	assert.Equal(t, "4", lines[6])
+	assert.Equal(t, "$1", lines[7])
+	assert.Equal(t, "5", lines[8])
+
+	//case 2
+	ctx = ContextTest("spop", key, "2")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "2", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "3", lines[4])
+
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "4", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "5", lines[4])
 }
 func TestSRem(t *testing.T) {
 

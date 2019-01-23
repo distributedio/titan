@@ -187,7 +187,7 @@ func init() {
 		"smembers":  Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
 		"scard":     Desc{Proc: AutoCommit(SCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"sismember": Desc{Proc: AutoCommit(SIsmember), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
-		"spop":      Desc{Proc: AutoCommit(SPop), Cons: Constraint{-2, flags("wrF"), 1, 1, 1}},
+		"spop":      Desc{Proc: AutoCommit(SPop), Cons: Constraint{-2, flags("wRF"), 1, 1, 1}},
 		"srem":      Desc{Proc: AutoCommit(SRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
 		"suion":     Desc{Proc: AutoCommit(SUion), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
 		"sinter":    Desc{Proc: AutoCommit(SInter), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},

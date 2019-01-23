@@ -72,9 +72,10 @@ func SIsmember(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var count int = 0
 	var err error
+	var members [][]byte
 	key := []byte(ctx.Args[0])
 
-	if []byte(ctx.Args[1]) != nil {
+	if len(ctx.Args) == 2 {
 		count, err = strconv.Atoi(ctx.Args[1])
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
@@ -84,7 +85,7 @@ func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	members, err := set.SPop(int64(count))
+	members, err = set.SPop(int64(count))
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}

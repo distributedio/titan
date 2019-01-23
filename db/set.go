@@ -273,7 +273,7 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 	return ms, nil
 }
 
-// SRem removes the specified members from the set stored at key.
+// SRem removes the specified members from the set stored at key
 func (set *Set) SRem(members [][]byte) (int64, error) {
 	var num int64
 	if !set.Exists() {
@@ -312,7 +312,7 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 	return num, nil
 }
 
-// SMove movies member from the set at source to the set at destination.
+// SMove movies member from the set at source to the set at destination
 func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 
 	if !set.Exists() {
@@ -334,7 +334,7 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 		if _, err := destset.SAdd([][]byte{member}); err != nil {
 			return 0, err
 		}
-		destset.meta.Len += 1
+		destset.meta.Len++
 		if err := destset.updateMeta(); err != nil {
 			return 0, err
 		}
@@ -353,7 +353,7 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
 				return 0, err
 			}
-			set.meta.Len -= 1
+			set.meta.Len--
 			if err := set.updateMeta(); err != nil {
 				return 0, err
 			}

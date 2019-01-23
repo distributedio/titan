@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	defaultHashMetaSlot int64 = 0
+	defaultHashMetaSlot int64
 )
 
 //Slot slot information about hash meta
@@ -164,6 +164,7 @@ func (hash *Hash) getSlotID(limit int64) int64 {
 	return rand.Int63n(limit)
 }
 
+// MetaSlotEnabled determinies whether MetaSlot is 0
 func (hash *Hash) MetaSlotEnabled() bool {
 	if hash.meta.MetaSlot != 0 {
 		return true

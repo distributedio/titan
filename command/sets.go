@@ -42,6 +42,8 @@ func SMembers(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return BytesArray(ctx.Out, members), nil
 }
+
+// SCard returns the set cardinality (number of elements) of the set stored at key
 func SCard(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 
@@ -55,6 +57,8 @@ func SCard(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return Integer(ctx.Out, int64(count)), nil
 }
+
+// SIsmember returns if member is a member of the set stored at key
 func SIsmember(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	member := []byte(ctx.Args[1])
@@ -69,8 +73,10 @@ func SIsmember(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(count)), nil
 
 }
+
+// SPop removes and returns one or more random elements from the set value store at key
 func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var count int = 0
+	var count int
 	var err error
 	var members [][]byte
 	key := []byte(ctx.Args[0])
@@ -91,6 +97,8 @@ func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return BytesArray(ctx.Out, members), nil
 }
+
+// SRem removes the specified members from the set stored at key
 func SRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
 	key := []byte(ctx.Args[0])
@@ -108,6 +116,7 @@ func SRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(count)), nil
 }
 
+// SMove movies member from the set at source to the set at destination
 func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var member []byte
 	key := []byte(ctx.Args[0])

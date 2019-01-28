@@ -12,9 +12,9 @@ import (
 func SAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 
-	var members [][]byte
-	for _, member := range ctx.Args[1:] {
-		members = append(members, []byte(member))
+	members := make([][]byte, len(ctx.Args[1:]))
+	for i, member := range ctx.Args[1:] {
+		members[i] = []byte(member)
 	}
 	set, err := txn.Set(key)
 	if err != nil {
@@ -79,6 +79,7 @@ func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var count int
 	var err error
 	var members [][]byte
+	var set *db.Set
 	key := []byte(ctx.Args[0])
 
 	if len(ctx.Args) == 2 {
@@ -87,7 +88,7 @@ func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			return nil, errors.New("ERR " + err.Error())
 		}
 	}
-	set, err := txn.Set(key)
+	set, err = txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -118,7 +119,7 @@ func SRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // SMove movies member from the set at source to the set at destination
 func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var member []byte
+	member := make([]byte, 0, len(ctx.Args[2]))
 	key := []byte(ctx.Args[0])
 	destkey := []byte(ctx.Args[1])
 	member = []byte(ctx.Args[2])
@@ -137,9 +138,9 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SUion returns the members of the set resulting from the union of all the given sets.
 func SUion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var keys [][]byte
-	for _, key := range ctx.Args {
-		keys = append(keys, []byte(key))
+	keys := make([][]byte, len(ctx.Args))
+	for i, key := range ctx.Args {
+		keys[i] = []byte(key)
 	}
 
 	for i := range keys {
@@ -166,10 +167,13 @@ func SUion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // SInter returns the members of the set resulting from the intersection of all the given sets.
 func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var keys [][]byte
 	var members [][]byte
-
+	keys := make([][]byte, len(ctx.Args[1:]))
 	key := []byte(ctx.Args[0])
+
+	for i, key := range ctx.Args[1:] {
+		keys[i] = []byte(key)
+	}
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -185,9 +189,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	for _, key := range ctx.Args[1:] {
-		keys = append(keys, []byte(key))
-	}
+
 	for i := range keys {
 		set, err := txn.Set(keys[i])
 		if err != nil {
@@ -206,7 +208,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		members = sliceInter(members, ms)
 
 	}
-	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
+	return BytesArray(ctx.Out, members), nil
 }
 
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
@@ -252,7 +254,7 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		members = sliceDiff(members, ms)
 	}
-	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
+	return BytesArray(ctx.Out, members), nil
 }
 
 // InSliceInter checks given interface in interface slice.

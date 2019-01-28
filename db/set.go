@@ -84,7 +84,7 @@ func DecodeSetMeta(b []byte) (*SetMeta, error) {
 }
 
 //EncodeSetMeta encodes meta data into byte slice
-func EncodeSetMeta(meta *SetMeta) []byte {
+func encodeSetMeta(meta *SetMeta) []byte {
 	b := EncodeObject(&meta.Object)
 	m := make([]byte, 8)
 	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
@@ -98,7 +98,7 @@ func setItemKey(key []byte, member []byte) []byte {
 	return ikeys
 }
 func (set *Set) updateMeta() error {
-	meta := EncodeSetMeta(set.meta)
+	meta := encodeSetMeta(set.meta)
 	err := set.txn.t.Set(MetaKey(set.txn.db, set.key), meta)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (set *Set) updateMeta() error {
 }
 
 // SAdd adds the specified members to the set stored at key
-func (set *Set) SAdd(members [][]byte) (int64, error) {
+func (set *Set) SAdd(members ...[]byte) (int64, error) {
 	// Namespace:DBID:D:ObjectID
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	// Remove the duplicate
@@ -331,7 +331,7 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 		return 0, err
 	}
 	if res == 0 {
-		if _, err := destset.SAdd([][]byte{member}); err != nil {
+		if _, err := destset.SAdd(member); err != nil {
 			return 0, err
 		}
 		destset.meta.Len++

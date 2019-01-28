@@ -29,7 +29,7 @@ func compareSet(want, got *Set) error {
 	return nil
 }
 
-func testAddData(t *testing.T, key []byte, values [][]byte) {
+func testAddData(t *testing.T, key []byte, values ...[]byte) {
 	var txn *Transaction
 	var err error
 	var set *Set
@@ -39,7 +39,7 @@ func testAddData(t *testing.T, key []byte, values [][]byte) {
 	if set, err = GetSet(txn, key); err != nil {
 		t.Errorf("Set.SAdd() error = %v", err)
 	}
-	_, err = set.SAdd(values)
+	_, err = set.SAdd(values...)
 	if err != nil {
 		t.Errorf("Set.SAdd() error = %v", err)
 		return
@@ -57,7 +57,7 @@ func setSetMeta(t *testing.T, txn *Transaction, key []byte) error {
 		Object: h.meta.Object,
 		Len:    1,
 	}
-	meta := EncodeSetMeta(sm)
+	meta := encodeSetMeta(sm)
 	err := txn.t.Set(mkey, meta)
 	assert.NoError(t, err)
 	assert.NotNil(t, txn)
@@ -254,7 +254,7 @@ func TestSet_SAdd(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, set)
 
-			got, err := set.SAdd(tt.members)
+			got, err := set.SAdd(tt.members...)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 
@@ -269,8 +269,8 @@ func TestSet_SMembers(t *testing.T) {
 	var testSetSMembersKeyEmpty = []byte("set_key_empty")
 	var testSetSMembersKeyOne = []byte("set_key_one")
 	var testSetSMembersKeyTwo = []byte("set_key_two")
-	testAddData(t, testSetSMembersKeyOne, [][]byte{[]byte("value1")})
-	testAddData(t, testSetSMembersKeyTwo, [][]byte{[]byte("value1"), []byte("value2")})
+	testAddData(t, testSetSMembersKeyOne, []byte("value1"))
+	testAddData(t, testSetSMembersKeyTwo, []byte("value1"), []byte("value2"))
 	tests := []struct {
 		name string
 		key  []byte
@@ -318,8 +318,8 @@ func TestSet_SMembers(t *testing.T) {
 
 func TestSet_SCard(t *testing.T) {
 	var testSetSCardKey = []byte("SCardKey")
-	testAddData(t, testSetSCardKey, [][]byte{[]byte("ExistsValue1")})
-	testAddData(t, testSetSCardKey, [][]byte{[]byte("ExistsValue2")})
+	testAddData(t, testSetSCardKey, []byte("ExistsValue1"))
+	testAddData(t, testSetSCardKey, []byte("ExistsValue2"))
 	tests := []struct {
 		name string
 		key  []byte
@@ -356,7 +356,7 @@ func TestSet_SCard(t *testing.T) {
 
 func TestSet_SIsmember(t *testing.T) {
 	var testSetSIsMembersKey = []byte("SIsmemberKey")
-	testAddData(t, testSetSIsMembersKey, [][]byte{[]byte("ExistsValue")})
+	testAddData(t, testSetSIsMembersKey, []byte("ExistsValue"))
 	type args struct {
 		member []byte
 	}
@@ -408,7 +408,7 @@ func TestSet_SIsmember(t *testing.T) {
 
 func TestSet_SPop(t *testing.T) {
 	var testSPopKey = []byte("SPopKey")
-	testAddData(t, testSPopKey, [][]byte{[]byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5")})
+	testAddData(t, testSPopKey, []byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5"))
 	type args struct {
 		count int64
 	}
@@ -468,7 +468,7 @@ func TestSet_SPop(t *testing.T) {
 
 func TestSet_SRem(t *testing.T) {
 	var testSRemKey = []byte("testSRemKey")
-	testAddData(t, testSRemKey, [][]byte{[]byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5")})
+	testAddData(t, testSRemKey, []byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5"))
 	type args struct {
 		members [][]byte
 	}
@@ -543,8 +543,8 @@ func TestRemoveRepByMap(t *testing.T) {
 func TestSet_SMove(t *testing.T) {
 	var testSMoveSouceKey = []byte("testSMoveSouceKey")
 	var testSMoveDestinationKey = []byte("testSMoveDestinationKey")
-	testAddData(t, testSMoveSouceKey, [][]byte{[]byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5")})
-	testAddData(t, testSMoveDestinationKey, [][]byte{[]byte("3"), []byte("4"), []byte("5")})
+	testAddData(t, testSMoveSouceKey, []byte("1"), []byte("2"), []byte("3"), []byte("4"), []byte("5"))
+	testAddData(t, testSMoveDestinationKey, []byte("3"), []byte("4"), []byte("5"))
 	m1 := []byte("2")
 	m2 := []byte("6")
 	m3 := []byte("3")

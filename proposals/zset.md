@@ -18,13 +18,13 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 	
 * zadd
 
-对每一个member
+查询metaKey得到objId，对每一个member
 
     查询memberKey，如果存在：查询scoreKey，score相同不作处理，不相同写入新scoreKey，删除老scoreKey，命令返回值不增加
 
     如果不存在，写入memberKey和scoreKey，命令返回值+1，
 
-如果返回值>0，查询metaKey，len+返回值覆盖metaKey的value
+如果返回值>0，len+返回值覆盖metaKey的value
 
 * zcard
 
@@ -32,27 +32,30 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 	
 * zrem
 
-对每一个member
+查询metaKey得到objId，对每一个member
     
     查询memberKey是否存在，存在则删除memberKey和scoreKey，命令返回值+1
 
     如果不存在，命令返回值不增加
 
-如果返回值>0，查询metaKey，len-返回值覆盖metaKey的value，
+如果返回值>0，len-返回值覆盖metaKey的value，
 
 如果返回值等于len，删除metaKey,写入GC
 	
 * zrange
 
-seek到startscore，一直到迭代器返回值endScore
+查询metaKey得到objId，seek到{db.ns}:{db.ID}:D:{obj.id}:为前缀的，对排序号start和end之间的返回member及其score
+
+* zverrange
+查询metaKey得到objId，反向seek到{db.ns}:{db.ID}:D:{obj.id}:为前缀的，对排序号start和end之间的返回member及其score
 	
 * zrank
 
-在scoreKey中seek，即{db.ns}:{db.ID}:S:{obj.id}为前缀的，循环判断key的后一部分为:XXX:{member}的，返回其排名数
+查询metaKey得到objId，在scoreKey中seek，即{db.ns}:{db.ID}:S:{obj.id}为前缀的，循环判断key的后一部分为:XXX:{member}的，返回其排名数
 	
 * zcore
 
-查询memberKey，返回score值
+查询metaKey得到objId，拼凑memberKey，返回score值
 	
 * del
 

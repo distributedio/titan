@@ -18,7 +18,7 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 	
 * zadd
 
-查询metaKey得到objId，对每一个member
+查询metaKey得到objId和len，对每一个member
 
     查询memberKey，如果存在：查询scoreKey，score相同不作处理，不相同写入新scoreKey，删除老scoreKey，命令返回值不增加
 
@@ -32,7 +32,7 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 	
 * zrem
 
-查询metaKey得到objId，对每一个member
+查询metaKey得到objId和len，对每一个member
     
     查询memberKey是否存在，存在则删除memberKey和scoreKey，命令返回值+1
 
@@ -45,6 +45,7 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 * zrange
 
 查询metaKey得到objId，seek到{db.ns}:{db.ID}:D:{obj.id}:为前缀的，对排序号start和end之间的返回member及其score
+在两个事务中进行，提高并发性，防止阻塞其它连接对同一zset的写入？下同
 
 * zverrange
 

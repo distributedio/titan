@@ -47,6 +47,7 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 查询metaKey得到objId，seek到{db.ns}:{db.ID}:D:{obj.id}:为前缀的，对排序号start和end之间的返回member及其score
 
 * zverrange
+
 查询metaKey得到objId，反向seek到{db.ns}:{db.ID}:D:{obj.id}:为前缀的，对排序号start和end之间的返回member及其score
 	
 * zrank

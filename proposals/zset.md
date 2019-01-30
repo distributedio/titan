@@ -45,7 +45,8 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 * zrange
 
 查询metaKey得到objId，seek到{db.ns}:{db.ID}:D:{obj.id}:为前缀的，对排序号start和end之间的返回member及其score
-在两个事务中进行，提高并发性，防止阻塞其它连接对同一zset的写入？下同
+
+**在两个事务中进行，提高并发性，防止阻塞其它连接对同一zset的写入？下同**
 
 * zverrange
 

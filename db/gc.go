@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/meitu/titan/conf"
 	"github.com/meitu/titan/db/store"
 	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
@@ -11,12 +12,6 @@ import (
 
 var (
 	sysGCLeader = []byte("$sys:0:GCL:GCLeader")
-	gcInterval  = time.Duration(1) //TODO 使用配置
-)
-
-const (
-	sysGCBurst              = 256
-	sysGCLeaseFlushInterval = 10 * time.Second
 )
 
 func toTikvGCKey(key []byte) []byte {
@@ -57,8 +52,8 @@ func gcGetPrefix(txn store.Transaction) ([]byte, error) {
 	return key[len(gcPrefix):], nil
 }
 
-func gcDeleteRange(txn store.Transaction, prefix []byte, limit int64) (int64, error) {
-	count := int64(0)
+func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error) {
+	var count int
 	itr, err := txn.Iter(prefix, nil)
 	if err != nil {
 		return count, err
@@ -91,7 +86,7 @@ func gcComplete(txn store.Transaction, prefix []byte) error {
 	return txn.Delete(toTikvGCKey(prefix))
 }
 
-func doGC(db *DB, limit int64) error {
+func doGC(db *DB, limit int) error {
 	left := limit
 	for left > 0 {
 		txn, err := db.Begin()
@@ -108,8 +103,8 @@ func doGC(db *DB, limit int64) error {
 			zap.L().Debug("[GC] no gc item")
 			return nil
 		}
-		count := int64(0)
-		zap.L().Debug("[GC] start to delete prefix", zap.String("prefix", string(prefix)), zap.Int64("limit", limit))
+		count := 0
+		zap.L().Debug("[GC] start to delete prefix", zap.String("prefix", string(prefix)), zap.Int("limit", limit))
 		if count, err = gcDeleteRange(txn.t, prefix, limit); err != nil {
 			return err
 		}
@@ -140,11 +135,12 @@ func doGC(db *DB, limit int64) error {
 // StartGC start gc
 //1.获取leader许可
 //2.leader 执行清理任务
-func StartGC(db *DB) {
-	ticker := time.Tick(gcInterval * time.Second)
+func StartGC(db *DB, conf *conf.GC) {
+	ticker := time.NewTicker(conf.Interval)
+	defer ticker.Stop()
 	id := UUID()
-	for range ticker {
-		isLeader, err := isLeader(db, sysGCLeader, id, sysGCLeaseFlushInterval)
+	for range ticker.C {
+		isLeader, err := isLeader(db, sysGCLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[GC] check GC leader failed", zap.Error(err))
 			continue
@@ -153,7 +149,7 @@ func StartGC(db *DB) {
 			zap.L().Debug("[GC] not GC leader")
 			continue
 		}
-		if err := doGC(db, sysGCBurst); err != nil {
+		if err := doGC(db, conf.BatchLimit); err != nil {
 			zap.L().Error("[GC] do GC failed", zap.Error(err))
 			continue
 		}

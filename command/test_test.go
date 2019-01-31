@@ -8,13 +8,9 @@ import (
 	"github.com/meitu/titan/conf"
 	"github.com/meitu/titan/context"
 	"github.com/meitu/titan/db"
-	"github.com/meitu/titan/db/store"
 )
 
-var cfg = &conf.Tikv{
-	PdAddrs: store.MockAddr,
-	DB:      conf.DB{},
-}
+var cfg = &conf.MockConf().Tikv
 var mockdb *db.RedisStore
 
 func init() {

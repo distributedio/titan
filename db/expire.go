@@ -5,20 +5,15 @@ import (
 	"context"
 	"time"
 
+	"github.com/meitu/titan/conf"
 	"github.com/meitu/titan/db/store"
 	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
 )
 
-const (
-	expireBatchLimit = 256
-	expireTick       = time.Duration(time.Second)
-)
-
 var (
-	expireKeyPrefix              = []byte("$sys:0:at:")
-	sysExpireLeader              = []byte("$sys:0:EXL:EXLeader")
-	sysExpireLeaderFlushInterval = 10 * time.Second
+	expireKeyPrefix = []byte("$sys:0:at:")
+	sysExpireLeader = []byte("$sys:0:EXL:EXLeader")
 
 	// $sys:0:at:{ts}:{metaKey}
 	expireTimestampOffset = len(expireKeyPrefix)
@@ -84,12 +79,12 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 }
 
 // StartExpire get leader from db
-func StartExpire(db *DB) error {
-	ticker := time.NewTicker(expireTick)
+func StartExpire(db *DB, conf *conf.Expire) error {
+	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
-		isLeader, err := isLeader(db, sysExpireLeader, id, sysExpireLeaderFlushInterval)
+		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
 			continue
@@ -98,7 +93,7 @@ func StartExpire(db *DB) error {
 			zap.L().Debug("[Expire] not expire leader")
 			continue
 		}
-		runExpire(db)
+		runExpire(db, conf.BatchLimit)
 	}
 	return nil
 }
@@ -121,7 +116,7 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
-func runExpire(db *DB) {
+func runExpire(db *DB, batchLimit int) {
 	txn, err := db.Begin()
 	if err != nil {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
@@ -133,7 +128,7 @@ func runExpire(db *DB) {
 		txn.Rollback()
 		return
 	}
-	limit := expireBatchLimit
+	limit := batchLimit
 	now := time.Now().UnixNano()
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
 		key := iter.Key()
@@ -190,5 +185,5 @@ func runExpire(db *DB) {
 		txn.Rollback()
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}
-	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(expireBatchLimit - limit))
+	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
 }

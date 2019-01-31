@@ -110,8 +110,8 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	}
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
-	go StartGC(sysdb)
-	go StartExpire(sysdb)
+	go StartGC(sysdb, &conf.GC)
+	go StartExpire(sysdb, &conf.Expire)
 	go StartZT(sysdb, &conf.ZT)
 	go StartTikvGC(sysdb, &conf.TikvGC)
 	return rds, nil

@@ -17,12 +17,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	conf := &conf.Tikv{}
+	mockConf := conf.MockConf()
 	mockDB = &DB{
 		Namespace: "mockdb-ns",
 		ID:        1,
-		kv:        &RedisStore{Storage: store, conf: conf},
-		conf:      &conf.DB,
+		kv:        &RedisStore{Storage: store, conf: &mockConf.Tikv},
+		conf:      &mockConf.Tikv.DB,
 	}
 
 	os.Exit(m.Run())

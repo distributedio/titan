@@ -20,10 +20,7 @@ var (
 		MaxConnection: 10000,
 		Auth:          "",
 	}
-	tikvConf = conf.Tikv{
-		PdAddrs: "mocktikv://",
-	}
-
+	tikvConf = conf.MockConf().Tikv
 	//ServerAddr default server addr
 	ServerAddr = "127.0.0.1:17369"
 	lis        net.Listener

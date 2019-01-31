@@ -1,6 +1,8 @@
 package conf
 
-import "time"
+import (
+	"time"
+)
 
 //Titan configuration center
 type Titan struct {
@@ -31,6 +33,8 @@ type Server struct {
 type Tikv struct {
 	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
 	DB      DB     `cfg:"db"`
+	GC      GC     `cfg:"gc"`
+	Expire  Expire `cfg:"expire"`
 	ZT      ZT     `cfg:"zt"`
 	TikvGC  TikvGC `cfg:"tikv-gc"`
 }
@@ -40,6 +44,20 @@ type TikvGC struct {
 	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
 	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
 	Concurrency       int           `cfg:"concurrency;2;;gc work concurrency"`
+}
+
+//GC config is the config of Titan GC work
+type GC struct {
+	Interval       time.Duration `cfg:"interval;1s;;gc work tick interval"`
+	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
+	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
+}
+
+//Expire config is the config of Titan expire work
+type Expire struct {
+	Interval       time.Duration `cfg:"interval;1s;;expire work tick interval"`
+	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
+	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
 }
 
 //ZT config is the config of zlist

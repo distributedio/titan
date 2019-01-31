@@ -49,6 +49,44 @@ pd-addrs = ""
 #meta-slot = 0
 
 
+[tikv.gc]
+
+#type:        time.Duration
+#description: gc work tick interval
+#default:     1s
+#interval = "1s"
+
+#type:        time.Duration
+#description: lease flush leader interval
+#default:     3m
+#leader-life-time = "3m0s"
+
+#type:        int
+#rules:       numeric
+#description: key count limitation per-transection
+#default:     256
+#batch-limit = 256
+
+
+[tikv.expire]
+
+#type:        time.Duration
+#description: expire work tick interval
+#default:     1s
+#interval = "1s"
+
+#type:        time.Duration
+#description: lease flush leader interval
+#default:     3m
+#leader-life-time = "3m0s"
+
+#type:        int
+#rules:       numeric
+#description: key count limitation per-transection
+#default:     256
+#batch-limit = 256
+
+
 [tikv.zt]
 
 #type:        int

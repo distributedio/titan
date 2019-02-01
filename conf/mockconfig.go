@@ -1,9 +1,8 @@
 package conf
 
-import (
-	"time"
-)
+import "time"
 
+//MockConf init and return titan mock conf
 func MockConf() *Titan {
 	return &Titan{
 		Tikv: Tikv{

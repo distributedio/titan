@@ -1,8 +1,6 @@
 package conf
 
-import (
-	"time"
-)
+import "time"
 
 //Titan configuration center
 type Titan struct {
@@ -14,10 +12,12 @@ type Titan struct {
 	PIDFileName string     `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
 }
 
+//DB config is the config of titan data struct
 type DB struct {
 	Hash Hash `cfg:"hash"`
 }
 
+//Hash config is the config of titan hash data struct
 type Hash struct {
 	MetaSlot int64 `cfg:"meta-slot;0;numeric;hashes slot key count"`
 }
@@ -39,6 +39,7 @@ type Tikv struct {
 	TikvGC  TikvGC `cfg:"tikv-gc"`
 }
 
+//TikvGC config is the config of implement tikv sdk gcwork
 type TikvGC struct {
 	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
 	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`

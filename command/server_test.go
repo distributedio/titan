@@ -26,7 +26,7 @@ func TestInfo(t *testing.T) {
 		}),
 	}
 	Info(ctx)
-	t.Log(out.String())
+	// t.Log(out.String())
 	if strings.Index(out.String(), "ERR") == 0 {
 		t.Fail()
 	}

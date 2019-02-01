@@ -498,10 +498,37 @@ func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	val, err := str.SetBit(on, offset)
+	val, err := str.SetBit(offset, on)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
+	if val != 0 {
+		return Integer(ctx.Out, 1), nil
+	}
+	return Integer(ctx.Out, 0), nil
+}
+
+// GetBit get the bit at offset in the string value stored at key.
+func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	offset, err := strconv.Atoi(string(ctx.Args[1]))
+	if err != nil || offset < 0 {
+		return nil, ErrBitOffset
+	}
+
+	str, err := txn.String(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	val, err := str.GetBit(offset)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
 	if val != 0 {
 		return Integer(ctx.Out, 1), nil
 	}

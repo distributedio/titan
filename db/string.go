@@ -189,7 +189,7 @@ func (s *String) Incrf(delta float64) (float64, error) {
 
 // SetBit key offset bitvalue
 // return the off postion of value
-func (s *String) SetBit(on, offset int) (int, error) {
+func (s *String) SetBit(offset, on int) (int, error) {
 	val := s.Meta.Value
 	bitoff := offset >> 3
 	llen := int(bitoff) - len(val) + 1
@@ -206,10 +206,27 @@ func (s *String) SetBit(on, offset int) (int, error) {
 	byteval &= (^(1 << bit))
 	byteval = byteval | ((on & 0x1) << bit)
 	val[bitoff] = byte(byteval)
-
 	if err := s.Set(val); err != nil {
 		return 0, err
 	}
+	return bitval, nil
+}
+
+// GetBit key offset bitvalye
+// offset / 8 > the index of value
+// offset mod 8 +1
+func (s *String) GetBit(offset int) (int, error) {
+	val := s.Meta.Value
+	bitoff := offset >> 3
+	if int(bitoff) > len(val)-1 {
+		return 0, nil
+	}
+
+	/* Get current values */
+	byteval := int(val[bitoff])
+	bit := uint(7 - (offset & 0x7))
+	bitval := byteval & (1 << bit)
+
 	return bitval, nil
 }
 

@@ -534,3 +534,39 @@ func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return Integer(ctx.Out, 0), nil
 }
+
+// BitCount Count the number of set bits (population counting) in a string.
+func BitCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	var begin, end int
+	switch len(ctx.Args) {
+	case 3:
+		begin, err = strconv.Atoi(string(ctx.Args[1]))
+		if err != nil {
+			return nil, ErrInteger
+		}
+		end, err = strconv.Atoi(string(ctx.Args[2]))
+		if err != nil {
+			return nil, ErrInteger
+		}
+	case 1:
+		begin = 0
+		end = len(str.Meta.Value) - 1
+	default:
+		return nil, ErrSyntax
+	}
+
+	val, err := str.BitCount(begin, end)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(val)), nil
+}

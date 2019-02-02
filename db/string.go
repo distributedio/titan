@@ -1,6 +1,7 @@
 package db
 
 import (
+	"math/bits"
 	"strconv"
 )
 
@@ -228,6 +229,37 @@ func (s *String) GetBit(offset int) (int, error) {
 	bitval := byteval & (1 << bit)
 
 	return bitval, nil
+}
+
+// BitCount Count the number of set bits (population counting) in a string.
+func (s *String) BitCount(begin, end int) (int, error) {
+	val := s.Meta.Value
+	if begin < 0 {
+		begin = len(val) + begin
+	}
+	if end < 0 {
+		end = len(val) + end
+	}
+
+	if begin < 0 {
+		begin = 0
+	}
+	if end < 0 {
+		end = 0
+	}
+	if end >= len(val) {
+		end = len(val) - 1
+	}
+	if begin > end {
+		return 0, nil
+	}
+
+	nums := bytesToUint32s(val[begin : end+1])
+	sum := 0
+	for _, num := range nums {
+		sum += bits.OnesCount32(num)
+	}
+	return sum, nil
 }
 
 // encode because of the value is small size , value and meta decode together

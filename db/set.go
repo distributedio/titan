@@ -327,29 +327,24 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 		}
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
-	prefix := append(dkey, ':')
 	ikey := setItemKey(dkey, member)
-	count := set.meta.Len
-	iter, err := set.txn.t.Iter(prefix, nil)
+
+	value, err := set.txn.t.Get(ikey)
 	if err != nil {
+		if IsErrNotFound(err) {
+			return 0, nil
+		}
 		return 0, err
 	}
-	defer iter.Close()
-	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
-		if bytes.Equal(iter.Key(), ikey) {
-			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
-				return 0, err
-			}
-			set.meta.Len--
-			if err := set.updateMeta(); err != nil {
-				return 0, err
-			}
-			return 1, nil
-		}
-		if err := iter.Next(); err != nil {
+	if bytes.Equal(value, SetNilValue) {
+		if err := set.txn.t.Delete([]byte(ikey)); err != nil {
 			return 0, err
 		}
-		count--
+		set.meta.Len--
+		if err := set.updateMeta(); err != nil {
+			return 0, err
+		}
+		return 1, nil
 	}
 	return 0, nil
 }

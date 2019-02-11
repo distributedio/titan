@@ -157,7 +157,7 @@ func RemoveRepByMap(members [][]byte) [][]byte {
 	return result
 }
 
-// Exists check hashes exist
+// Exists check set exist
 func (set *Set) Exists() bool {
 	return set.exists
 }
@@ -202,25 +202,19 @@ func (set *Set) SIsmember(member []byte) (int64, error) {
 		return 0, nil
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
-	prefix := append(dkey, ':')
 	ikey := setItemKey(dkey, member)
-	count := set.meta.Len
 
-	iter, err := set.txn.t.Iter(prefix, nil)
+	value, err := set.txn.t.Get(ikey)
 	if err != nil {
+		if IsErrNotFound(err) {
+			return 0, nil
+		}
 		return 0, err
 	}
-	defer iter.Close()
-	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
-		if bytes.Equal(iter.Key(), ikey) {
-			return 1, nil
-		}
-		if err := iter.Next(); err != nil {
-			return 0, err
-		}
-		count--
+	if !bytes.Equal(value, SetNilValue) {
+		return 0, nil
 	}
-	return 0, nil
+	return 1, nil
 }
 
 // SPop removes and returns one or more random elements from the set value store at key.
@@ -280,29 +274,22 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 		return 0, nil
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
-	prefix := append(dkey, ':')
 	ms := RemoveRepByMap(members)
 	ikeys := make([][]byte, len(ms))
 	for i := range ms {
 		ikeys[i] = setItemKey(dkey, ms[i])
-	}
-
-	iter, err := set.txn.t.Iter(prefix, nil)
-	if err != nil {
-		return 0, err
-	}
-	defer iter.Close()
-	for iter.Valid() && iter.Key().HasPrefix(prefix) {
-		for i := range ikeys {
-			if bytes.Equal(iter.Key(), ikeys[i]) {
-				if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
-					return 0, err
-				}
-				num++
+		value, err := set.txn.t.Get(ikeys[i])
+		if err != nil {
+			if IsErrNotFound(err) {
+				continue
 			}
-		}
-		if err := iter.Next(); err != nil {
 			return 0, err
+		}
+		if bytes.Equal(value, SetNilValue) {
+			if err := set.txn.t.Delete([]byte(ikeys[i])); err != nil {
+				return 0, err
+			}
+			num++
 		}
 	}
 	set.meta.Len -= num

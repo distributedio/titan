@@ -235,7 +235,6 @@ func (hash *Hash) getHashFieldAndLength(keys [][]byte) (map[string][]byte, int64
 	if err != nil {
 		return nil, 0, err
 	}
-
 	//split slots and fields
 	for k, v := range kvMap {
 		if slotEnabled && bytes.HasPrefix([]byte(k), prefix) {
@@ -565,8 +564,8 @@ func (hash *Hash) HMSlot(metaSlot int64) error {
 	if err := hash.updateMetaSlot(metaSlot); err != nil {
 		return err
 	}
-	hash.meta.MetaSlot = metaSlot
-	if err := hash.updateMeta(); err != nil {
+
+	if err := hash.saveMeta(); err != nil {
 		return err
 	}
 	return nil
@@ -610,12 +609,6 @@ func (hash *Hash) addLength(length int64) error {
 	} else {
 		hash.meta.Len += length
 		hash.meta.UpdatedAt = Now()
-		metaSlot := hash.txn.db.conf.Hash.MetaSlot
-
-		//if enabled slot and this hash is old hash then update meta slot
-		if err := hash.updateMetaSlot(metaSlot); err == nil {
-			hash.meta.MetaSlot = defaultHashMetaSlot
-		}
 	}
 	return nil
 }
@@ -636,10 +629,7 @@ func (hash *Hash) updateMetaSlot(newSlot int64) error {
 				return err
 			}
 		}
-		return nil
-	}
-
-	if newSlot < hash.meta.MetaSlot {
+	} else if newSlot < hash.meta.MetaSlot {
 		slot, err := hash.getSliceSlot(newSlot)
 		if err != nil {
 			if err == ErrKeyNotFound {
@@ -655,6 +645,7 @@ func (hash *Hash) updateMetaSlot(newSlot int64) error {
 			return err
 		}
 	}
+	hash.meta.MetaSlot = newSlot
 	return nil
 }
 
@@ -701,6 +692,15 @@ func (hash *Hash) getSlot(slotID int64) (*Slot, error) {
 }
 
 func (hash *Hash) updateMeta() error {
+	// if enabled slot and this hash is old hash then update meta slot
+	metaSlot := hash.txn.db.conf.Hash.MetaSlot
+	if err := hash.updateMetaSlot(metaSlot); err != nil {
+		hash.meta.MetaSlot = defaultHashMetaSlot
+	}
+	return hash.saveMeta()
+}
+
+func (hash *Hash) saveMeta() error {
 	meta := EncodeHashMeta(hash.meta)
 	err := hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
 	if err != nil {
@@ -710,6 +710,7 @@ func (hash *Hash) updateMeta() error {
 		hash.exists = true
 	}
 	return nil
+
 }
 
 func (hash *Hash) updateSlot(slotID int64, slot *Slot) error {

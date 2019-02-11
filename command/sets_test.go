@@ -268,10 +268,10 @@ func TestSMove(t *testing.T) {
 	clearSets(t, key)
 	clearSets(t, destkey)
 }
-func TestSUion(t *testing.T) {
-	key1 := "set-suion1"
-	key2 := "set-suion2"
-	key3 := "set-suion3"
+func TestSUnion(t *testing.T) {
+	key1 := "set-sunion1"
+	key2 := "set-sunion2"
+	key3 := "set-sunion3"
 
 	ctx := ContextTest("sadd", key1, "a", "b", "c", "d")
 	Call(ctx)
@@ -281,36 +281,21 @@ func TestSUion(t *testing.T) {
 	Call(ctx)
 
 	//case 1
-	ctx = ContextTest("suion", key1, key2)
+	ctx = ContextTest("sunion", key1, key2)
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
 	assert.Equal(t, "*5", lines[0])
-	assert.Equal(t, "$1", lines[1])
-	assert.Equal(t, "a", lines[2])
-	assert.Equal(t, "$1", lines[3])
-	assert.Equal(t, "b", lines[4])
-	assert.Equal(t, "$1", lines[5])
-	assert.Equal(t, "c", lines[6])
-	assert.Equal(t, "$1", lines[7])
-	assert.Equal(t, "d", lines[8])
-	assert.Equal(t, "$1", lines[9])
-	assert.Equal(t, "e", lines[10])
 
 	//case 2
-	ctx = ContextTest("suion", key1, key3)
+	ctx = ContextTest("sunion", key1, key3)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
 	assert.Equal(t, "*5", lines[0])
-	assert.Equal(t, "$1", lines[1])
-	assert.Equal(t, "a", lines[2])
-	assert.Equal(t, "$1", lines[3])
-	assert.Equal(t, "b", lines[4])
-	assert.Equal(t, "$1", lines[5])
-	assert.Equal(t, "c", lines[6])
-	assert.Equal(t, "$1", lines[7])
-	assert.Equal(t, "d", lines[8])
-	assert.Equal(t, "$0", lines[9])
-	assert.Equal(t, "", lines[10])
+	//case 3
+	ctx = ContextTest("sunion", key2, key3)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*4", lines[0])
 	//end
 	clearSets(t, key1)
 

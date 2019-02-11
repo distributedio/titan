@@ -38,8 +38,12 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 	 
 ### 设计要点
 	 
-* 当前实现仍旧选择维护一个Len,并且不使用slot，其他实现方式按照hash相似的方式进行
-* set不需要value值，因此存储时调用kvstore.set()接口，只需要将member存储在tikv对应的key中即可value部分存储为：[]byte{0}，因为tikv不与许value为空，占位即可。
+* 当前实现仍旧选择维护一个Len,记录set内部的元素个数，并且不使用hash中的slot。
+* set集合的特性意味着在kv存储中不需要value值，因此存储时调用kvstore.set()接口，只需要将拼接好的member存储在tikv对应的key中即可
+* value部分存储为：[]byte{0}，因为tikv不允许value为空，占位即可。
+* 在底层存储中key的格式为：{Namespace}:{DBID}:{D}:{ObjectID}:{member}
+* MetaKey的具体格式：{Namespace}:{DBID}:M:{key}
+* DataKey的具体格式：{Namespace}:{DBID}:D:{key}
 	 
 ## 命令处理
 ### 常规命令处理
@@ -48,8 +52,8 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 
 **实现步骤**
 
-* member去重复
-* BatchGetValues批量获取datakey值。
+* 对传入的member进行去重
+* 调用BatchGetValues批量获取datakey对应的value值，然后判断member是否已经存在
 * 过滤掉已经存在的member，统计add的数量
 * 更新Meta信息并返回add的数量
 
@@ -59,17 +63,15 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 
 **实现步骤**
 
-* 拼接datakey
-* 根据前缀寻找到对应的key在存储中的位置
+* 使用迭代器寻找拼接好的前缀在存储中的位置
 * 返回具有相同前缀的所有元素
-
-
 
 
 #### SCard key
 * 返回集合key中元素的数量。
 
 **实现步骤**
+
 * 返回meta信息中Len即可
 
 
@@ -78,19 +80,18 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 
 **实现步骤**
 
-* 拼接datakey
-* 根据前缀寻找到对应的key在存储中的位置
-* 遍历所有相同前缀的key，与拼接member后相同则返回1，否则返回0
-
-
+* 使用迭代器寻找拼接好的前缀在存储中的位置
+* 遍历所有相同前缀的key，迭代器所指向的key与前缀拼接member后相同则返回1，否则返回0
 
 #### SPop key
+
 * 随机返回并删除key对应的set中的一个元素。
 
 **实现步骤**
 
 * 根据参数确定删除的member个数
-* 更新meta信息
+* 使用迭代器寻找拼接好的前缀在存储中的位置，删除key
+* 更新meta信息，返回删除的member
  
 
 #### SRem key member [member ...]
@@ -98,8 +99,7 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 
 **实现步骤**
 
-* 拼接datakey
-* 根据前缀寻找到对应的key在存储中的位置
+* 使用迭代器寻找拼接好的前缀在存储中的位置
 * 遍历寻找到要删除的member，调用delete删除
 * 更新meta信息
 
@@ -120,6 +120,7 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 1. 读取meta信息，对于不存在的集合当做空集来处理。一旦出现空集，则不用继续计算了，最终的交集就是空集。
 2. 如果不存在空集，取出第一个集合的全部member为基准集合。
 3. 从第二个集合开始遍历后续每个集合的member，将两个集合中都存在的元素作为下一次操作的基准，直至操作全部完成。
+4. 对第一个集合进行遍历，对于它的每一个元素，依次在后面的所有集合中进行查找。只有在所有集合中都能找到的元素，才加入到最后的结果集合中。
 
 #### SDiff key [key ...]——求给定key对应的set与第一个key对应的set的差集
 ##### 实现思路
@@ -132,17 +133,3 @@ Redis 集合（Set类型）是一个无序的String类型数据的集合，类�
 ##### 实现思路
 1. 将所有集合的全部member加入到一个集合中
 2. 最后对集合进行去重
-
-
-
-
-
-
-
-
-
-
-
-
-
-

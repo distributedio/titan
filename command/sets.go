@@ -20,7 +20,7 @@ func SAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	added, err := set.SAdd(members)
+	added, err := set.SAdd(members...)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -135,15 +135,14 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(count)), nil
 }
 
-// SUion returns the members of the set resulting from the union of all the given sets.
-func SUion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+// SUnion returns the members of the set resulting from the union of all the given sets.
+func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
+	mambermap := make(map[string]int)
 	keys := make([][]byte, len(ctx.Args))
 	for i, key := range ctx.Args {
 		keys[i] = []byte(key)
-	}
 
-	for i := range keys {
 		set, err := txn.Set(keys[i])
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
@@ -158,11 +157,16 @@ func SUion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
-		for i := range ms {
-			members = append(members, ms[i])
+		for n := range ms {
+			mambermap[string(ms[n])] = 1
 		}
+
 	}
-	return BytesArray(ctx.Out, db.RemoveRepByMap(members)), nil
+	for k, _ := range mambermap {
+		members = append(members, []byte(k))
+	}
+
+	return BytesArray(ctx.Out, members), nil
 }
 
 // SInter returns the members of the set resulting from the intersection of all the given sets.

@@ -134,20 +134,6 @@ func hashItemKey(key []byte, field []byte) []byte {
 	return append(dkey, field...)
 }
 
-func (hash *Hash) calculateSlotID(limit int64) int64 {
-	if !hash.isMetaSlot() || limit <= 1 {
-		return 0
-	}
-	return rand.Int63n(limit - 1)
-}
-
-func (hash *Hash) isMetaSlot() bool {
-	if hash.meta.MetaSlot != 0 {
-		return true
-	}
-	return false
-}
-
 //SlotGC adds slotKey to GC remove queue
 func slotGC(txn *Transaction, objID []byte) error {
 	key := MetaSlotKey(txn.db, objID, nil)
@@ -720,9 +706,10 @@ func (hash *Hash) updateSlot(slotID int64, slot *Slot) error {
 }
 
 func (hash *Hash) getMetaSlotKeys() [][]byte {
-	metaSlot := hash.meta.MetaSlot
+	// meta slot id in [0,metaSlot)
+	metaSlot := hash.meta.MetaSlot - 1
 	keys := make([][]byte, metaSlot)
-	for metaSlot > 0 {
+	for metaSlot >= 0 {
 		keys = append(keys, MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(metaSlot)))
 		metaSlot--
 	}

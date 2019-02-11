@@ -233,33 +233,40 @@ func (s *String) GetBit(offset int) (int, error) {
 
 // BitCount Count the number of set bits (population counting) in a string.
 func (s *String) BitCount(begin, end int) (int, error) {
-	val := s.Meta.Value
-	if begin < 0 {
-		begin = len(val) + begin
-	}
-	if end < 0 {
-		end = len(val) + end
-	}
-
-	if begin < 0 {
-		begin = 0
-	}
-	if end < 0 {
-		end = 0
-	}
-	if end >= len(val) {
-		end = len(val) - 1
-	}
+	begin, end = initCursor(begin, end, len(s.Meta.Value))
 	if begin > end {
 		return 0, nil
 	}
 
-	nums := bytesToUint32s(val[begin : end+1])
+	nums := bytesToUint32s(s.Meta.Value[begin : end+1])
 	sum := 0
 	for _, num := range nums {
 		sum += bits.OnesCount32(num)
 	}
 	return sum, nil
+}
+
+// BitPos find first bit set or clear in a string
+func (s *String) BitPos(bit, begin, end int) (int, error) {
+	begin, end = initCursor(begin, end, len(s.Meta.Value))
+	// For empty ranges (start > end) we return -1 as an empty range does
+	// not contain a 0 nor a 1.
+	if begin > end {
+		return -1, nil
+	}
+	return bitpos(s.Meta.Value[begin:end+1], bit), nil
+}
+
+func (s *String) BitOpAnd() {
+}
+
+func (s *String) BitOpOr() {
+}
+
+func (s *String) BitOpXor() {
+}
+
+func (s *String) BitOpNot() {
 }
 
 // encode because of the value is small size , value and meta decode together

@@ -22,10 +22,11 @@ const (
 
 // StartTikvGC start tikv gcwork
 func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
-	ticker := time.Tick(tikvCfg.Interval)
+	ticker := time.NewTicker(tikvCfg.Interval)
+	defer ticker.Stop()
 	uuid := UUID()
 	ctx := context.Background()
-	for range ticker {
+	for range ticker.C {
 		isLeader, err := isLeader(db, sysTikvGCLeader, uuid, tikvCfg.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[TikvGC] check TikvGC leader failed", zap.Error(err))

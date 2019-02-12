@@ -194,9 +194,10 @@ func StartZT(db *DB, conf *conf.ZT) {
 
 	// check leader and fill the channel
 	prefix := toZTKey(nil)
-	tick := time.Tick(conf.Interval)
+	ticker := time.NewTicker(conf.Interval)
+	defer ticker.Stop()
 	id := UUID()
-	for range tick {
+	for range ticker.C {
 		isLeader, err := isLeader(db, sysZTLeader, id, sysZTLeaderFlushInterval)
 		if err != nil {
 			zap.L().Error("[ZT] check ZT leader failed",
@@ -209,7 +210,7 @@ func StartZT(db *DB, conf *conf.ZT) {
 			continue
 		}
 
-		if prefix, err = runZT(db, prefix, tick); err != nil {
+		if prefix, err = runZT(db, prefix, ticker.C); err != nil {
 			zap.L().Error("[ZT] error in run ZT",
 				zap.Int64("dbid", int64(db.ID)),
 				zap.ByteString("prefix", prefix),

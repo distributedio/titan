@@ -214,6 +214,19 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return BytesArray(ctx.Out, members), nil
 }
+func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	var members [][]byte
+	keys := make([][]byte, len(ctx.Args))
+	mkeys := make([][]byte, len(ctx.Arg))
+	for i, key := range ctx.Args {
+		keys[i] = []byte(key)
+		mkey[i] = db.MetaKey(txn.db, keys[i])
+	}
+
+	//批量获取meta信息
+	m, err := db.BatchGetValues(txn, mkeys)
+	return BytesArray(ctx.Out, members), nil
+}
 
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {

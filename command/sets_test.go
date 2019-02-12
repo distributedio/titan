@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -34,6 +35,7 @@ func setSets(t *testing.T, args ...string) []string {
 
 func TestAdd(t *testing.T) {
 	key := "set-sadd"
+	testkey := "set-sadd-test"
 	//initSets(t, key, 3)
 
 	//case1
@@ -42,16 +44,21 @@ func TestAdd(t *testing.T) {
 	lines := ctxLines(ctx.Out)
 	assert.Equal(t, ":3", lines[0])
 
-	//case 2
 	lines = setSets(t, key, "1", "2")
 	assert.Equal(t, ":0", lines[0])
 
-	//case 3
 	lines = setSets(t, key, "3", "4")
 	assert.Equal(t, ":1", lines[0])
 
 	// end
 	clearSets(t, key)
+
+	//case2
+	ctx = ContextTest("sadd", testkey, "3", "1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+
+	assert.Equal(t, ":2", lines[0])
 
 }
 
@@ -89,7 +96,7 @@ func TestSCard(t *testing.T) {
 func TestSMembers(t *testing.T) {
 	// init
 	key := "set-smembers"
-
+	testkey := "test-set-smembers"
 	//case1
 	ctx := ContextTest("sadd", key, "1", "2", "3")
 	Call(ctx)
@@ -104,8 +111,15 @@ func TestSMembers(t *testing.T) {
 	assert.Equal(t, "$1", lines[5])
 	assert.Equal(t, "3", lines[6])
 
+	ctx = ContextTest("sadd", testkey, "5", "3", "6")
+	Call(ctx)
+	ctx = ContextTest("smembers", testkey)
+	Call(ctx)
+	s := ctxLines(ctx.Out)
+	fmt.Println(s)
 	//end
 	clearSets(t, key)
+	clearSets(t, testkey)
 }
 
 func TestSIsmember(t *testing.T) {

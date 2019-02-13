@@ -88,6 +88,7 @@ func Test_newHash(t *testing.T) {
 	}
 	txn.Commit(context.TODO())
 }
+
 func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) error {
 	h := newHash(txn, key)
 	mkey := MetaKey(txn.db, key)
@@ -102,6 +103,16 @@ func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) err
 	assert.NotNil(t, txn)
 	return nil
 }
+
+func getHashMeta(t *testing.T, txn *Transaction, key []byte) *HashMeta {
+	mkey := MetaKey(txn.db, key)
+	rawMeta, err := txn.t.Get(mkey)
+	assert.NoError(t, err)
+	meta, err1 := DecodeHashMeta(rawMeta)
+	assert.NoError(t, err1)
+	return meta
+}
+
 func setSlotMeta(t *testing.T, txn *Transaction, key []byte, slotID int64) error {
 	h := newHash(txn, key)
 	slotKey := MetaSlotKey(txn.db, h.meta.ID, EncodeInt64(slotID))
@@ -363,18 +374,29 @@ func TestHashHDel(t *testing.T) {
 		want want
 	}{
 		{
-			name: "TestHashDel",
+			name: "TestHashDelCase1",
 			args: args{
-				fields: fileds,
+				fields: fileds[:1],
 			},
 			want: want{
-				num: 3,
+				num: 1,
+				len: 2,
+			},
+		},
+		{
+			name: "TestHashDelCase2",
+			args: args{
+				fields: fileds[1:],
+			},
+			want: want{
+				num: 2,
 				len: 0,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//test hdel method
 			hash, txn, err := getHash(t, []byte("TestHashHDel"))
 			assert.NoError(t, err)
 			assert.NotNil(t, txn)
@@ -387,6 +409,13 @@ func TestHashHDel(t *testing.T) {
 			txn.Commit(context.TODO())
 
 			assert.Equal(t, got, tt.want.num)
+
+			//use hlen check
+			hash, txn, err = getHash(t, []byte("TestHashHDel"))
+			hlen, err1 := hash.HLen()
+			assert.NoError(t, err1)
+			assert.Equal(t, hlen, tt.want.len)
+			txn.Commit(context.TODO())
 		})
 	}
 }
@@ -984,7 +1013,8 @@ func TestHashHMSet(t *testing.T) {
 }
 
 func TestHashHMSlot(t *testing.T) {
-	hash, txn, err := getHash(t, []byte("TestHashHMSlot"))
+	key := []byte("TestHashHMSlot")
+	hash, txn, err := getHash(t, key)
 	assert.NoError(t, err)
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
@@ -1016,7 +1046,7 @@ func TestHashHMSlot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hash, txn, err := getHash(t, []byte("TestHashHMSlot"))
+			hash, txn, err := getHash(t, key)
 			assert.NoError(t, err)
 			assert.NotNil(t, txn)
 			assert.NotNil(t, hash)
@@ -1026,6 +1056,76 @@ func TestHashHMSlot(t *testing.T) {
 			txn.Commit(context.TODO())
 			got := hash.meta.MetaSlot
 			assert.Equal(t, got, tt.want.len)
+
+			txn, err = mockDB.Begin()
+			assert.NotNil(t, txn)
+			assert.NoError(t, err)
+			meta := getHashMeta(t, txn, key)
+			assert.Equal(t, tt.args.metaSlot, meta.MetaSlot)
+			txn.Commit(context.TODO())
+		})
+	}
+}
+
+func TestHashUpdateMeta(t *testing.T) {
+	txn, err := mockDB.Begin()
+	assert.NoError(t, err)
+	assert.NotNil(t, txn)
+
+	key := []byte("TestHashUpdateMeta")
+	hash := newHash(txn, key)
+	hash.HSet([]byte("TestHashdelHashFiled1"), []byte("TestHashdelHashValue1"))
+	txn.Commit(context.TODO())
+
+	type want struct {
+		metaSlot int64
+	}
+	type args struct {
+		metaSlot int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "TestHashUpdateMetaCase1",
+			args: args{
+				metaSlot: int64(256),
+			},
+			want: want{
+				metaSlot: int64(256),
+			},
+		},
+		{
+			name: "TestHashUpdateMetaCase2",
+			args: args{
+				metaSlot: int64(500),
+			},
+			want: want{
+				metaSlot: int64(256),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			txn, err = mockDB.Begin()
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+
+			txn.db.conf.Hash.MetaSlot = tt.args.metaSlot
+			hash, err = GetHash(txn, key)
+			assert.NoError(t, err)
+			assert.NotNil(t, hash)
+			hash.HSet([]byte(tt.name), []byte("TestHashdelHashValue1"))
+			txn.Commit(context.TODO())
+
+			txn, err = mockDB.Begin()
+			assert.NotNil(t, txn)
+			assert.NoError(t, err)
+			meta := getHashMeta(t, txn, key)
+			assert.Equal(t, tt.want.metaSlot, meta.MetaSlot)
+			txn.Commit(context.TODO())
 		})
 	}
 }

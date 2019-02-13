@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"errors"
+	"sort"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -169,62 +170,87 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, members), nil
 }
 
+// A data structure to hold a key/value pair.
+type Pair struct {
+	Key   string
+	Value int
+}
+
+// A slice of Pairs that implements sort.Interface to sort by Value.
+type PairList []Pair
+
+func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p PairList) Len() int           { return len(p) }
+func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
+
+// A function to turn a map into a PairList, then sort and return it.
+func sortMapByValue(m map[string]int) PairList {
+	p := make(PairList, len(m))
+	i := 0
+	for k, v := range m {
+		p[i] = Pair{k, v}
+		i++
+	}
+	sort.Sort(p)
+	return p
+}
+
 // SInter returns the members of the set resulting from the intersection of all the given sets.
 func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	keys := make([][]byte, len(ctx.Args[1:]))
-	key := []byte(ctx.Args[0])
-
-	for i, key := range ctx.Args[1:] {
+	setmap := make(map[string]int, len(ctx.Args))
+	keys := make([][]byte, len(ctx.Args))
+	mkeys := make([][]byte, len(ctx.Args))
+	for i, key := range ctx.Args {
 		keys[i] = []byte(key)
+		mkeys[i] = db.GetMetaKey(txn, keys[i])
 	}
-	set, err := txn.Set(key)
+
+	// Batch get meta information
+	// If the set corresponding to key does not exist, it is processed as an empty set
+	mval, err := db.BatchGetValues(txn, mkeys)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-
-	if !set.Exists() {
-		return nil, nil
+	for i, val := range mval {
+		if val == nil {
+			return nil, nil
+		}
+		smeta, err := db.DecodeSetMeta(val)
+		if err != nil {
+			return nil, err
+		}
+		if smeta.Len == 0 {
+			return nil, nil
+		}
+		setmap[string(keys[i])] = int(smeta.Len)
 	}
-	if n, _ := set.SCard(); n == 0 {
-		return nil, nil
+
+	// Sort the map
+	setlist := sortMapByValue(setmap)
+
+	ks := setlist[0].Key
+	set, err := txn.Set([]byte(ks))
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
 	}
 	members, err = set.SMembers()
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	for i := range keys {
-		set, err := txn.Set(keys[i])
+	for _, val := range setlist[1:] {
+		set, err := txn.Set([]byte(val.Key))
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
-		}
-		if !set.Exists() {
-			return nil, nil
-		}
-		if n, _ := set.SCard(); n == 0 {
-			return nil, nil
 		}
 		ms, err := set.SMembers()
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
 		members = sliceInter(members, ms)
-
-	}
-	return BytesArray(ctx.Out, members), nil
-}
-func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var members [][]byte
-	keys := make([][]byte, len(ctx.Args))
-	mkeys := make([][]byte, len(ctx.Arg))
-	for i, key := range ctx.Args {
-		keys[i] = []byte(key)
-		mkey[i] = db.MetaKey(txn.db, keys[i])
 	}
 
-	//批量获取meta信息
-	m, err := db.BatchGetValues(txn, mkeys)
 	return BytesArray(ctx.Out, members), nil
 }
 
@@ -274,16 +300,6 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, members), nil
 }
 
-// InSliceInter checks given interface in interface slice.
-func inSliceInter(v []byte, sl [][]byte) bool {
-	for _, vv := range sl {
-		if bytes.Equal(vv, v) {
-			return true
-		}
-	}
-	return false
-}
-
 // SliceIntersect returns slice that are present in all the slice1 and slice2.
 func sliceInter(slice1, slice2 [][]byte) (interslice [][]byte) {
 	for _, v := range slice1 {
@@ -294,14 +310,14 @@ func sliceInter(slice1, slice2 [][]byte) (interslice [][]byte) {
 	return
 }
 
-// InSliceDiff checks given interface in interface slice.
-func inSliceDiff(v []byte, sl [][]byte) bool {
+// InSliceInter checks given interface in interface slice.
+func inSliceInter(v []byte, sl [][]byte) bool {
 	for _, vv := range sl {
 		if bytes.Equal(vv, v) {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 // SliceIntersect returns all slices in slice1 that are not present in slice2.
@@ -313,4 +329,14 @@ func sliceDiff(slice1, slice2 [][]byte) [][]byte {
 		}
 	}
 	return diffslice
+}
+
+// InSliceDiff checks given interface in interface slice.
+func inSliceDiff(v []byte, sl [][]byte) bool {
+	for _, vv := range sl {
+		if bytes.Equal(vv, v) {
+			return false
+		}
+	}
+	return true
 }

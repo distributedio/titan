@@ -48,6 +48,12 @@ func GetSet(txn *Transaction, key []byte) (*Set, error) {
 	return set, nil
 }
 
+// GetMetaKey gets MetaKey based on the given key
+func GetMetaKey(txn *Transaction, key []byte) (mkey []byte) {
+	mkey = MetaKey(txn.db, key)
+	return
+}
+
 //newSet  create new Set object
 func newSet(txn *Transaction, key []byte) *Set {
 	now := Now()

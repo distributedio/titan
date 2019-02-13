@@ -109,6 +109,7 @@ func (set *Set) updateMeta() error {
 	if err != nil {
 		return err
 	}
+	set.meta.UpdatedAt = Now()
 	if !set.exists {
 		set.exists = true
 	}
@@ -127,7 +128,6 @@ func (set *Set) SAdd(members ...[]byte) (int64, error) {
 	}
 	// {Namespace}:{DBID}:{D}:{ObjectID}:{ms[i]}
 	values, err := BatchGetValues(set.txn, ikeys)
-
 	if err != nil {
 		return 0, nil
 	}

@@ -239,8 +239,8 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	for _, val := range setlist[1:] {
-		set, err := txn.Set([]byte(val.Key))
+	for _, key := range setlist[1:] {
+		set, err := txn.Set([]byte(key.Key))
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
@@ -259,8 +259,8 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var keys [][]byte
 	var members [][]byte
 
-	key := []byte(ctx.Args[0])
-	set, err := txn.Set(key)
+	ks := []byte(ctx.Args[0])
+	set, err := txn.Set(ks)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}

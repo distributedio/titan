@@ -154,9 +154,8 @@ func RemoveRepByMap(members [][]byte) [][]byte {
 	// tempMap saves non-repeating primary keys
 	tempMap := map[string]int{}
 	for _, m := range members {
-		l := len(tempMap)
-		tempMap[string(m)] = 0
-		if len(tempMap) != l {
+		_, ok := tempMap[string(m)]
+		if !ok {
 			result = append(result, m)
 		}
 	}
@@ -328,9 +327,6 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 			return 0, err
 		}
 		destset.meta.Len++
-		if err := destset.updateMeta(); err != nil {
-			return 0, err
-		}
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	ikey := setItemKey(dkey, member)

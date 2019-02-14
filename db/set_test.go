@@ -346,7 +346,7 @@ func TestSet_SCard(t *testing.T) {
 			assert.NoError(t, err)
 
 			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("SIsmember() txn.Commit error = %v", err)
+				t.Errorf("SCard() txn.Commit error = %v", err)
 				return
 			}
 			assert.Equal(t, got, tt.want)
@@ -458,7 +458,7 @@ func TestSet_SPop(t *testing.T) {
 			assert.NotNil(t, gotMembers)
 
 			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("SIsmember() txn.Commit error = %v", err)
+				t.Errorf("SPop() txn.Commit error = %v", err)
 				return
 			}
 			assert.Equal(t, int64(len(gotMembers)), tt.wantMembersCount)
@@ -512,7 +512,7 @@ func TestSet_SRem(t *testing.T) {
 			assert.NotNil(t, got)
 
 			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("SIsmember() txn.Commit error = %v", err)
+				t.Errorf("SRem() txn.Commit error = %v", err)
 				return
 			}
 			assert.Equal(t, got, tt.want)
@@ -608,7 +608,7 @@ func TestSet_SMove(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			if err = txn.Commit(context.TODO()); err != nil {
-				t.Errorf("SIsmember() txn.Commit error = %v", err)
+				t.Errorf("SMove() txn.Commit error = %v", err)
 				return
 			}
 			iss, err := set.SIsmember(tt.args.member)

@@ -20,7 +20,7 @@ scoreKey：可以根据score排序的， {db.ns}:{db.ID}:S:{obj.id}:{score}:{mem
 
 查询metaKey得到objId和len，对每一个member
 
-    查询memberKey，如果存在：查询scoreKey，score相同不作处理，不相同写入新scoreKey，删除老scoreKey，命令返回值不增加
+    查询memberKey，如果存在：查询scoreKey，score相同不作处理，不相同写入新scoreKey，删除老scoreKey，并覆盖写memberKey，命令返回值不增加
 
     如果不存在，写入memberKey和scoreKey，命令返回值+1，
 

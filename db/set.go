@@ -263,7 +263,6 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 			break
 		} else {
 			ms = append(ms, iter.Key()[len(prefix):])
-
 			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
 				return nil, err
 			}

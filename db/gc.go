@@ -125,8 +125,10 @@ func doGC(db *DB, limit int64) error {
 				txn.Rollback()
 				return nil
 			}
-			left -= count
 		}
+		//either < or >= limit, the "left" should be decreased count,
+		// else current thread will busy in gc and don't update lease, another thread will also do gc
+		left -= count
 
 		if err := txn.Commit(context.Background()); err != nil {
 			txn.Rollback()

@@ -48,37 +48,20 @@ func (c *client) serve(conn net.Conn) error {
 	c.conn = conn
 	c.r = bufio.NewReader(conn)
 
-	rootCtx, rootCancel := context.WithCancel(context.New(c.cliCtx, c.server.servCtx))
-
-	// Use a separate goroutine to keep reading commands
-	// then we can detect a closed connection as soon as possible.
-	// It only works when the cmd channel is not blocked
-	cmdc := make(chan []string, 128)
-	errc := make(chan error)
-	go func() {
-		for {
-			cmd, err := c.readCommand()
-			if err != nil {
-				errc <- err
-				rootCancel()
-				return
-			}
-			cmdc <- cmd
-		}
-	}()
-
 	var cmd []string
 	var err error
 	for {
 		select {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
-		case cmd = <-cmdc:
-		case err = <-errc:
-			zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
-				zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
-			c.conn.Close()
-			return err
+		default:
+			cmd, err = c.readCommand()
+			if err != nil {
+				zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+					zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+				c.conn.Close()
+				return err
+			}
 		}
 
 		if c.server.servCtx.Pause > 0 {
@@ -96,7 +79,7 @@ func (c *client) serve(conn net.Conn) error {
 			Out:     c,
 			TraceID: GenerateTraceID(),
 		}
-		ctx.Context = rootCtx
+		ctx.Context = context.New(c.cliCtx, c.server.servCtx)
 
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {

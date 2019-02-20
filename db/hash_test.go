@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -1025,6 +1026,45 @@ func TestHashHMSlot(t *testing.T) {
 			txn.Commit(context.TODO())
 			got := hash.meta.MetaSlot
 			assert.Equal(t, got, tt.want.len)
+		})
+	}
+}
+
+func TestHashExpired(t *testing.T) {
+	key := []byte("TestHashExpired")
+	hash, txn, err := getHash(t, key)
+	assert.NoError(t, err)
+	assert.NotNil(t, txn)
+	assert.NotNil(t, hash)
+
+	oldID := hash.meta.Object.ID
+	hash.meta.Object.ExpireAt = (time.Now().Unix() - 3) * int64(time.Second)
+	hash.HSet([]byte("TestHashExpiredfield"), []byte("TestHashExpiredval"))
+	txn.Commit(context.TODO())
+
+	type want struct {
+		id []byte
+	}
+	tests := []struct {
+		name string
+		want want
+	}{
+		{
+			name: "TestHashExpired",
+			want: want{
+				id: oldID,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash, txn, err := getHash(t, key)
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+			assert.NotNil(t, hash)
+			txn.Commit(context.TODO())
+			newID := hash.meta.Object.ID
+			assert.NotEqual(t, newID, tt.want.id)
 		})
 	}
 }

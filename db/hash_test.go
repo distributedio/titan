@@ -1031,40 +1031,59 @@ func TestHashHMSlot(t *testing.T) {
 }
 
 func TestHashExpired(t *testing.T) {
-	key := []byte("TestHashExpired")
-	hash, txn, err := getHash(t, key)
-	assert.NoError(t, err)
-	assert.NotNil(t, txn)
-	assert.NotNil(t, hash)
+	setExpireAt := func(t *testing.T, key []byte, expireAt int64) []byte {
+		hash, txn, err := getHash(t, key)
+		assert.NoError(t, err)
+		assert.NotNil(t, txn)
+		assert.NotNil(t, hash)
+		id := hash.meta.Object.ID
+		hash.meta.Object.ExpireAt = expireAt
+		hash.HSet([]byte("TestHashExpiredfield"), []byte("TestHashExpiredval"))
+		txn.Commit(context.TODO())
+		return id
+	}
 
-	oldID := hash.meta.Object.ID
-	hash.meta.Object.ExpireAt = (time.Now().Unix() - 3) * int64(time.Second)
-	hash.HSet([]byte("TestHashExpiredfield"), []byte("TestHashExpiredval"))
-	txn.Commit(context.TODO())
-
-	type want struct {
-		id []byte
+	ts := Now()
+	type args struct {
+		key      []byte
+		expireAt int64
 	}
 	tests := []struct {
 		name string
-		want want
+		args args
+		want bool
 	}{
 		{
 			name: "TestHashExpired",
-			want: want{
-				id: oldID,
+			args: args{
+				key:      []byte("TestHashExpired"),
+				expireAt: ts - 3*int64(time.Second),
 			},
+			want: false,
+		},
+		{
+			name: "TestHashNotExpired",
+			args: args{
+				key:      []byte("TestHashNotExpired"),
+				expireAt: ts + 10*int64(time.Second),
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hash, txn, err := getHash(t, key)
+			oldID := setExpireAt(t, tt.args.key, tt.args.expireAt)
+			hash, txn, err := getHash(t, tt.args.key)
 			assert.NoError(t, err)
 			assert.NotNil(t, txn)
 			assert.NotNil(t, hash)
-			txn.Commit(context.TODO())
 			newID := hash.meta.Object.ID
-			assert.NotEqual(t, newID, tt.want.id)
+			txn.Commit(context.TODO())
+			if tt.want {
+				assert.Equal(t, newID, oldID)
+			} else {
+				assert.NotEqual(t, newID, oldID)
+			}
 		})
 	}
 }

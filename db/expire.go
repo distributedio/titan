@@ -116,6 +116,21 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
+func getObject(txn *Transaction, mkey []byte) (*Object, error) {
+	rawObj, err := txn.t.Get(mkey)
+	if err != nil {
+		zap.L().Error("[Expire] get meta failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
+		return nil, err
+	}
+	obj, err := DecodeObject(rawObj)
+	if err != nil {
+		zap.L().Error("[Expire] decode meta failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
+		return nil, err
+
+	}
+	return obj, nil
+}
+
 func runExpire(db *DB, batchLimit int) {
 	txn, err := db.Begin()
 	if err != nil {
@@ -132,7 +147,7 @@ func runExpire(db *DB, batchLimit int) {
 	now := time.Now().UnixNano()
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
 		key := iter.Key()
-		objID := iter.Value()
+		val := iter.Value()
 		mkey := key[expireMetakeyOffset:]
 		namespace, dbid, rawkey := splitMetaKey(mkey)
 
@@ -141,9 +156,26 @@ func runExpire(db *DB, batchLimit int) {
 			break
 		}
 
-		zap.L().Debug("[Expire] delete metakey", zap.ByteString("mkey", mkey), zap.String("key", string(rawkey)))
+		//get obj info
+		obj, err := getObject(txn, mkey)
+		if err != nil {
+			txn.Rollback()
+			return
+		}
+
 		// Delete object meta
-		if err := txn.t.Delete(mkey); err != nil {
+		if bytes.Equal(obj.ID, val) {
+			if err := txn.t.Delete(mkey); err != nil {
+				zap.L().Error("[Expire] delete failed",
+					zap.ByteString("key", rawkey),
+					zap.Error(err))
+				return
+			}
+		}
+
+		zap.L().Debug("[Expire] delete metakey", zap.ByteString("mkey", mkey), zap.String("key", string(rawkey)))
+		// Remove from expire list
+		if err := txn.t.Delete(key); err != nil {
 			zap.L().Error("[Expire] delete failed",
 				zap.ByteString("key", rawkey),
 				zap.Error(err))
@@ -151,26 +183,19 @@ func runExpire(db *DB, batchLimit int) {
 			return
 		}
 		// Gc it if it is a complext data structure, the value of string is: []byte{'0'}
-		if len(objID) > 1 {
-			if err := gc(txn.t, toTikvDataKey(namespace, dbid, objID)); err != nil {
+		if obj.Type != ObjectString || !bytes.Equal(obj.ID, val) {
+			if err := gc(txn.t, toTikvDataKey(namespace, dbid, val)); err != nil {
 				zap.L().Error("[Expire] gc failed",
 					zap.ByteString("key", rawkey),
 					zap.ByteString("namepace", namespace),
 					zap.Int64("dbid", int64(dbid)),
-					zap.ByteString("objid", objID),
+					zap.ByteString("objid", val),
 					zap.Error(err))
 				txn.Rollback()
 				return
 			}
 		}
 		// Remove from expire list
-		if err := txn.t.Delete(iter.Key()); err != nil {
-			zap.L().Error("[Expire] delete failed",
-				zap.ByteString("key", rawkey),
-				zap.Error(err))
-			txn.Rollback()
-			return
-		}
 		if err := iter.Next(); err != nil {
 			zap.L().Error("[Expire] next failed",
 				zap.ByteString("key", rawkey),

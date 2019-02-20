@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -1025,6 +1026,64 @@ func TestHashHMSlot(t *testing.T) {
 			txn.Commit(context.TODO())
 			got := hash.meta.MetaSlot
 			assert.Equal(t, got, tt.want.len)
+		})
+	}
+}
+
+func TestHashExpired(t *testing.T) {
+	setExpireAt := func(t *testing.T, key []byte, expireAt int64) []byte {
+		hash, txn, err := getHash(t, key)
+		assert.NoError(t, err)
+		assert.NotNil(t, txn)
+		assert.NotNil(t, hash)
+		id := hash.meta.Object.ID
+		hash.meta.Object.ExpireAt = expireAt
+		hash.HSet([]byte("TestHashExpiredfield"), []byte("TestHashExpiredval"))
+		txn.Commit(context.TODO())
+		return id
+	}
+
+	ts := Now()
+	type args struct {
+		key      []byte
+		expireAt int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "TestHashExpired",
+			args: args{
+				key:      []byte("TestHashExpired"),
+				expireAt: ts - 3*int64(time.Second),
+			},
+			want: false,
+		},
+		{
+			name: "TestHashNotExpired",
+			args: args{
+				key:      []byte("TestHashNotExpired"),
+				expireAt: ts + 10*int64(time.Second),
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldID := setExpireAt(t, tt.args.key, tt.args.expireAt)
+			hash, txn, err := getHash(t, tt.args.key)
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+			assert.NotNil(t, hash)
+			newID := hash.meta.Object.ID
+			txn.Commit(context.TODO())
+			if tt.want {
+				assert.Equal(t, newID, oldID)
+			} else {
+				assert.NotEqual(t, newID, oldID)
+			}
 		})
 	}
 }

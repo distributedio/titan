@@ -97,7 +97,7 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	if hmeta.Type != ObjectHash {
 		return nil, ErrTypeMismatch
 	}
-	if IsExpired(&hash.meta.Object, Now()) {
+	if IsExpired(&hmeta.Object, Now()) {
 		return hash, nil
 	}
 	hash.meta = hmeta

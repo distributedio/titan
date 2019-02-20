@@ -182,7 +182,10 @@ func runExpire(db *DB, batchLimit int) {
 			txn.Rollback()
 			return
 		}
-		// Gc it if it is a complext data structure, the value of string is: []byte{'0'}
+
+		//Need gc two types of data:
+		//1.Normally expired data that requires gc to fall back to the composite data type
+		//2.Overwritten Writing Requires GC to drop old data.(String override string will also be added to gc, even if string type data does not require gc data)
 		if obj.Type != ObjectString || !bytes.Equal(obj.ID, val) {
 			if err := gc(txn.t, toTikvDataKey(namespace, dbid, val)); err != nil {
 				zap.L().Error("[Expire] gc failed",

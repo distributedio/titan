@@ -149,10 +149,10 @@ func GetPrefix(txn *db.Transaction, key []byte) ([]byte, error) {
 // SUnion returns the members of the set resulting from the union of all the given sets.
 func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
 	var min []byte
 	var count int
 	var keys = make([][]byte, len(ctx.Args))
+	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
 
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
@@ -213,10 +213,10 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SInter returns the members of the set resulting from the intersection of all the given sets.
 func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
 	var max []byte
 	var keys = make([][]byte, len(ctx.Args))
 	var mkeys = make([][]byte, len(ctx.Args))
+	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -292,10 +292,10 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
-	var keys = make([][]byte, len(ctx.Args))
 	var min []byte
 	var count int
+	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
+	var keys = make([][]byte, len(ctx.Args))
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -394,45 +394,4 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	}
 	return BytesArray(ctx.Out, members), nil
-}
-
-// SliceIntersect returns slice that are present in all the slice1 and slice2.
-func sliceInter(slice1, slice2 [][]byte) (interslice [][]byte) {
-	for _, v := range slice1 {
-		if inSliceInter(v, slice2) {
-			interslice = append(interslice, v)
-		}
-	}
-	return
-}
-
-// InSliceInter checks given interface in interface slice.
-func inSliceInter(v []byte, sl [][]byte) bool {
-	for _, vv := range sl {
-		if bytes.Equal(vv, v) {
-			return true
-		}
-	}
-	return false
-}
-
-// SliceIntersect returns all slices in slice1 that are not present in slice2.
-func sliceDiff(slice1, slice2 [][]byte) [][]byte {
-	var diffslice [][]byte
-	for _, v := range slice1 {
-		if inSliceDiff(v, slice2) {
-			diffslice = append(diffslice, v)
-		}
-	}
-	return diffslice
-}
-
-// InSliceDiff checks given interface in interface slice.
-func inSliceDiff(v []byte, sl [][]byte) bool {
-	for _, vv := range sl {
-		if bytes.Equal(vv, v) {
-			return false
-		}
-	}
-	return true
 }

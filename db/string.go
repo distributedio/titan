@@ -247,7 +247,7 @@ func (s *String) BitPos(bit, begin, end int) (int, error) {
 	if begin > end {
 		return -1, nil
 	}
-	return bitpos(s.Meta.Value[begin:end+1], bit), nil
+	return redisBitpos(s.Meta.Value[begin:end+1], bit), nil
 }
 
 func (s *String) BitOpAnd() {

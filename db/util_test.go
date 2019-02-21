@@ -101,7 +101,7 @@ func TestBitpos(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, bitpos(tt.args.val, tt.args.bit))
+			assert.Equal(t, tt.want, redisBitpos(tt.args.val, tt.args.bit))
 		})
 	}
 }

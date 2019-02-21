@@ -57,7 +57,7 @@ func initCursor(begin, end, llen int) (int, int) {
 	return begin, end
 }
 
-func bitpos(val []byte, bit int) int {
+func redisBitpos(val []byte, bit int) int {
 	// fill in four bytes
 	bitval := val
 	ll := 4 - len(bitval)%4

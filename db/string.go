@@ -1,7 +1,6 @@
 package db
 
 import (
-	"math/bits"
 	"strconv"
 )
 
@@ -237,13 +236,7 @@ func (s *String) BitCount(begin, end int) (int, error) {
 	if begin > end {
 		return 0, nil
 	}
-
-	nums := bytesToUint32s(s.Meta.Value[begin : end+1])
-	sum := 0
-	for _, num := range nums {
-		sum += bits.OnesCount32(num)
-	}
-	return sum, nil
+	return redisPopcount(s.Meta.Value[begin : end+1]), nil
 }
 
 // BitPos find first bit set or clear in a string

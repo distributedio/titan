@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/binary"
 	"math"
+	"math/bits"
 	"time"
 
 	"github.com/satori/go.uuid"
@@ -17,21 +18,23 @@ func UUIDString(id []byte) string { return uuid.FromBytesOrNil(id).String() }
 // Now returns the current unix nano timestamp.
 func Now() int64 { return time.Now().UnixNano() }
 
-func bytesToUint32s(s []byte) []uint32 {
+func redisPopcount(s []byte) int {
 	// Count initial bytes not aligned to 32 bit.
-	bits := s
+	bitval := s
 	begin := 0
-	ll := 4 - len(bits)%4
+	ll := 4 - len(bitval)%4
 	if ll != 4 {
-		bits = append(bits, make([]byte, ll)...)
+		bitval = append(bitval, make([]byte, ll)...)
 	}
 
-	nums := make([]uint32, len(bits)/4)
+	sum := 0
 	for begin < len(s) {
-		nums = append(nums, binary.BigEndian.Uint32(bits[begin:begin+4]))
+		num := binary.BigEndian.Uint32(bitval[begin : begin+4])
+		sum += bits.OnesCount32(num)
 		begin += 4
 	}
-	return nums
+
+	return sum
 }
 
 func initCursor(begin, end, llen int) (int, int) {

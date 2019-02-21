@@ -163,7 +163,7 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		prefix := append(dkey, ':')
 		iter, err := set.GetIter(prefix)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("ERR " + err.Error())
 		}
 		defer iter.Close()
 		setsIter[i] = iter
@@ -189,7 +189,7 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 			if bytes.Equal(setsIter[i].Key()[len(prefix):], min) {
 				if err := setsIter[i].Next(); err != nil {
-					return nil, err
+					return nil, errors.New("ERR " + err.Error())
 				}
 			}
 			if !setsIter[i].Key().HasPrefix(prefix) {
@@ -227,7 +227,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		prefix := append(dkey, ':')
 		iter, err := set.GetIter(prefix)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("ERR " + err.Error())
 		}
 		defer iter.Close()
 		setsIter[i] = iter
@@ -275,7 +275,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if i == len(ctx.Args) {
 			members = append(members, max)
 			if err := setsIter[0].Next(); err != nil {
-				return nil, err
+				return nil, errors.New("ERR " + err.Error())
 			}
 			prefix, _ := GetPrefix(txn, []byte(keys[0]))
 			if !setsIter[0].Key().HasPrefix(prefix) {
@@ -305,7 +305,7 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		prefix := append(dkey, ':')
 		iter, err := set.GetIter(prefix)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("ERR " + err.Error())
 		}
 		defer iter.Close()
 		setsIter[i] = iter
@@ -327,10 +327,10 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 					continue
 				}
 				if err := setsIter[i].Next(); err != nil {
-					return nil, err
+					return nil, errors.New("ERR " + err.Error())
 				}
 				if err := setsIter[0].Next(); err != nil {
-					return nil, err
+					return nil, errors.New("ERR " + err.Error())
 				}
 				if !setsIter[0].Key().HasPrefix(iprefix) {
 					return BytesArray(ctx.Out, members), nil
@@ -362,16 +362,16 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 				if i == 0 {
 					members = append(members, min)
 					if err := setsIter[0].Next(); err != nil {
-						return nil, err
+						return nil, errors.New("ERR " + err.Error())
 					}
 					for bytes.Equal(min, setsIter[0].Key()[len(iprefix):]) {
 						if err := setsIter[0].Next(); err != nil {
-							return nil, err
+							return nil, errors.New("ERR " + err.Error())
 						}
 					}
 				} else if setsIter[i].Key().HasPrefix(prefix) {
 					if err := setsIter[i].Next(); err != nil {
-						return nil, err
+						return nil, errors.New("ERR " + err.Error())
 					}
 				}
 			}

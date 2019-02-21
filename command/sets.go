@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"errors"
-	"sort"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -136,74 +135,104 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(count)), nil
 }
 
+// GetPrefix gets prefix of the key
+func GetPrefix(txn *db.Transaction, key []byte) ([]byte, error) {
+	set, err := txn.Set([]byte(key))
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	dkey := set.GetDataKey(txn, []byte(key))
+	prefix := append(dkey, ':')
+	return prefix, nil
+}
+
 // SUnion returns the members of the set resulting from the union of all the given sets.
 func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	mambermap := make(map[string]int)
-	keys := make([][]byte, len(ctx.Args))
+	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
+	var min []byte
+	var count int
+	var keys = make([][]byte, len(ctx.Args))
+
 	for i, key := range ctx.Args {
+		set, err := txn.Set([]byte(key))
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
+		dkey := set.GetDataKey(txn, []byte(key))
+		prefix := append(dkey, ':')
+		iter, err := set.GetIter(prefix)
+		if err != nil {
+			return nil, err
+		}
+		defer iter.Close()
+		setsIter[i] = iter
 		keys[i] = []byte(key)
+	}
+	prefix, _ := GetPrefix(txn, keys[0])
+	min = setsIter[0].Key()[len(prefix):]
+	for count < len(ctx.Args) {
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, []byte(keys[i]))
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				continue
+			}
+			iter := setsIter[i]
+			if bytes.Compare(min, iter.Key()[len(prefix):]) == 1 || bytes.Equal(iter.Key()[len(prefix):], min) {
+				min = iter.Key()[len(prefix):]
+			}
+		}
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, []byte(keys[i]))
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				continue
+			}
+			if bytes.Equal(setsIter[i].Key()[len(prefix):], min) {
+				if err := setsIter[i].Next(); err != nil {
+					return nil, err
+				}
+			}
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				count++
+			}
 
-		set, err := txn.Set(keys[i])
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
 		}
-		if !set.Exists() {
-			continue
-		}
-		if n, _ := set.SCard(); n == 0 {
-			continue
-		}
-		ms, err := set.SMembers()
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
-		}
-		for n := range ms {
-			mambermap[string(ms[n])] = 1
+		members = append(members, min)
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, []byte(keys[i]))
+			if setsIter[i].Key().HasPrefix(prefix) {
+				min = setsIter[i].Key()[len(prefix):]
+				break
+			}
 		}
 
 	}
-	for k, _ := range mambermap {
-		members = append(members, []byte(k))
-	}
-
 	return BytesArray(ctx.Out, members), nil
-}
-
-// A data structure to hold a key/value pair.
-type Pair struct {
-	Key   string
-	Value int
-}
-
-// A slice of Pairs that implements sort.Interface to sort by Value.
-type PairList []Pair
-
-func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p PairList) Len() int           { return len(p) }
-func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
-
-// A function to turn a map into a PairList, then sort and return it.
-func sortMapByValue(m map[string]int) PairList {
-	p := make(PairList, len(m))
-	i := 0
-	for k, v := range m {
-		p[i] = Pair{k, v}
-		i++
-	}
-	sort.Sort(p)
-	return p
 }
 
 // SInter returns the members of the set resulting from the intersection of all the given sets.
 func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	setmap := make(map[string]int, len(ctx.Args))
-	keys := make([][]byte, len(ctx.Args))
-	mkeys := make([][]byte, len(ctx.Args))
+	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
+	var max []byte
+	var keys = make([][]byte, len(ctx.Args))
+	var mkeys = make([][]byte, len(ctx.Args))
 	for i, key := range ctx.Args {
+		set, err := txn.Set([]byte(key))
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
+		dkey := set.GetDataKey(txn, []byte(key))
+		mkey := db.GetMetaKey(txn, []byte(key))
+		prefix := append(dkey, ':')
+		iter, err := set.GetIter(prefix)
+		if err != nil {
+			return nil, err
+		}
+		defer iter.Close()
+		setsIter[i] = iter
 		keys[i] = []byte(key)
-		mkeys[i] = db.GetMetaKey(txn, keys[i])
+		mkeys[i] = mkey
 	}
 
 	// Batch get meta information
@@ -212,43 +241,49 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	for i, val := range mval {
+	for _, val := range mval {
 		if val == nil {
 			return nil, nil
 		}
-		smeta, err := db.DecodeSetMeta(val)
-		if err != nil {
-			return nil, err
-		}
+		smeta, _ := db.DecodeSetMeta(val)
 		if smeta.Len == 0 {
 			return nil, nil
 		}
-		setmap[string(keys[i])] = int(smeta.Len)
 	}
 
-	// Sort the map
-	setlist := sortMapByValue(setmap)
-
-	ks := setlist[0].Key
-	set, err := txn.Set([]byte(ks))
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	members, err = set.SMembers()
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-
-	for _, key := range setlist[1:] {
-		set, err := txn.Set([]byte(key.Key))
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+	prefix, _ := GetPrefix(txn, keys[0])
+	max = setsIter[0].Key()[len(prefix):]
+	for {
+		i := 0
+	Loop:
+		for ; i < len(ctx.Args); i++ {
+			iter := setsIter[i]
+			prefix, _ := GetPrefix(txn, []byte(keys[i]))
+			for ; iter.Key().HasPrefix(prefix); iter.Next() {
+				if bytes.Compare(iter.Key()[len(prefix):], max) == 1 {
+					max = iter.Key()[len(prefix):]
+					break Loop
+				} else if bytes.Equal(iter.Key()[len(prefix):], max) {
+					break
+				}
+			}
+			if !iter.Key().HasPrefix(prefix) {
+				return BytesArray(ctx.Out, members), nil
+			}
+			setsIter[i] = iter
 		}
-		ms, err := set.SMembers()
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+		if i == len(ctx.Args) {
+			members = append(members, max)
+			if err := setsIter[0].Next(); err != nil {
+				return nil, err
+			}
+			prefix, _ := GetPrefix(txn, []byte(keys[0]))
+			if !setsIter[0].Key().HasPrefix(prefix) {
+				return BytesArray(ctx.Out, members), nil
+			}
+			max = setsIter[0].Key()[len(prefix):]
 		}
-		members = sliceInter(members, ms)
+
 	}
 
 	return BytesArray(ctx.Out, members), nil
@@ -256,46 +291,107 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var keys [][]byte
 	var members [][]byte
-
-	ks := []byte(ctx.Args[0])
-	set, err := txn.Set(ks)
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	if !set.Exists() {
-		return nil, nil
-	}
-	if n, _ := set.SCard(); n == 0 {
-		return nil, nil
-	}
-
-	members, err = set.SMembers()
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-
-	for _, key := range ctx.Args[1:] {
-		keys = append(keys, []byte(key))
-	}
-
-	for i := range keys {
-		set, err := txn.Set(keys[i])
+	var setsIter = make([]db.Iterator, len(ctx.Args)) //存储每个set当前的迭代器位置
+	var keys = make([][]byte, len(ctx.Args))
+	var min []byte
+	var count int
+	for i, key := range ctx.Args {
+		set, err := txn.Set([]byte(key))
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
-		if !set.Exists() {
-			continue
-		}
-		if n, _ := set.SCard(); n == 0 {
-			continue
-		}
-		ms, err := set.SMembers()
+		dkey := set.GetDataKey(txn, []byte(key))
+		prefix := append(dkey, ':')
+		iter, err := set.GetIter(prefix)
 		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+			return nil, err
 		}
-		members = sliceDiff(members, ms)
+		defer iter.Close()
+		setsIter[i] = iter
+		keys[i] = []byte(key)
+	}
+
+	iprefix, _ := GetPrefix(txn, keys[0])
+	min = setsIter[0].Key()[len(iprefix):]
+	for {
+	Loop:
+		// check to see if the same element exists as the current membet for the benchmark key
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, keys[i])
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				continue
+			}
+			if bytes.Equal(min, setsIter[i].Key()[len(prefix):]) {
+				if i == 0 || !setsIter[i].Key().HasPrefix(prefix) {
+					continue
+				}
+				if err := setsIter[i].Next(); err != nil {
+					return nil, err
+				}
+				if err := setsIter[0].Next(); err != nil {
+					return nil, err
+				}
+				if !setsIter[0].Key().HasPrefix(iprefix) {
+					return BytesArray(ctx.Out, members), nil
+				}
+				min = setsIter[0].Key()[len(iprefix):]
+				goto Loop
+			}
+		}
+		//find min in members
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, keys[i])
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				if i == 0 {
+					return BytesArray(ctx.Out, members), nil
+				}
+				continue
+			}
+			if bytes.Compare(min, setsIter[i].Key()[len(prefix):]) == 1 {
+				min = setsIter[i].Key()[len(prefix):]
+			}
+		}
+		//Find the smallest element in the current member and move the pointer back
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, keys[i])
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				continue
+			}
+			if bytes.Equal(min, setsIter[i].Key()[len(prefix):]) {
+				if i == 0 {
+					members = append(members, min)
+					if err := setsIter[0].Next(); err != nil {
+						return nil, err
+					}
+					for bytes.Equal(min, setsIter[0].Key()[len(iprefix):]) {
+						if err := setsIter[0].Next(); err != nil {
+							return nil, err
+						}
+					}
+				} else if setsIter[i].Key().HasPrefix(prefix) {
+					if err := setsIter[i].Next(); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		if setsIter[0].Key().HasPrefix(iprefix) {
+			min = setsIter[0].Key()[len(iprefix):]
+		}
+
+		var j int
+		for i := 0; i < len(ctx.Args); i++ {
+			prefix, _ := GetPrefix(txn, keys[i])
+			if !setsIter[i].Key().HasPrefix(prefix) {
+				j++
+			}
+		}
+		count = j
+		if count == len(ctx.Args) {
+			break
+		}
+
 	}
 	return BytesArray(ctx.Out, members), nil
 }

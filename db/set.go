@@ -55,6 +55,19 @@ func GetMetaKey(txn *Transaction, key []byte) (mkey []byte) {
 	mkey = MetaKey(txn.db, key)
 	return
 }
+func (set *Set) GetDataKey(txn *Transaction, key []byte) (dkey []byte) {
+	s, _ := GetSet(txn, key)
+	dkey = DataKey(txn.db, s.meta.ID)
+	return
+}
+
+func (set *Set) GetIter(prefix []byte) (Iterator, error) {
+	iter, err := set.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	return iter, nil
+}
 
 //newSet  create new Set object
 func newSet(txn *Transaction, key []byte) *Set {
@@ -226,14 +239,13 @@ func (set *Set) SIsmember(member []byte) (int64, error) {
 
 // SPop removes and returns one or more random elements from the set value store at key.
 func (set *Set) SPop(count int64) (members [][]byte, err error) {
+	if !set.Exists() || set.meta.Len == 0 {
+		return nil, nil
+	}
 	// Gets a random number
 	rand.Seed(time.Now().Unix())
 	randNum := int64(rand.Intn(1000))
 	randNum = randNum % (set.meta.Len)
-
-	if !set.Exists() {
-		return nil, nil
-	}
 
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')

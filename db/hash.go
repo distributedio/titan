@@ -10,10 +10,6 @@ import (
 	"github.com/meitu/titan/db/store"
 )
 
-var (
-	defaultHashMetaSlot int64 = 0
-)
-
 //Slot slot information about hash meta
 type Slot struct {
 	Len       int64
@@ -196,10 +192,9 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if err := hash.addLength(-num); err != nil {
 		return 0, err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
+	//update and save meta
+	if err := hash.updateMeta(); err != nil {
+		return 0, err
 	}
 	return num, nil
 }
@@ -264,12 +259,10 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 	if err := hash.addLength(1); err != nil {
 		return 0, err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
+	//update and save meta
+	if err := hash.updateMeta(); err != nil {
+		return 0, err
 	}
-
 	return 1, nil
 }
 
@@ -291,12 +284,11 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	if err := hash.addLength(1); err != nil {
 		return 0, err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
-	}
 
+	//update and save meta
+	if err := hash.updateMeta(); err != nil {
+		return 0, err
+	}
 	return 1, nil
 }
 
@@ -413,15 +405,11 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 		return 0, err
 	}
 
-	if newField {
-		if err := hash.addLength(1); err != nil {
-			return 0, err
-		}
-	}
-	if (newField && !hash.MetaSlotEnabled()) || !hash.exists {
+	if newField || !hash.Exists() {
 		if err := hash.updateMeta(); err != nil {
 			return 0, err
 		}
+
 	}
 
 	return n, nil
@@ -434,7 +422,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	if hash.exists {
+	if hash.Exists() {
 		val, err := hash.txn.t.Get(ikey)
 		if err != nil {
 			if !IsErrNotFound(err) {
@@ -461,10 +449,11 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 			return 0, err
 		}
 	}
-	if (newField && !hash.MetaSlotEnabled()) || !hash.exists {
+	if newField || !hash.Exists() {
 		if err := hash.updateMeta(); err != nil {
 			return 0, err
 		}
+
 	}
 
 	return n, nil
@@ -488,7 +477,7 @@ func (hash *Hash) HLen() (int64, error) {
 // Object new object from hash
 func (hash *Hash) Object() (*Object, error) {
 	obj := hash.meta.Object
-	if hash.MetaSlotEnabled() && hash.exists {
+	if hash.MetaSlotEnabled() && hash.Exists() {
 		slot, err := hash.getAllSlot()
 		if err != nil {
 			return nil, err
@@ -536,8 +525,9 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 	if err := hash.addLength(added); err != nil {
 		return err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		return hash.updateMeta()
+
+	if err := hash.updateMeta(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -547,11 +537,14 @@ func (hash *Hash) HMSlot(metaSlot int64) error {
 	if !hash.Exists() {
 		return ErrKeyNotFound
 	}
+	if hash.Exists() && metaSlot == hash.meta.MetaSlot {
+		return nil
+	}
 	if err := hash.updateMetaSlot(metaSlot); err != nil {
 		return err
 	}
 
-	if err := hash.saveMeta(); err != nil {
+	if err := hash.setMeta(); err != nil {
 		return err
 	}
 	return nil
@@ -678,21 +671,31 @@ func (hash *Hash) getSlot(slotID int64) (*Slot, error) {
 }
 
 func (hash *Hash) updateMeta() error {
-	// if enabled slot and this hash is old hash then update meta slot
-	metaSlot := hash.txn.db.conf.Hash.MetaSlot
-	if err := hash.updateMetaSlot(metaSlot); err != nil {
-		hash.meta.MetaSlot = defaultHashMetaSlot
+	if !hash.Exists() {
+		return hash.setMeta()
 	}
-	return hash.saveMeta()
+
+	if !hash.MetaSlotEnabled() {
+		// if enabled slot and this hash is old hash then update meta slot
+		confSlot := hash.txn.db.conf.Hash.MetaSlot
+		if confSlot != hash.meta.MetaSlot {
+			if err := hash.updateMetaSlot(confSlot); err != nil {
+				return err
+			}
+		}
+		return hash.setMeta()
+	}
+
+	return nil
 }
 
-func (hash *Hash) saveMeta() error {
+func (hash *Hash) setMeta() error {
 	meta := EncodeHashMeta(hash.meta)
 	err := hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
 	if err != nil {
 		return err
 	}
-	if !hash.exists {
+	if !hash.Exists() {
 		hash.exists = true
 	}
 	return nil

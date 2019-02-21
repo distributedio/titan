@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	defaultHashMetaSlot int64 = 0
+)
+
 // compareGetString skip CreatedAt UpdatedAt ID compare
 func compareGetHash(want, get *Hash) error {
 	switch {

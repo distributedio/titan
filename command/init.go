@@ -79,6 +79,12 @@ func init() {
 		// sets
 		"sadd":     SAdd,
 		"smembers": SMembers,
+
+		//zsets(sorted sets)
+		"zadd":         ZAdd,
+		"zrange":		ZRange,
+		"zrevrange":    ZRevRange,
+
 	}
 
 	// commands contains all commands that open to clients
@@ -173,5 +179,10 @@ func init() {
 		// sets
 		"sadd":     Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
 		"smembers": Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
+
+		// zsets
+		"zadd":		Desc{Proc: AutoCommit(ZAdd), Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
+		"zrange": Desc{Proc: AutoCommit(ZRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrevrange": Desc{Proc: AutoCommit(ZRevRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
 	}
 }

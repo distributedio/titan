@@ -15,6 +15,7 @@ type AutoClient struct {
 	es *cmd.ExampleString
 	el *cmd.ExampleList
 	ek *cmd.ExampleKey
+	ez *cmd.ExampleZSet
 	*cmd.ExampleSystem
 	em *cmd.ExampleMulti
 	// addr string
@@ -34,7 +35,7 @@ func (ac *AutoClient) Start(addr string) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = redis.String(conn.Do("auth", "test-1542098935-1-7ca41bda4efc2a1889c04e"))
+	_, err = redis.String(conn.Do("auth", "titan"))
 	if err != nil {
 		panic(err)
 	}
@@ -42,6 +43,7 @@ func (ac *AutoClient) Start(addr string) {
 	ac.es = cmd.NewExampleString(conn)
 	ac.ek = cmd.NewExampleKey(conn)
 	ac.el = cmd.NewExampleList(conn)
+	ac.ez = cmd.NewExampleZSet(conn)
 	ac.ExampleSystem = cmd.NewExampleSystem(conn)
 	ac.em = cmd.NewExampleMulti(conn)
 }
@@ -101,6 +103,29 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LrangeEqual(t, "zkey-list", 0, 10)
 	ac.el.LrangeEqual(t, "zkey-list", 99, 100)
 	ac.el.LpopEqual(t, "zkey-list")
+}
+
+//ZSetCase check zset case
+//TODO
+func (ac *AutoClient) ZSetCase(t *testing.T) {
+    ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1", "-1.5", "member2", "3.6", "member3", "-3.5", "member4", "2.0", "member1")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+    //ac.ez.ZRevRangeEqual(t, "key-zset", 0, -1, true)
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, false)
+    ac.ez.ZRangeEqual(t, "key-zset", 1, 4, true)
+    ac.ez.ZRangeEqual(t, "key-zset", -4, 5, true)
+    ac.ez.ZRangeEqual(t, "key-zset", -6, 5, true)
+    ac.ez.ZRangeEqual(t, "key-zset", 4, 1, true)
+    ac.ez.ZRangeEqual(t, "key-zset", 6, 10, true)
+
+    ac.ez.ZAddEqual(t, "key-zset", "0.0", "member5", "1.5", "member2")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+    ac.ez.ZAddEqual(t, "key-zset", "3.6", "member3", "0.0", "member5")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+    ac.ez.ZAddEqual(t, "key-zset", "2.0", "member11", "2.05", "member6")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
 }
 
 //KeyCase check key case
@@ -166,7 +191,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 //SystemCase check system case
 func (ac *AutoClient) SystemCase(t *testing.T) {
 	//auth
-	ac.AuthEqual(t, "test-1542098935-1-7ca41bda4efc2a1889c04e")
+	ac.AuthEqual(t, "titan")
 	//ping
 	ac.PingEqual(t)
 }

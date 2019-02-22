@@ -10,10 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	defaultHashMetaSlot int64 = 0
-)
-
 // compareGetString skip CreatedAt UpdatedAt ID compare
 func compareGetHash(want, get *Hash) error {
 	switch {
@@ -71,7 +67,7 @@ func Test_newHash(t *testing.T) {
 			want: &Hash{
 				meta: &HashMeta{
 					Len:      0,
-					MetaSlot: defaultHashMetaSlot,
+					MetaSlot: 0,
 				},
 				key: []byte("TestNewHash"),
 				txn: txn,
@@ -207,7 +203,7 @@ func TestGetHash(t *testing.T) {
 							Type: ObjectHash,
 						},
 						Len:      0,
-						MetaSlot: defaultHashMetaSlot,
+						MetaSlot: 0,
 					},
 					key:    []byte("TestGetHashNoExistKey"),
 					exists: false,
@@ -229,7 +225,7 @@ func TestGetHash(t *testing.T) {
 						Type: ObjectHash,
 					},
 					Len:      1,
-					MetaSlot: defaultHashMetaSlot,
+					MetaSlot: 0,
 				},
 					key:    []byte("TestGetHashExistKey"),
 					exists: true,

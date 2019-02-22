@@ -116,21 +116,6 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
-func getObject(txn *Transaction, mkey []byte) (*Object, error) {
-	rawObj, err := txn.t.Get(mkey)
-	if err != nil {
-		zap.L().Error("[Expire] get meta failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
-		return nil, err
-	}
-	obj, err := DecodeObject(rawObj)
-	if err != nil {
-		zap.L().Error("[Expire] decode meta failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
-		return nil, err
-
-	}
-	return obj, nil
-}
-
 func runExpire(db *DB, batchLimit int) {
 	txn, err := db.Begin()
 	if err != nil {

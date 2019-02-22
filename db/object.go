@@ -112,17 +112,8 @@ func (obj *Object) String() string {
 
 // Object new object thougth key
 func (txn *Transaction) Object(key []byte) (*Object, error) {
-	obj := &Object{}
 	mkey := MetaKey(txn.db, key)
-
-	meta, err := txn.t.Get(mkey)
-	if err != nil {
-		if IsErrNotFound(err) {
-			return nil, ErrKeyNotFound
-		}
-		return nil, err
-	}
-	obj, err = DecodeObject(meta)
+	obj, err := getObject(txn, mkey)
 	if err != nil {
 		return nil, err
 	}
@@ -152,4 +143,20 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	}
 
 	return nil
+}
+
+func getObject(txn *Transaction, metaKey []byte) (*Object, error) {
+	obj := &Object{}
+	meta, err := txn.t.Get(metaKey)
+	if err != nil {
+		if IsErrNotFound(err) {
+			return nil, ErrKeyNotFound
+		}
+		return nil, err
+	}
+	obj, err = DecodeObject(meta)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

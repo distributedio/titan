@@ -55,21 +55,40 @@ func GetMetaKey(txn *Transaction, key []byte) (mkey []byte) {
 	mkey = MetaKey(txn.db, key)
 	return
 }
-func (set *Set) GetDataKey(txn *Transaction, key []byte) (dkey []byte) {
-	s, _ := GetSet(txn, key)
-	dkey = DataKey(txn.db, s.meta.ID)
-	return
+
+// SetIter is the struct of Iterator and prefix
+type SetIter struct {
+	Iter   Iterator
+	Prefix []byte
 }
 
-func (set *Set) GetIter(prefix []byte) (Iterator, error) {
-	iter, err := set.txn.t.Iter(prefix, nil)
-	if err != nil {
-		return nil, err
+// Iter returns the SetIter object
+func (set *Set) Iter() (*SetIter, error) {
+	var siter SetIter
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+	iter, _ := set.txn.t.Iter(prefix, nil)
+	siter.Iter = iter
+	siter.Prefix = prefix
+	return &siter, nil
+}
+
+// Value returns the member pointed by iter
+func (siter *SetIter) Value() []byte {
+	res := siter.Iter.Key()[len(siter.Prefix):]
+	return res
+
+}
+
+// Valid judgies whether the key directed by iter has the same prifix
+func (siter *SetIter) Valid() bool {
+	if !siter.Iter.Key().HasPrefix(siter.Prefix) {
+		return false
 	}
-	return iter, nil
+	return true
 }
 
-//newSet  create new Set object
+//newSet create new Set object
 func newSet(txn *Transaction, key []byte) *Set {
 	now := Now()
 	return &Set{

@@ -291,27 +291,23 @@ func TestSUnion(t *testing.T) {
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
 	assert.Equal(t, "*5", lines[0])
-	//	fmt.Println("case 1", lines)
 
 	//case 2
 	ctx = ContextTest("sunion", key1, key3)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
 	assert.Equal(t, "*5", lines[0])
-	//	fmt.Println("case 2", lines)
 	//case 3
 	ctx = ContextTest("sunion", key2, key3)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
 	assert.Equal(t, "*4", lines[0])
-	//	fmt.Println("case 3", lines)
 
 	//case 4
 	ctx = ContextTest("sunion", key1, key2, key3)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
 	assert.Equal(t, "*6", lines[0])
-	//	fmt.Println("case 4", lines)
 	//end
 	clearSets(t, key1)
 

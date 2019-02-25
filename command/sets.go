@@ -11,7 +11,6 @@ import (
 // SAdd adds the specified members to the set stored at key
 func SAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-
 	members := make([][]byte, len(ctx.Args[1:]))
 	for i, member := range ctx.Args[1:] {
 		members[i] = []byte(member)
@@ -30,7 +29,6 @@ func SAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SMembers returns all the members of the set value stored at key
 func SMembers(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -46,7 +44,6 @@ func SMembers(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SCard returns the set cardinality (number of elements) of the set stored at key
 func SCard(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -76,23 +73,20 @@ func SIsmember(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // SPop removes and returns one or more random elements from the set value store at key
 func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	var count int
+	count := 0
 	var err error
-	var members [][]byte
-	var set *db.Set
 	key := []byte(ctx.Args[0])
-
 	if len(ctx.Args) == 2 {
 		count, err = strconv.Atoi(ctx.Args[1])
 		if err != nil {
 			return nil, ErrInteger
 		}
 	}
-	set, err = txn.Set(key)
+	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	members, err = set.SPop(int64(count))
+	members, err := set.SPop(int64(count))
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -123,7 +117,6 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	destkey := []byte(ctx.Args[1])
 	member = []byte(ctx.Args[2])
-
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -138,9 +131,7 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SUnion returns the members of the set resulting from the union of all the given sets.
 func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var min []byte
-	var count int
-	var setsIter = make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
+	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -153,38 +144,30 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
-	min = setsIter[0].Value()
-	for count < len(ctx.Args) {
-		for i := 0; i < len(ctx.Args); i++ {
-			if !setsIter[i].Valid() {
-				continue
-			}
+	min := setsIter[0].Value()
+	for {
+		for i := 0; i < len(setsIter); i++ {
 			if bytes.Compare(min, setsIter[i].Value()) == 1 || bytes.Equal(setsIter[i].Value(), min) {
 				min = setsIter[i].Value()
 			}
-
 		}
-		for i := 0; i < len(ctx.Args); i++ {
-			if !setsIter[i].Valid() {
-				continue
-			}
-			if bytes.Equal(setsIter[i].Value(), min) {
-				if err := setsIter[i].Iter.Next(); err != nil {
+		l := len(setsIter)
+		for i, j := 0, 0; i < l; i, j = i+1, j+1 {
+			if bytes.Equal(setsIter[j].Value(), min) {
+				if err := setsIter[j].Iter.Next(); err != nil {
 					return nil, errors.New("ERR " + err.Error())
 				}
 			}
-
-			if !setsIter[i].Valid() {
-				count++
+			if !setsIter[j].Valid() {
+				setsIter = append(setsIter[:j], setsIter[j+1:]...)
+				j--
 			}
-
 		}
 		members = append(members, min)
-		for i := 0; i < len(ctx.Args); i++ {
-			if setsIter[i].Valid() {
-				min = setsIter[i].Value()
-				break
-			}
+		if len(setsIter) > 0 {
+			min = setsIter[0].Value()
+		} else {
+			break
 		}
 	}
 	return BytesArray(ctx.Out, members), nil
@@ -193,41 +176,29 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SInter returns the members of the set resulting from the intersection of all the given sets.
 func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var max []byte
-	var mkeys = make([][]byte, len(ctx.Args))
-	var setsIter = make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
+	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
-		mkey := db.GetMetaKey(txn, []byte(key))
+		setlen, err := set.SCard()
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
+		}
+		// If the set corresponding to key does not exist, it is processed as an empty set
+		if !set.Exists() || setlen == 0 {
+			return nil, nil
+		}
 		siter, err := set.Iter()
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
 		defer siter.Iter.Close()
 		setsIter[i] = siter
-		mkeys[i] = mkey
 	}
 
-	// Batch get meta information
-	// If the set corresponding to key does not exist, it is processed as an empty set
-	mval, err := db.BatchGetValues(txn, mkeys)
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	for _, val := range mval {
-		if val == nil {
-			return nil, nil
-		}
-		smeta, _ := db.DecodeSetMeta(val)
-		if smeta.Len == 0 {
-			return nil, nil
-		}
-	}
-
-	max = setsIter[0].Value()
+	max := setsIter[0].Value()
 	for {
 		i := 0
 	Loop:
@@ -263,9 +234,8 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var min []byte
 	var count int
-	var setsIter = make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
+	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -279,7 +249,7 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		setsIter[i] = siter
 	}
 
-	min = setsIter[0].Value()
+	min := setsIter[0].Value()
 	for {
 	Loop:
 		// check to see if the same element exists as the current membet for the benchmark key

@@ -225,7 +225,6 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 			max = setsIter[0].Value()
 		}
-
 	}
 
 	return BytesArray(ctx.Out, members), nil
@@ -234,6 +233,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
+	var err error
 	var count int
 	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
 	for i, key := range ctx.Args {
@@ -248,7 +248,6 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
-
 	min := setsIter[0].Value()
 	for {
 	Loop:
@@ -287,33 +286,15 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 		}
 		//Find the smallest element in the current member and move the pointer back
-		for i := 0; i < len(ctx.Args); i++ {
-			if !setsIter[i].Valid() {
-				continue
-			}
-			if bytes.Equal(min, setsIter[i].Value()) {
-				if i == 0 {
-					members = append(members, min)
-					if err := setsIter[0].Iter.Next(); err != nil {
-						return nil, errors.New("ERR " + err.Error())
-					}
-					for bytes.Equal(min, setsIter[0].Value()) {
-						if err := setsIter[0].Iter.Next(); err != nil {
-							return nil, errors.New("ERR " + err.Error())
-						}
-					}
-				} else if setsIter[i].Valid() {
-					if err := setsIter[i].Iter.Next(); err != nil {
-						return nil, errors.New("ERR " + err.Error())
-					}
-				}
-			}
+		members, err = moveMembers(setsIter, min, len(ctx.Args), members)
+		if err != nil {
+			return nil, errors.New("ERR " + err.Error())
 		}
+
 		if setsIter[0].Valid() {
 			min = setsIter[0].Value()
 		}
-
-		var j int
+		j := 0
 		for i := 0; i < len(ctx.Args); i++ {
 			if !setsIter[i].Valid() {
 				j++
@@ -323,7 +304,32 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if count == len(ctx.Args) {
 			break
 		}
-
 	}
 	return BytesArray(ctx.Out, members), nil
+}
+
+func moveMembers(setsIter []*db.SetIter, min []byte, length int, members [][]byte) ([][]byte, error) {
+	for i := 0; i < length; i++ {
+		if !setsIter[i].Valid() {
+			continue
+		}
+		if bytes.Equal(min, setsIter[i].Value()) {
+			if i == 0 {
+				members = append(members, min)
+				if err := setsIter[0].Iter.Next(); err != nil {
+					return nil, errors.New("ERR " + err.Error())
+				}
+				for bytes.Equal(min, setsIter[0].Value()) {
+					if err := setsIter[0].Iter.Next(); err != nil {
+						return nil, errors.New("ERR " + err.Error())
+					}
+				}
+			} else if setsIter[i].Valid() {
+				if err := setsIter[i].Iter.Next(); err != nil {
+					return nil, errors.New("ERR " + err.Error())
+				}
+			}
+		}
+	}
+	return members, nil
 }

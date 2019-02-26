@@ -84,6 +84,7 @@ func init() {
 		"zadd":         ZAdd,
 		"zrange":		ZRange,
 		"zrevrange":    ZRevRange,
+		"ZRem":			ZRem,
 
 	}
 
@@ -184,5 +185,6 @@ func init() {
 		"zadd":		Desc{Proc: AutoCommit(ZAdd), Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
 		"zrange": Desc{Proc: AutoCommit(ZRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
 		"zrevrange": Desc{Proc: AutoCommit(ZRevRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrem":         Desc{Proc: AutoCommit(ZRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
 	}
 }

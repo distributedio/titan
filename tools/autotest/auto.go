@@ -108,7 +108,7 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 //ZSetCase check zset case
 //TODO
 func (ac *AutoClient) ZSetCase(t *testing.T) {
-    ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1", "-1.5", "member2", "3.6", "member3", "-3.5", "member4", "2.0", "member1")
+    ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1", "-1.5", "member2", "3.6", "member3", "-3.5", "member4", "2.5", "member1")
     ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
     //ac.ez.ZRevRangeEqual(t, "key-zset", 0, -1, true)
     ac.ez.ZRangeEqual(t, "key-zset", 0, -1, false)
@@ -126,6 +126,15 @@ func (ac *AutoClient) ZSetCase(t *testing.T) {
 
     ac.ez.ZAddEqual(t, "key-zset", "2.0", "member11", "2.05", "member6")
     ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+	ac.ez.ZRemEqual(t, "key-zset", "member2", "member1", "member3", "member4", "member1")
+	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+	ac.ek.ExpireEqual(t, "key-zset", 86400000, 1)
+	ac.ez.ZRemEqual(t, "key-zset", "member5", "member11", "member6", "member7")
+	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+	ac.ek.ExistsEqual(t, 0, "key-zset")
+	ac.ek.TTLEqual(t, "key-set", -2)
 }
 
 //KeyCase check key case
@@ -186,6 +195,21 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
 	ac.ek.PersistEqual(t, "zkey-listx", 1)
 	ac.ek.PersistEqual(t, "zkey-listx", 0)
+
+	//test zset
+	ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1")
+	ac.ek.ExistsEqual(t, 1, "key-zset")
+	ac.ek.TypeEqual(t, "key-zset", "zset")
+	ac.ek.ObjectEqual(t, "key-zset", "hashtable")
+	ac.ek.TTLEqual(t, "key-zset", -1)
+	ac.ek.ExpireEqual(t, "key-zset", 2, 1)
+	ac.ek.TTLEqual(t, "key-zset", 2)
+	time.Sleep(time.Second * 2)
+	ac.ek.ExpireEqual(t, "key-zset", 1, 0)
+
+	ac.ez.ZAddEqual(t, "key-zset1", "2.0", "member1")
+	ac.ek.DelEqual(t, 1, "key-zset1")
+	ac.ek.ExistsEqual(t, 0, "key-zset1")
 }
 
 //SystemCase check system case

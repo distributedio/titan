@@ -46,8 +46,12 @@ func (ez *ExampleZSet) ZAddEqual(t *testing.T, key string, values ...string) {
         return
     }
 
+    uniq_members := make(map[string]bool)
     for i := range values {
         if i%2 == 0 {
+            if _, ok := uniq_members[values[i+1]]; ok {
+                continue
+            }
             fscore, err := strconv.ParseFloat(values[i], 64)
             if err != nil {
                 reply, err := redis.Int(ez.conn.Do("zadd", req...))
@@ -57,11 +61,37 @@ func (ez *ExampleZSet) ZAddEqual(t *testing.T, key string, values ...string) {
                 return
             }
             msmap[values[i+1]] = fscore
+            uniq_members[values[i+1]] = true
         }
     }
 
     reply, err := redis.Int(ez.conn.Do("zadd", req...))
     assert.Equal(t, len(msmap)-oldLen, reply)
+    assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZRemEqual(t *testing.T, key string, members ...string) {
+    req := make([]interface{}, 0, len(members))
+    req = append(req, key)
+    for i := range members {
+        req = append(req, members[i])
+    }
+
+    deleted := 0
+    msmap, ok := ez.memberScores[key]
+    if ok {
+        for _, member := range members {
+            if _, ok := msmap[member]; !ok {
+                continue
+            }
+
+            delete(msmap, member)
+            deleted += 1
+        }
+    }
+
+    reply,err := redis.Int(ez.conn.Do("zrem", req...))
+    assert.Equal(t, deleted, reply)
     assert.Nil(t, err)
 }
 

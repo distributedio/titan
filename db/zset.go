@@ -1,8 +1,8 @@
 package db
 
 import (
-    "encoding/json"
     "strconv"
+    "encoding/binary"
 )
 
 // ZSetMeta is the meta data of the sorted set
@@ -36,17 +36,17 @@ func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
             zset.meta.UpdatedAt = now
             zset.meta.ExpireAt = 0
             zset.meta.ID = UUID()
-            zset.meta.Type = ObjectZset
+            zset.meta.Type = ObjectZSet
             zset.meta.Encoding = ObjectEncodingHT
             zset.meta.Len = 0
             return zset, nil
         }
         return nil, err
     }
-    if err := json.Unmarshal(meta, &zset.meta); err != nil {
+    if err := zset.decodeMeta(meta); err != nil {
         return nil, err
     }
-    if zset.meta.Type != ObjectZset {
+    if zset.meta.Type != ObjectZSet {
         return nil, ErrTypeMismatch
     }
     return zset, nil
@@ -114,11 +114,31 @@ func (zset *ZSet) MGet(members [][]byte) ([][]byte, error) {
 }
 
 func (zset *ZSet) updateMeta() error {
-    meta, err := json.Marshal(zset.meta)
+    meta := zset.encodeMeta(zset.meta)
+    return zset.txn.t.Set(MetaKey(zset.txn.db, zset.key), meta)
+}
+
+func (zset *ZSet) encodeMeta(meta ZSetMeta) []byte {
+    b := EncodeObject(&meta.Object)
+    m := make([]byte, 8)
+    binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
+    return append(b, m...)
+}
+
+//decodeMeta if obj has been existed , stop parse
+func (zset *ZSet) decodeMeta(b []byte) error {
+    obj, err := DecodeObject(b)
     if err != nil {
         return err
     }
-    return zset.txn.t.Set(MetaKey(zset.txn.db, zset.key), meta)
+    zset.meta.Object = *obj
+
+    m := b[ObjectEncodingLength:]
+    if len(m) != 8 {
+        return ErrInvalidLength
+    }
+    zset.meta.Len = int64(binary.BigEndian.Uint64(m[:8]))
+    return nil
 }
 
 func (zset *ZSet) Exist() bool {
@@ -183,6 +203,50 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
     }
 
     return items, nil
+}
+func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
+    deleted := int64(0)
+
+    scores, err := zset.MGet(members)
+    if err != nil {
+        return 0, err
+    }
+
+    dkey := DataKey(zset.txn.db, zset.meta.ID)
+    scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
+    for i := range members{
+        if scores[i] == nil {
+            continue
+        }
+
+        scoreKey := zsetScoreKey(scorePrefix, scores[i], members[i])
+        if err = zset.txn.t.Delete(scoreKey); err != nil {
+            return deleted, err
+        }
+
+        memberKey := zsetMemberKey(dkey, members[i])
+        if err = zset.txn.t.Delete(memberKey); err != nil {
+            return deleted, err
+        }
+
+        deleted += 1
+    }
+    zset.meta.Len -= deleted
+
+    if zset.meta.Len == 0 {
+        mkey := MetaKey(zset.txn.db, zset.key)
+        if err = zset.txn.t.Delete(mkey); err != nil {
+            return deleted, err
+        }
+        if zset.meta.Object.ExpireAt > 0 {
+            if err := unExpireAt(zset.txn.t, mkey, zset.meta.Object.ExpireAt); err != nil {
+                return deleted, err
+            }
+        }
+        return deleted, nil
+    }
+
+    return deleted, zset.updateMeta()
 }
 
 func zsetMemberKey(dkey []byte, member []byte) []byte {

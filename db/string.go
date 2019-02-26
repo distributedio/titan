@@ -70,7 +70,7 @@ func (s *String) Set(val []byte, expire ...int64) error {
 	if len(expire) != 0 && expire[0] > 0 {
 		old := s.Meta.ExpireAt
 		s.Meta.ExpireAt = timestamp + expire[0]
-		if err := expireAt(s.txn.t, mkey, s.Meta.ID, old, s.Meta.ExpireAt); err != nil {
+		if err := expireAt(s.txn.t, mkey, s.Meta.ID, s.Meta.Type, old, s.Meta.ExpireAt); err != nil {
 			return err
 		}
 	} else {

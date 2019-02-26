@@ -29,11 +29,17 @@ func toTikvGCKey(key []byte) []byte {
 }
 
 // {sys.ns}:{sys.id}:{GC}:{prefix}
-// prefix: {user.ns}:{user.id}:{M/D}:{user.objectID}
-func gc(txn store.Transaction, prefix []byte) error {
-	zap.L().Debug("add to gc", zap.ByteString("prefix", prefix))
-	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("add").Inc()
-	return txn.Set(toTikvGCKey(prefix), []byte{0})
+// prefix: {user.ns}:{user.id}:{M/D/S}:{user.objectID}
+func gc(txn store.Transaction, prefixs [][]byte) error {
+	var err error
+	for _, prefix := range prefixs{
+		zap.L().Debug("add to gc", zap.ByteString("prefix", prefix))
+		metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("add").Inc()
+		if err = txn.Set(toTikvGCKey(prefix), []byte{0}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func gcGetPrefix(txn store.Transaction) ([]byte, error) {

@@ -42,7 +42,7 @@ func expireKey(key []byte, ts int64) []byte {
 	return buf
 }
 
-func expireAt(txn store.Transaction, mkey []byte, objID []byte, oldAt int64, newAt int64) error {
+func expireAt(txn store.Transaction, mkey []byte, objID []byte, objType ObjectType, oldAt int64, newAt int64) error {
 	oldKey := expireKey(mkey, oldAt)
 	newKey := expireKey(mkey, newAt)
 
@@ -53,7 +53,10 @@ func expireAt(txn store.Transaction, mkey []byte, objID []byte, oldAt int64, new
 	}
 
 	if newAt > 0 {
-		if err := txn.Set(newKey, objID); err != nil {
+	    idAndType := make([]byte, len(objID), len(objID)+1)
+	    copy(idAndType, objID)
+	    idAndType = append(idAndType, byte(objType))
+		if err := txn.Set(newKey, idAndType); err != nil {
 			return err
 		}
 	}
@@ -121,6 +124,16 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
+func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
+    var b []byte
+    b = append(b, namespace...)
+    b = append(b, ':')
+    b = append(b, id.Bytes()...)
+    b = append(b, ':', 'S', ':')
+    b = append(b, key...)
+    return b
+}
+
 func runExpire(db *DB) {
 	txn, err := db.Begin()
 	if err != nil {
@@ -137,7 +150,9 @@ func runExpire(db *DB) {
 	now := time.Now().UnixNano()
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
 		key := iter.Key()
-		objID := iter.Value()
+        idAndType := iter.Value()
+		objID := idAndType[:len(idAndType)-1]
+		objType := ObjectType(idAndType[len(idAndType)-1])
 		mkey := key[expireMetakeyOffset:]
 		namespace, dbid, rawkey := splitMetaKey(mkey)
 
@@ -157,7 +172,12 @@ func runExpire(db *DB) {
 		}
 		// Gc it if it is a complext data structure, the value of string is: []byte{'0'}
 		if len(objID) > 1 {
-			if err := gc(txn.t, toTikvDataKey(namespace, dbid, objID)); err != nil {
+			var dataPrefixs [][]byte
+			dataPrefixs = append(dataPrefixs, toTikvDataKey(namespace, dbid, objID))
+			if objType == ObjectZSet {
+			    dataPrefixs = append(dataPrefixs, toTikvScorePrefix(namespace, dbid, objID))
+            }
+			if err := gc(txn.t, dataPrefixs); err != nil {
 				zap.L().Error("[Expire] gc failed",
 					zap.ByteString("key", rawkey),
 					zap.ByteString("namepace", namespace),

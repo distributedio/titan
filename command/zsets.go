@@ -21,8 +21,7 @@ func ZAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
     scores := make([]float64, 0, count)
     for i := 0; i < len(kvs)-1; i += 2 {
         member := kvs[i+1]
-        _, ok := uniqueMembers[member]
-        if ok{
+        if _, ok := uniqueMembers[member]; ok{
             continue
         }
 
@@ -96,4 +95,37 @@ func zAnyOrderRange(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCo
         return BytesArray(ctx.Out, nil), nil
     }
     return BytesArray(ctx.Out, items), nil
+}
+
+func ZRem(ctx *Context, txn *db.Transaction)(OnCommit, error) {
+    key := []byte(ctx.Args[0])
+
+    uniqueMembers := make(map[string]bool)
+    members := make([][]byte, 0, len(ctx.Args)-1)
+    for _, member := range ctx.Args[1:] {
+        if _, ok := uniqueMembers[member]; ok {
+            continue
+        }
+
+        members = append(members, []byte(member))
+        uniqueMembers[member] = true
+    }
+
+    zset, err := txn.ZSet(key)
+    if err != nil {
+        if err == db.ErrTypeMismatch {
+            return nil, ErrTypeMismatch
+        }
+        return nil, errors.New("ERR " + err.Error())
+    }
+    if !zset.Exist() {
+        return Integer(ctx.Out, 0), nil
+    }
+
+    deleted, err := zset.ZRem(members)
+    if err != nil {
+        return nil, errors.New("ERR " + err.Error())
+    }
+
+    return Integer(ctx.Out, deleted), nil
 }

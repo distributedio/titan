@@ -33,7 +33,7 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 * 当前实现仍旧选择维护一个Len,记录set内部的元素个数，并且不使用hash中的slot。[hash-slot实现方式](https://github.com/meitu/titan/pull/13#%E8%83%8C%E6%99%AF)
 * set集合的特性意味着在kv存储中不需要value值，因此存储时调用TiKV 的Set接口，只需要将拼接好的member存储在tikv对应的key中即可
 * MetaKey的具体格式：{Namespace}:{DBID}:M:{key}
-* DataKey的具体格式：{Namespace}:{DBID}:D:{key}
+* DataKey的具体格式：{Namespace}:{DBID}:D:{ObjectID}
 * member在存储中key的格式为：{Namespace}:{DBID}:D:{ObjectID}:{member}
 * value部分存储为：[]byte{0}，因为tikv不允许value为空，占位即可。
 
@@ -47,12 +47,12 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 
 * 对传入的member进行去重
 * 调用BatchGetValues批量获取datakey对应的value值，根据value的类型判断member是否已经存在
-* 过滤掉已经存在的member，统计add member的数量
-* 更新Meta信息并返回add member的数量
+* 过滤掉已经存在的member，统计新增member的数量
+* 更新Meta信息并返回新增member的数量
 
 #### SMembers key
 
-* 返回存储在key中的集合值的所有成员
+* 返回key中的集合值的所有成员
 
 **实现步骤**
 
@@ -78,13 +78,11 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 
 #### SPop key
 
-* 随机返回并删除key对应的set中的一个元素。
+* 随机返回并删除key对应的set中的一个元素。因为数据在TiKV中存储有序，因此直接删除并返回key对应set中的第一个元素即可
 
 **实现步骤**
 
-* 创建随机数，随机数小于set的长度
-* 根据参数确定删除的member个数
-* 使用迭代器寻找拼接好的前缀在存储中的位置，向后迭代随机数次，然后删除key
+* 删除key对应set中的第一个元素
 * 更新meta信息，返回删除的member
  
 
@@ -107,23 +105,23 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 * 删除源key对应的集合中的member,更新meta信息
 
 ### 集合命令处理
-对于集合类命令而言，存在的主要问题在于计算交并差集时需要将所有的members读到内存在进行计算，虽然通过map进行去重以及排序可以优化部分计算的性能，但是当set的元素个数特别多时，仍会存在内存吃紧的问题。在set实现方案中，因为每一个key对应的set中存储的member在内存中是有序的，因此可以借鉴外排序的“排序-归并”的思想完成交并集操作，具体实现思路如下：
+对于集合类命令而言，最直观的实现方案就是在计算交并差集时将所有的member读到内存在进行计算，虽然通过map进行去重以及排序可以优化部分计算的性能，但是当set的元素个数特别多时，仍会存在内存吃紧的问题。因为每一个key对应set中存储的member在内存中是有序的，因此可以借鉴归并的思想完成集合操作，具体实现思路如下：
 #### SUion——求给定key对应的set并集
 ##### 实现步骤
 1. 为每一个key对应的集合设定一个指针(iter)，指向当前 set 的第一个member(key),因为member在存储中有序，因此第一个member一定是当前set中最小的
 2. 比较各个member大小，分为以下几种情况
 	* 如果大小相同证明是相同的元素，则记录这个member作为并集结果的一部分
 	* 如果存在大小不相等的情况，将最小的元素所对应的指针向后移动，并记录member为并集结果的一部分
-3. 重复步骤2，直到所有set的member全部seek完成，返回并集结果
+3. 重复步骤2，直到所有集合的member全部seek完成，若果比较到最后只剩下一个集合则将这个集合的剩余元素作为并集结果的一部分并返回并集结果
 
 #### SInter——求给定key对应的set交集
 ##### 实现步骤
 
-1. 使用BatchGetValues批量读取meta信息，对于不存在的集合当做空集来处理。一旦出现空集，则不用继续计算了，最终的交集就是空集。
+1. 创建set对象的同时读取meta信息，对于不存在的集合当做空集来处理。一旦出现空集，则不用继续计算了，最终的交集就是空集。
 2. 如果不存在空集，则为每一个key对应的集合设定一个指针(iter)，指向当前 set 的第一个member(key),因为member在存储中有序，因此第一个member一定是当前set中最小的
 3. 比较各个member大小，分为以下几种情况
 	* 如果大小相同证明是相同的元素，则记录这个member作为交集结果的一部分，将所有key对应set的指针向后移动一个位置
-	* 如果存在大小不相等的情况，证明最小的元素绝对不会出现在其他的member中，将除了最大的member以外的指针(iter)向后移动一个位置
+	* 如果存在大小不相等的情况，证明较小的元素绝对不会出现在其他的member中，将除了最大的member以外的指针(iter)向后移动一个位置
 4. 重复第二步直到某一指针超出序列尾，此时证明member数量最少的set已经全部seek完成，此时退出流程，返回交集结果。
 
 
@@ -134,5 +132,5 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 1. 为每一个key对应的集合设定一个指针(iter)，指向当前 set 的第一个member(key),因为member在存储中有序，因此第一个member一定是当前set中最小的
 2. 以指定的第一个key为基准key，与其他的key比较member大小，分为以下几种情况
 	* 如果和后续member比较之后大小相同证明是相同的元素，则说明该member不在差集范围中，将基准key以及有相同member的key得指针向后移动一个位置
-	* 如果不相等，则将指向所有key的最小的member的指针向后移动，其中如果这个key是基准key,则记录指针此时指向的member为差集的一部分
+	* 如果不相等，则将指向最小的member对应key的指针向后移动，如果这个key是基准key，则记录指针此时指向的member为差集的一部分
 3. 重复步骤2，直到所有set的member全部seek完成，返回差集结果

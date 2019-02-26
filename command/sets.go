@@ -33,7 +33,6 @@ func SMembers(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-
 	members, err := set.SMembers()
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -197,7 +196,6 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
-
 	max := setsIter[0].Value()
 	for {
 		i := 0
@@ -226,7 +224,6 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			max = setsIter[0].Value()
 		}
 	}
-
 	return BytesArray(ctx.Out, members), nil
 }
 
@@ -234,7 +231,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
 	var err error
-	var count int
+	count := 0
 	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
@@ -285,8 +282,7 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 				min = setsIter[i].Value()
 			}
 		}
-		//Find the smallest element in the current member and move the pointer back
-		members, err = moveMembers(setsIter, min, len(ctx.Args), members)
+		members, err = moveMembers(setsIter, min, members)
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
@@ -308,8 +304,9 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, members), nil
 }
 
-func moveMembers(setsIter []*db.SetIter, min []byte, length int, members [][]byte) ([][]byte, error) {
-	for i := 0; i < length; i++ {
+// moveMembers finds the smallest element in the current member and move the pointer back
+func moveMembers(setsIter []*db.SetIter, min []byte, members [][]byte) ([][]byte, error) {
+	for i := 0; i < len(setsIter); i++ {
 		if !setsIter[i].Valid() {
 			continue
 		}

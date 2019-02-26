@@ -30,7 +30,7 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 	 
 ### 设计要点
 	 
-* 当前实现仍旧选择维护一个Len,记录set内部的元素个数，并且不使用hash中的slot。[hash-slot实现方式]()
+* 当前实现仍旧选择维护一个Len,记录set内部的元素个数，并且不使用hash中的slot。[hash-slot实现方式](https://github.com/meitu/titan/pull/13#%E8%83%8C%E6%99%AF)
 * set集合的特性意味着在kv存储中不需要value值，因此存储时调用TiKV 的Set接口，只需要将拼接好的member存储在tikv对应的key中即可
 * MetaKey的具体格式：{Namespace}:{DBID}:M:{key}
 * DataKey的具体格式：{Namespace}:{DBID}:D:{key}

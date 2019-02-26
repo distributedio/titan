@@ -6,8 +6,8 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 
 与List相比，区别主要有以下两点：
 
-* Set不能有重复的数据，如果多次添加相同元素，Set中将仅保留该元素的一份拷贝，重设更新修改时间即可。
-* 和List类型相比，Set类型还有一个非常重要的特性，可以在服务器端完成多个集合之间的聚合计算操作，如：SUNION、SUNIONSTORE和SDIFFSTORE。由于这些操作均在服务端完成，节省了大量的网络I/O开销。
+* Set不能有重复的数据，如果多次添加相同元素，Set中将仅保留该元素的一份拷贝，更新修改时间即可。
+* 和List类型相比，Set类型还有一个非常重要的特性，可以在服务器端完成多个集合之间的聚合计算操作，如：[SUNION](https://redis.io/commands/sunion)、[SINTER](https://redis.io/commands/sinter)和[SDIFF](https://redis.io/commands/sdiff)。由于这些操作均在服务端完成，节省了大量的网络I/O开销。
 
 ### 应用场景
 集合有取交集、并集、差集等操作，因此可以求共同好友、共同兴趣、分类标签等。
@@ -31,7 +31,7 @@ Redis 集合（Set类型）是一个无序的数据的集合，类似List的一�
 ### 设计要点
 	 
 * 当前实现仍旧选择维护一个Len,记录set内部的元素个数，并且不使用hash中的slot。[hash-slot实现方式]()
-* set集合的特性意味着在kv存储中不需要value值，因此存储时调用kvstore.set()接口，只需要将拼接好的member存储在tikv对应的key中即可
+* set集合的特性意味着在kv存储中不需要value值，因此存储时调用TiKV 的Set接口，只需要将拼接好的member存储在tikv对应的key中即可
 * MetaKey的具体格式：{Namespace}:{DBID}:M:{key}
 * DataKey的具体格式：{Namespace}:{DBID}:D:{key}
 * member在存储中key的格式为：{Namespace}:{DBID}:D:{ObjectID}:{member}

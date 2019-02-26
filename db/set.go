@@ -3,8 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-	"math/rand"
-	"time"
 )
 
 // SetNilValue is the value set to a tikv key for tikv do not support a real empty value
@@ -255,31 +253,17 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 	if !set.Exists() || set.meta.Len == 0 {
 		return nil, nil
 	}
-	// Gets a random number
-	rand.Seed(time.Now().Unix())
-	randNum := int64(rand.Intn(1000))
-	randNum = randNum % (set.meta.Len)
-
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-
 	iter, err := set.txn.t.Iter(prefix, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer iter.Close()
-
 	var del int64
 	var ms [][]byte
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		if count == 0 {
-			for randNum > 0 {
-				if err := iter.Next(); err != nil {
-					return nil, err
-				}
-				randNum--
-				continue
-			}
 			ms = append(ms, iter.Key()[len(prefix):])
 			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
 				return nil, err
@@ -294,6 +278,7 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 			del++
 			count--
 			if count == 0 {
+				set.meta.Len -= del
 				break
 			}
 			if err := iter.Next(); err != nil {
@@ -301,17 +286,12 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 			}
 		}
 	}
-
-	if count == 0 {
-		set.meta.Len -= del
-	} else {
+	if count != 0 {
 		set.meta.Len = 0
 	}
-
 	if err := set.updateMeta(); err != nil {
 		return nil, err
 	}
-
 	return ms, nil
 }
 

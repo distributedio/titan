@@ -16,6 +16,10 @@ import (
 	"github.com/meitu/titan/metrics"
 )
 
+const (
+	MAXDBID = 255
+)
+
 var (
 	// ErrTypeMismatch indicates object type of key is not as expect
 	ErrTypeMismatch = errors.New("type mismatch")
@@ -144,12 +148,7 @@ func (db *DB) Begin() (*Transaction, error) {
 
 // Prefix returns the prefix of a DB object
 func (db *DB) Prefix() []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(db.Namespace)...)
-	prefix = append(prefix, ':')
-	prefix = append(prefix, db.ID.Bytes()...)
-	prefix = append(prefix, ':')
-	return prefix
+	return dbPrefix(db.Namespace, db.ID)
 }
 
 // Commit a transaction
@@ -230,6 +229,15 @@ func (txn *Transaction) Set(key []byte) (*Set, error) {
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
+}
+
+func dbPrefix(ns string, id DBID) []byte {
+	var prefix []byte
+	prefix = append(prefix, []byte(ns)...)
+	prefix = append(prefix, ':')
+	prefix = append(prefix, id.Bytes()...)
+	prefix = append(prefix, ':')
+	return prefix
 }
 
 // MetaKey build to metakey from a redis key

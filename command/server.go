@@ -338,7 +338,7 @@ func RedisCommand(ctx *Context) {
 // FlushDB clears current db
 func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	if err := kv.FlushDB(); err != nil {
+	if err := kv.FlushDB(ctx); err != nil {
 		return nil, err
 	}
 	return SimpleString(ctx.Out, "OK"), nil
@@ -347,7 +347,7 @@ func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // FlushAll cleans up all databases
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	if err := kv.FlushAll(); err != nil {
+	if err := kv.FlushAll(ctx); err != nil {
 		return nil, err
 	}
 	return SimpleString(ctx.Out, "OK"), nil

@@ -153,6 +153,8 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
         if stop = zset.meta.Len + stop; stop < 0 {
             return [][]byte{}, nil
         }
+    }else if stop >= zset.meta.Len{
+        stop = zset.meta.Len -1
     }
     if start < 0 {
         if start = zset.meta.Len + start; start < 0 {
@@ -170,7 +172,14 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
     if positiveOrder {
         iter, err = zset.txn.t.Seek(scorePrefix)
     } else {
-        iter, err = zset.txn.t.SeekReverse(scorePrefix)
+        //tikv sdk didn't implement SeekReverse(), so we just use seek() to implement zrevrange now
+        //because tikv sdk scan 256 keys in next(), for the zset which have <=256 members,
+        // its performance should be similar with seekReverse, for >256 zset, it should be bad
+        //iter, err = zset.txn.t.SeekReverse(scorePrefix)
+        iter, err = zset.txn.t.Seek(scorePrefix)
+        tmp := start
+        start = zset.meta.Len-1-stop
+        stop = zset.meta.Len-1-tmp
     }
 
     if err != nil {
@@ -196,10 +205,17 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
             if withScore {
                 val := []byte(strconv.FormatFloat(DecodeFloat64(score), 'f', -1, 64))
                 items = append(items, val)
+                if !positiveOrder  {
+                    items[len(items)-1], items[len(items)-2] = items[len(items)-2], items[len(items)-1]
+                }
             }
-
         }
         i++
+    }
+    if !positiveOrder {
+        for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
+            items[i], items[j] = items[j], items[i]
+        }
     }
 
     return items, nil

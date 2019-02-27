@@ -110,7 +110,7 @@ func (obj *Object) String() string {
 		UUIDString(obj.ID), obj.Type, obj.Encoding, obj.CreatedAt, obj.UpdatedAt, obj.ExpireAt)
 }
 
-// Object new object thougth key
+// Object returns the object associated with the key
 func (txn *Transaction) Object(key []byte) (*Object, error) {
 	mkey := MetaKey(txn.db, key)
 	obj, err := getObject(txn, mkey)

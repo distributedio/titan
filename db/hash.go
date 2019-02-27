@@ -105,7 +105,7 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	return hash, nil
 }
 
-//newHash  create new hash object
+//newHash creates a hash object
 func newHash(txn *Transaction, key []byte) *Hash {
 	now := Now()
 	return &Hash{

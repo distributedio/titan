@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	MAXDBID = 255
+	// tikv max key size
+	MAX_KEY_SIZE = 4 * 1024
 )
 
 var (
@@ -41,6 +42,9 @@ var (
 
 	// ErrEncodingMismatch object encoding type
 	ErrEncodingMismatch = errors.New("error object encoding type")
+
+	// ErrStorageRetry storage err and try again later
+	ErrStorageRetry = errors.New("Storage err and try again later")
 
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
@@ -148,7 +152,12 @@ func (db *DB) Begin() (*Transaction, error) {
 
 // Prefix returns the prefix of a DB object
 func (db *DB) Prefix() []byte {
-	return dbPrefix(db.Namespace, db.ID)
+	var prefix []byte
+	prefix = append(prefix, []byte(db.Namespace)...)
+	prefix = append(prefix, ':')
+	prefix = append(prefix, db.ID.Bytes()...)
+	prefix = append(prefix, ':')
+	return prefix
 }
 
 // Commit a transaction
@@ -229,15 +238,6 @@ func (txn *Transaction) Set(key []byte) (*Set, error) {
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
-}
-
-func dbPrefix(ns string, id DBID) []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(ns)...)
-	prefix = append(prefix, ':')
-	prefix = append(prefix, id.Bytes()...)
-	prefix = append(prefix, ':')
-	return prefix
 }
 
 // MetaKey build to metakey from a redis key

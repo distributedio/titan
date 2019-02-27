@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -170,20 +169,22 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 
 // FlushDB clear current db. FIXME one txn is limited for number of entries
 func (kv *Kv) FlushDB(ctx context.Context) error {
-	id := int(kv.txn.db.ID) + 1
-	if id > MAXDBID {
-		id = MAXDBID
+	prefix := kv.txn.db.Prefix()
+	endKey := EndKey(prefix)
+	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+		return ErrStorageRetry
 	}
-	startKey := kv.txn.db.Prefix()
-	endKey := dbPrefix(kv.txn.db.Namespace, DBID(id))
-	return unsafeDeleteRange(ctx, kv.txn.db, startKey, endKey)
+	return nil
 }
 
 // FlushAll clean up all databases. FIXME one txn is limited for number of entries
 func (kv *Kv) FlushAll(ctx context.Context) error {
-	startKey := kv.txn.db.Prefix()
-	endKey := dbPrefix(kv.txn.db.Namespace, DBID(MAXDBID))
-	return unsafeDeleteRange(ctx, kv.txn.db, startKey, endKey)
+	prefix := kv.txn.db.Prefix()
+	endKey := EndKey(prefix)
+	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+		return ErrStorageRetry
+	}
+	return nil
 }
 
 // RandomKey return a key from current db randomly
@@ -223,7 +224,7 @@ func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) err
 	storage, ok := db.kv.Storage.(tikv.Storage)
 	if !ok {
 		zap.L().Error("delete ranges: storage conversion PDClient failed")
-		return errors.New("PDClient not available")
+		return errors.New("Storage not available")
 	}
 	stores, err := storage.GetRegionCache().PDClient().GetAllStores(ctx)
 	if err != nil {
@@ -253,8 +254,7 @@ func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) err
 			defer wg.Done()
 			_, err1 := tikvCli.SendRequest(ctx, address, req, tikv.UnsafeDestroyRangeTimeout)
 			if err1 != nil {
-				fmt.Println("send req err", address, storeID, err1)
-				zap.L().Error("destroy range on store  failed with ", zap.Uint64("store_id", storeID), zap.Error(err1))
+				zap.L().Error("destroy range on store  failed with ", zap.Uint64("store_id", storeID), zap.String("addr", address), zap.Error(err1))
 				err = err1
 			}
 		}()

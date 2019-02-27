@@ -1,0 +1,8 @@
+titan
+.idea
+*.iml
+*.swp
+coverage.out
+logs
+vendor
+.DS_Store

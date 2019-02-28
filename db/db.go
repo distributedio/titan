@@ -146,7 +146,7 @@ func (db *DB) Begin() (*Transaction, error) {
 
 // Prefix returns the prefix of a DB object
 func (db *DB) Prefix() []byte {
-	return dbPrefix(db.Namespace, db.ID)
+	return dbPrefix(db.Namespace, db.ID.Bytes())
 }
 
 // Commit a transaction
@@ -264,11 +264,11 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 	return skey
 }
 
-func dbPrefix(ns string, id DBID) {
+func dbPrefix(ns string, id []byte) []byte {
 	var prefix []byte
 	prefix = append(prefix, []byte(ns)...)
 	prefix = append(prefix, ':')
-	prefix = append(prefix, id.Bytes()...)
+	prefix = append(prefix, id...)
 	prefix = append(prefix, ':')
 	return prefix
 }

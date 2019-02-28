@@ -170,8 +170,8 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 // FlushDB clear current db.
 func (kv *Kv) FlushDB(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
-	nextId := kv.txn.db.ID + 1
-	endKey := dbPrefix(kv.txn.db.Namespace, nextId)
+	nextID := kv.txn.db.ID + 1
+	endKey := dbPrefix(kv.txn.db.Namespace, nextID.Bytes())
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}
@@ -181,7 +181,8 @@ func (kv *Kv) FlushDB(ctx context.Context) error {
 // FlushAll clean up all databases.
 func (kv *Kv) FlushAll(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
-	endKey := dbPrefix(kv.txn.db.Namespace, DBID(256))
+	maxID := EncodeInt64(256)
+	endKey := dbPrefix(kv.txn.db.Namespace, maxID)
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}

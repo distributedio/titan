@@ -10,10 +10,6 @@ import (
 	"github.com/meitu/titan/db/store"
 )
 
-var (
-	defaultHashMetaSlot int64 = 0
-)
-
 //Slot slot information about hash meta
 type Slot struct {
 	Len       int64
@@ -134,20 +130,6 @@ func hashItemKey(key []byte, field []byte) []byte {
 	return append(dkey, field...)
 }
 
-func (hash *Hash) calculateSlotID(limit int64) int64 {
-	if !hash.isMetaSlot() || limit <= 1 {
-		return 0
-	}
-	return rand.Int63n(limit - 1)
-}
-
-func (hash *Hash) isMetaSlot() bool {
-	if hash.meta.MetaSlot != 0 {
-		return true
-	}
-	return false
-}
-
 //SlotGC adds slotKey to GC remove queue
 func slotGC(txn *Transaction, objID []byte) error {
 	key := MetaSlotKey(txn.db, objID, nil)
@@ -210,10 +192,9 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	if err := hash.addLength(-num); err != nil {
 		return 0, err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
+	//update and save meta
+	if err := hash.updateMeta(); err != nil {
+		return 0, err
 	}
 	return num, nil
 }
@@ -235,7 +216,6 @@ func (hash *Hash) getHashFieldAndLength(keys [][]byte) (map[string][]byte, int64
 	if err != nil {
 		return nil, 0, err
 	}
-
 	//split slots and fields
 	for k, v := range kvMap {
 		if slotEnabled && bytes.HasPrefix([]byte(k), prefix) {
@@ -279,12 +259,10 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 	if err := hash.addLength(1); err != nil {
 		return 0, err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
+	//update and save meta
+	if err := hash.updateMeta(); err != nil {
+		return 0, err
 	}
-
 	return 1, nil
 }
 
@@ -306,12 +284,11 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	if err := hash.addLength(1); err != nil {
 		return 0, err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		if err := hash.updateMeta(); err != nil {
-			return 0, err
-		}
-	}
 
+	//update and save meta
+	if err := hash.updateMeta(); err != nil {
+		return 0, err
+	}
 	return 1, nil
 }
 
@@ -428,15 +405,11 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 		return 0, err
 	}
 
-	if newField {
-		if err := hash.addLength(1); err != nil {
-			return 0, err
-		}
-	}
-	if (newField && !hash.MetaSlotEnabled()) || !hash.exists {
+	if newField || !hash.Exists() {
 		if err := hash.updateMeta(); err != nil {
 			return 0, err
 		}
+
 	}
 
 	return n, nil
@@ -449,7 +422,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	if hash.exists {
+	if hash.Exists() {
 		val, err := hash.txn.t.Get(ikey)
 		if err != nil {
 			if !IsErrNotFound(err) {
@@ -476,10 +449,11 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 			return 0, err
 		}
 	}
-	if (newField && !hash.MetaSlotEnabled()) || !hash.exists {
+	if newField || !hash.Exists() {
 		if err := hash.updateMeta(); err != nil {
 			return 0, err
 		}
+
 	}
 
 	return n, nil
@@ -503,7 +477,7 @@ func (hash *Hash) HLen() (int64, error) {
 // Object new object from hash
 func (hash *Hash) Object() (*Object, error) {
 	obj := hash.meta.Object
-	if hash.MetaSlotEnabled() && hash.exists {
+	if hash.MetaSlotEnabled() && hash.Exists() {
 		slot, err := hash.getAllSlot()
 		if err != nil {
 			return nil, err
@@ -551,8 +525,9 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 	if err := hash.addLength(added); err != nil {
 		return err
 	}
-	if !hash.MetaSlotEnabled() || !hash.exists {
-		return hash.updateMeta()
+
+	if err := hash.updateMeta(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -562,11 +537,14 @@ func (hash *Hash) HMSlot(metaSlot int64) error {
 	if !hash.Exists() {
 		return ErrKeyNotFound
 	}
+	if hash.Exists() && metaSlot == hash.meta.MetaSlot {
+		return nil
+	}
 	if err := hash.updateMetaSlot(metaSlot); err != nil {
 		return err
 	}
-	hash.meta.MetaSlot = metaSlot
-	if err := hash.updateMeta(); err != nil {
+
+	if err := hash.setMeta(); err != nil {
 		return err
 	}
 	return nil
@@ -610,12 +588,6 @@ func (hash *Hash) addLength(length int64) error {
 	} else {
 		hash.meta.Len += length
 		hash.meta.UpdatedAt = Now()
-		metaSlot := hash.txn.db.conf.Hash.MetaSlot
-
-		//if enabled slot and this hash is old hash then update meta slot
-		if err := hash.updateMetaSlot(metaSlot); err == nil {
-			hash.meta.MetaSlot = defaultHashMetaSlot
-		}
 	}
 	return nil
 }
@@ -636,10 +608,7 @@ func (hash *Hash) updateMetaSlot(newSlot int64) error {
 				return err
 			}
 		}
-		return nil
-	}
-
-	if newSlot < hash.meta.MetaSlot {
+	} else if newSlot < hash.meta.MetaSlot {
 		slot, err := hash.getSliceSlot(newSlot)
 		if err != nil {
 			if err == ErrKeyNotFound {
@@ -655,6 +624,7 @@ func (hash *Hash) updateMetaSlot(newSlot int64) error {
 			return err
 		}
 	}
+	hash.meta.MetaSlot = newSlot
 	return nil
 }
 
@@ -701,15 +671,35 @@ func (hash *Hash) getSlot(slotID int64) (*Slot, error) {
 }
 
 func (hash *Hash) updateMeta() error {
+	if !hash.Exists() {
+		return hash.setMeta()
+	}
+
+	if !hash.MetaSlotEnabled() {
+		// if enabled slot and this hash is old hash then update meta slot
+		confSlot := hash.txn.db.conf.Hash.MetaSlot
+		if confSlot != hash.meta.MetaSlot {
+			if err := hash.updateMetaSlot(confSlot); err != nil {
+				return err
+			}
+		}
+		return hash.setMeta()
+	}
+
+	return nil
+}
+
+func (hash *Hash) setMeta() error {
 	meta := EncodeHashMeta(hash.meta)
 	err := hash.txn.t.Set(MetaKey(hash.txn.db, hash.key), meta)
 	if err != nil {
 		return err
 	}
-	if !hash.exists {
+	if !hash.Exists() {
 		hash.exists = true
 	}
 	return nil
+
 }
 
 func (hash *Hash) updateSlot(slotID int64, slot *Slot) error {
@@ -719,9 +709,10 @@ func (hash *Hash) updateSlot(slotID int64, slot *Slot) error {
 }
 
 func (hash *Hash) getMetaSlotKeys() [][]byte {
-	metaSlot := hash.meta.MetaSlot
+	// meta slot id in [0,metaSlot)
+	metaSlot := hash.meta.MetaSlot - 1
 	keys := make([][]byte, metaSlot)
-	for metaSlot > 0 {
+	for metaSlot >= 0 {
 		keys = append(keys, MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(metaSlot)))
 		metaSlot--
 	}

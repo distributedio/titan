@@ -16,16 +16,10 @@ import (
 	"github.com/meitu/titan/metrics"
 )
 
-const (
-	// tikv max key size
-	MAX_KEY_SIZE = 4 * 1024
-)
-
 var (
 	// ErrTypeMismatch indicates object type of key is not as expect
 	ErrTypeMismatch = errors.New("type mismatch")
 
-	// ErrKeyNotFound key not exist
 	ErrKeyNotFound = errors.New("key not found")
 
 	// ErrInteger valeu is not interge
@@ -152,12 +146,7 @@ func (db *DB) Begin() (*Transaction, error) {
 
 // Prefix returns the prefix of a DB object
 func (db *DB) Prefix() []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(db.Namespace)...)
-	prefix = append(prefix, ':')
-	prefix = append(prefix, db.ID.Bytes()...)
-	prefix = append(prefix, ':')
-	return prefix
+	return dbPrefix(db.Namespace, db.ID)
 }
 
 // Commit a transaction
@@ -273,6 +262,15 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 	skey = append(skey, ':')
 	skey = append(skey, slotID...)
 	return skey
+}
+
+func dbPrefix(ns string, id DBID) {
+	var prefix []byte
+	prefix = append(prefix, []byte(ns)...)
+	prefix = append(prefix, ':')
+	prefix = append(prefix, id.Bytes()...)
+	prefix = append(prefix, ':')
+	return prefix
 }
 
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {

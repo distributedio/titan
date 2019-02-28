@@ -167,20 +167,21 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 	return count, nil
 }
 
-// FlushDB clear current db. FIXME one txn is limited for number of entries
+// FlushDB clear current db.
 func (kv *Kv) FlushDB(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
-	endKey := EndKey(prefix)
+	nextId := kv.txn.db.ID + 1
+	endKey := dbPrefix(kv.txn.db.Namespace, nextId)
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}
 	return nil
 }
 
-// FlushAll clean up all databases. FIXME one txn is limited for number of entries
+// FlushAll clean up all databases.
 func (kv *Kv) FlushAll(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
-	endKey := EndKey(prefix)
+	endKey := dbPrefix(kv.txn.db.Namespace, DBID(256))
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}

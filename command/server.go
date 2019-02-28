@@ -336,6 +336,8 @@ func RedisCommand(ctx *Context) {
 }
 
 // FlushDB clears current db
+// This function is **VERY DANGEROUS**. It's not only running on one single region, but it can
+// delete a large range that spans over many regions, bypassing the Raft layer.
 func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushDB(ctx); err != nil {
@@ -345,6 +347,8 @@ func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 }
 
 // FlushAll cleans up all databases
+// This function is **VERY DANGEROUS**. It's not only running on one single region, but it can
+// delete a large range that spans over many regions, bypassing the Raft layer.
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushAll(ctx); err != nil {

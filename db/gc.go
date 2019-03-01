@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/meitu/titan/conf"
@@ -52,6 +53,7 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 			return count, err
 		}
 	}
+	fmt.Println("del range count", count)
 	return count, nil
 }
 
@@ -83,6 +85,7 @@ func doGC(db *DB, limit int) error {
 		if count, err = gcDeleteRange(txn, prefix, limit); err != nil {
 			return err
 		}
+		fmt.Println("do gc count", count, limit)
 
 		//check and delete gc key
 		if limit > 0 && count < limit || limit <= 0 && count > 0 {
@@ -92,12 +95,10 @@ func doGC(db *DB, limit int) error {
 				return err
 			}
 			gcKeyCount++
-			limit--
 		}
 
-		limit -= count
 		dataKeyCount += count
-		if limit <= 0 {
+		if limit-(gcKeyCount+dataKeyCount) <= 0 {
 			break
 		}
 		if err := itr.Next(); err != nil {
@@ -110,6 +111,8 @@ func doGC(db *DB, limit int) error {
 		txn.Rollback()
 		return err
 	}
+
+	zap.L().Debug("[GC] txn commit success", zap.Int("gcKey", gcKeyCount), zap.Int("dataKey", dataKeyCount))
 	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("data_delete").Add(float64(dataKeyCount))
 	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("gc_delete").Add(float64(gcKeyCount))
 	return nil

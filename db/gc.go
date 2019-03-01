@@ -27,7 +27,7 @@ func toTikvGCKey(key []byte) []byte {
 // prefix: {user.ns}:{user.id}:{M/D}:{user.objectID}
 func gc(txn store.Transaction, prefix []byte) error {
 	zap.L().Debug("add to gc", zap.ByteString("prefix", prefix))
-	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("add").Inc()
+	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("gc_add").Inc()
 	return txn.Set(toTikvGCKey(prefix), []byte{0})
 }
 
@@ -44,11 +44,9 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 			return count, err
 		}
 
-		if limit > 0 {
-			count++
-			if count >= limit {
-				return count, nil
-			}
+		count++
+		if limit > 0 && count >= limit {
+			return count, nil
 		}
 		if err := itr.Next(); err != nil {
 			return count, err
@@ -65,6 +63,7 @@ func doGC(db *DB, limit int) error {
 		return err
 	}
 	txn := dbTxn.t
+	store.SetOption(txn, store.KeyOnly, true)
 
 	itr, err := txn.Iter(gcPrefix, nil)
 	if err != nil {
@@ -75,7 +74,8 @@ func doGC(db *DB, limit int) error {
 		zap.L().Debug("[GC] no gc item")
 		return nil
 	}
-
+	gcKeyCount := 0
+	dataKeyCount := 0
 	for itr.Valid() && itr.Key().HasPrefix(gcPrefix) {
 		prefix := itr.Key()[len(gcPrefix):]
 		count := 0
@@ -91,10 +91,12 @@ func doGC(db *DB, limit int) error {
 				txn.Rollback()
 				return err
 			}
-			count++
+			gcKeyCount++
+			limit--
 		}
 
 		limit -= count
+		dataKeyCount += count
 		if limit <= 0 {
 			break
 		}
@@ -108,7 +110,8 @@ func doGC(db *DB, limit int) error {
 		txn.Rollback()
 		return err
 	}
-	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("delete").Add(float64(limit))
+	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("data_delete").Add(float64(dataKeyCount))
+	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("gc_delete").Add(float64(gcKeyCount))
 	return nil
 }
 

@@ -9,8 +9,6 @@ import (
 )
 
 func TestGC(t *testing.T) {
-	key1 := []byte("TestGCHash1")
-	key2 := []byte("TestGCHash2")
 	hashCall := func(t *testing.T, key []byte, count int64) []byte {
 		hash, txn, err := getHash(t, []byte(key))
 		assert.NoError(t, err)
@@ -47,7 +45,7 @@ func TestGC(t *testing.T) {
 		{
 			name: "TestGCIterVal",
 			args: args{
-				key:        key1,
+				key:        []byte("TestGCHash1"),
 				fieldCount: 10,
 				gcCount:    5,
 				call:       hashCall,
@@ -59,9 +57,21 @@ func TestGC(t *testing.T) {
 		{
 			name: "TestGCAll",
 			args: args{
-				key:        key2,
+				key:        []byte("TestGCHash2"),
 				fieldCount: 10,
 				gcCount:    17,
+				call:       hashCall,
+			},
+			want: want{
+				keyExists: false,
+			},
+		},
+		{
+			name: "TestLimitZero",
+			args: args{
+				key:        []byte("TestGCHash3"),
+				fieldCount: 10,
+				gcCount:    0,
 				call:       hashCall,
 			},
 			want: want{

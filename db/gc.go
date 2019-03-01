@@ -31,27 +31,6 @@ func gc(txn store.Transaction, prefix []byte) error {
 	return txn.Set(toTikvGCKey(prefix), []byte{0})
 }
 
-func gcGetPrefix(txn store.Transaction) ([]byte, error) {
-	gcPrefix := []byte{}
-	gcPrefix = append(gcPrefix, sysNamespace...)
-	gcPrefix = append(gcPrefix, ':', byte(sysDatabaseID))
-	gcPrefix = append(gcPrefix, ':', 'G', 'C', ':')
-	itr, err := txn.Iter(gcPrefix, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer itr.Close()
-
-	if !itr.Valid() {
-		return nil, nil
-	}
-	key := itr.Key()
-	if !key.HasPrefix(gcPrefix) {
-		return nil, nil
-	}
-	return key[len(gcPrefix):], nil
-}
-
 func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error) {
 	var count int
 	itr, err := txn.Iter(prefix, nil)
@@ -60,12 +39,8 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		if !key.HasPrefix(prefix) {
-			return count, nil
-		}
-		if err := txn.Delete(key); err != nil {
+	for itr.Valid() && itr.Key().HasPrefix(prefix) {
+		if err := txn.Delete(itr.Key()); err != nil {
 			return count, err
 		}
 
@@ -82,53 +57,58 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 	return count, nil
 }
 
-func gcComplete(txn store.Transaction, prefix []byte) error {
-	return txn.Delete(toTikvGCKey(prefix))
-}
-
 func doGC(db *DB, limit int) error {
-	left := limit
-	for left > 0 {
-		txn, err := db.Begin()
-		if err != nil {
-			zap.L().Error("[GC] transection begin failed", zap.Error(err))
-			return err
-		}
+	gcPrefix := toTikvGCKey(nil)
+	dbTxn, err := db.Begin()
+	if err != nil {
+		zap.L().Error("[GC] transection begin failed", zap.Error(err))
+		return err
+	}
+	txn := dbTxn.t
 
-		prefix, err := gcGetPrefix(txn.t)
-		if err != nil {
-			return err
-		}
-		if prefix == nil {
-			zap.L().Debug("[GC] no gc item")
-			return nil
-		}
+	itr, err := txn.Iter(gcPrefix, nil)
+	if err != nil {
+		return err
+	}
+	defer itr.Close()
+	if !itr.Valid() || !itr.Key().HasPrefix(gcPrefix) {
+		zap.L().Debug("[GC] no gc item")
+		return nil
+	}
+
+	for itr.Valid() && itr.Key().HasPrefix(gcPrefix) {
+		prefix := itr.Key()[len(gcPrefix):]
 		count := 0
 		zap.L().Debug("[GC] start to delete prefix", zap.String("prefix", string(prefix)), zap.Int("limit", limit))
-		if count, err = gcDeleteRange(txn.t, prefix, limit); err != nil {
+		if count, err = gcDeleteRange(txn, prefix, limit); err != nil {
 			return err
 		}
 
-		if count < limit {
+		//check and delete gc key
+		if limit > 0 && count < limit || limit <= 0 && count > 0 {
 			zap.L().Debug("[GC] delete prefix succeed", zap.String("prefix", string(prefix)))
-			if err := gcComplete(txn.t, prefix); err != nil {
+			if err := txn.Delete(itr.Key()); err != nil {
 				txn.Rollback()
 				return err
 			}
-		} else {
-			if count == 0 {
-				txn.Rollback()
-				return nil
-			}
-			left -= count
+			count++
 		}
 
-		if err := txn.Commit(context.Background()); err != nil {
-			txn.Rollback()
-			return err
+		limit -= count
+		if limit <= 0 {
+			break
 		}
-		metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("delete").Add(float64(count))
+		if err := itr.Next(); err != nil {
+			zap.L().Error("[GC] iter prefix err", zap.String("prefix", string(prefix)), zap.Error(err))
+			break
+		}
 	}
+
+	if err := txn.Commit(context.Background()); err != nil {
+		txn.Rollback()
+		return err
+	}
+	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("delete").Add(float64(limit))
 	return nil
 }
 

@@ -172,9 +172,15 @@ func (kv *Kv) FlushDB(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
 	nextID := kv.txn.db.ID + 1
 	endKey := dbPrefix(kv.txn.db.Namespace, nextID.Bytes())
+
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}
+
+	if err := clearSysRangeData(ctx, kv.txn.db, prefix, endKey); err != nil {
+		return ErrStorageRetry
+	}
+
 	return nil
 }
 
@@ -186,6 +192,12 @@ func (kv *Kv) FlushAll(ctx context.Context) error {
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}
+	sysStart := sysPrefix(sysNamespace, sysDatabaseID)
+	sysEnd := sysPrefix(sysNamespace, sysDatabaseID+1)
+	if err := unsafeDeleteRange(ctx, kv.txn.db, sysStart, sysEnd); err != nil {
+		return ErrStorageRetry
+	}
+
 	return nil
 }
 
@@ -220,6 +232,24 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 		return iter.Key()[len(prefix):], nil
 	}
 	return nil, err
+}
+
+//clear system range data(GC/ZT)
+func clearSysRangeData(ctx context.Context, db *DB, startKey, endKey []byte) error {
+	gcStart := toTikvGCKey(startKey)
+	gcEnd := toTikvGCKey(endKey)
+	if err := unsafeDeleteRange(ctx, db, gcStart, gcEnd); err != nil {
+		zap.L().Error("[GC] clear err", zap.Error(err))
+		return err
+	}
+
+	ztStart := toZTKey(startKey)
+	ztEnd := toZTKey(endKey)
+	if err := unsafeDeleteRange(ctx, db, ztStart, ztEnd); err != nil {
+		zap.L().Error("[ZT] clear err", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) error {

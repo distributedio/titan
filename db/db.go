@@ -273,6 +273,13 @@ func dbPrefix(ns string, id []byte) []byte {
 	return prefix
 }
 
+func sysPrefix(ns string, id int) []byte {
+	b := []byte{}
+	b = append(b, sysNamespace...)
+	b = append(b, ':', byte(sysDatabaseID), ':')
+	return b
+}
+
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)

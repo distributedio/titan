@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/meitu/titan/conf"
@@ -53,7 +52,6 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 			return count, err
 		}
 	}
-	fmt.Println("del range count", count)
 	return count, nil
 }
 
@@ -85,7 +83,6 @@ func doGC(db *DB, limit int) error {
 		if count, err = gcDeleteRange(txn, prefix, limit); err != nil {
 			return err
 		}
-		fmt.Println("do gc count", count, limit)
 
 		//check and delete gc key
 		if limit > 0 && count < limit || limit <= 0 && count > 0 {

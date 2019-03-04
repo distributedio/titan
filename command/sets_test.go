@@ -284,6 +284,7 @@ func TestSUnion(t *testing.T) {
 	ctx = ContextTest("sadd", key2, "c", "d", "e")
 	Call(ctx)
 	ctx = ContextTest("sadd", key3, "")
+
 	Call(ctx)
 
 	//case 1
@@ -416,7 +417,6 @@ func TestSDiff(t *testing.T) {
 	ctx = ContextTest("sdiff", key1, key4)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	//fmt.Println(lines)
 	assert.Equal(t, "*3", lines[0])
 	assert.Equal(t, "$1", lines[1])
 	assert.Equal(t, "b", lines[2])
@@ -428,7 +428,6 @@ func TestSDiff(t *testing.T) {
 	ctx = ContextTest("sdiff", key1, key5)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	//fmt.Println(lines)
 	assert.Equal(t, "*2", lines[0])
 	assert.Equal(t, "$1", lines[1])
 	assert.Equal(t, "b", lines[2])
@@ -439,7 +438,6 @@ func TestSDiff(t *testing.T) {
 	ctx = ContextTest("sdiff", key1, key6)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	//fmt.Println(lines)
 	assert.Equal(t, "*0", lines[0])
 	//end
 	clearSets(t, key1)

@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -143,13 +144,11 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
-	min := setsIter[0].Value()
 	for {
-		for i := 0; i < len(setsIter); i++ {
-			if bytes.Compare(min, setsIter[i].Value()) == 1 || bytes.Equal(setsIter[i].Value(), min) {
-				min = setsIter[i].Value()
-			}
-		}
+		sum := getNodeCount(len(setsIter)) //计算完全二叉树的节点总个数
+		k := sum - len(setsIter) + 1       //败者树中非终端节点的总个数
+		ls := make([]int, k)               //表示非终端结点
+		min := getMinMember(ls, setsIter)
 		l := len(setsIter)
 		for i, j := 0, 0; i < l; i, j = i+1, j+1 {
 			if bytes.Equal(setsIter[j].Value(), min) {
@@ -163,13 +162,46 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 		}
 		members = append(members, min)
-		if len(setsIter) > 0 {
-			min = setsIter[0].Value()
-		} else {
+		if len(setsIter) <= 0 {
 			break
 		}
 	}
 	return BytesArray(ctx.Out, members), nil
+}
+
+func getMinMember(ls []int, sets []*db.SetIter) []byte {
+	for i := len(ls) - 1; i >= 0; i-- {
+		adjustMin(ls, sets, i)
+	}
+	res := sets[ls[0]].Value()
+	return res
+
+}
+func getNodeCount(count int) (sum int) {
+	if count == 2 {
+		sum = 3
+	} else if count%2 == 0 {
+		if count%4 == 0 {
+			sum = count*2 - 1
+		} else {
+			sum = count * 2
+		}
+	} else {
+		sum = count*2 - 1
+	}
+	return
+}
+func adjustMin(ls []int, sets []*db.SetIter, s int) {
+	t := (s + len(ls)) / 2
+	for t > 0 {
+		if bytes.Compare(sets[s].Value(), sets[ls[t]].Value()) == 1 {
+			swap := s
+			s = ls[t]
+			ls[t] = swap
+		}
+		t = t / 2
+	}
+	ls[0] = s
 }
 
 // SInter returns the members of the set resulting from the intersection of all the given sets.
@@ -196,35 +228,61 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
-	max := setsIter[0].Value()
 	for {
-		i := 0
-	Loop:
-		for ; i < len(ctx.Args); i++ {
-			for ; setsIter[i].Valid(); setsIter[i].Iter.Next() {
-				if bytes.Compare(setsIter[i].Value(), max) == 1 {
-					max = setsIter[i].Value()
-					break Loop
-				} else if bytes.Equal(setsIter[i].Value(), max) {
-					break
+		max := getMaxMember(setsIter)
+		for i := 0; i < len(ctx.Args); i++ {
+			if !bytes.Equal(setsIter[i].Value(), max) {
+				if err := setsIter[i].Iter.Next(); err != nil {
+					return nil, errors.New("ERR " + err.Error())
+				}
+				if !setsIter[i].Valid() {
+					return BytesArray(ctx.Out, members), nil
 				}
 			}
-			if !setsIter[i].Valid() {
-				return BytesArray(ctx.Out, members), nil
+			if i == len(ctx.Args)-1 {
+				members = append(members, max)
+				for j := 0; j < len(ctx.Args); j++ {
+					if err := setsIter[j].Iter.Next(); err != nil {
+						return nil, errors.New("ERR " + err.Error())
+					}
+					if !setsIter[j].Valid() {
+						return BytesArray(ctx.Out, members), nil
+					}
+				}
 			}
-		}
-		if i == len(ctx.Args) {
-			members = append(members, max)
-			if err := setsIter[0].Iter.Next(); err != nil {
-				return nil, errors.New("ERR " + err.Error())
-			}
-			if !setsIter[0].Valid() {
-				return BytesArray(ctx.Out, members), nil
-			}
-			max = setsIter[0].Value()
 		}
 	}
 	return BytesArray(ctx.Out, members), nil
+}
+func getMaxMember(sets []*db.SetIter) []byte {
+	var arr [][]byte
+	for i := 0; i < len(sets); i++ {
+		arr = append(arr, sets[i].Value())
+	}
+	for k := len(arr) / 2; k >= 0; k-- {
+		adjustHeap(arr, k)
+	}
+	res := arr[0]
+	return res
+}
+func adjustHeap(arr [][]byte, k int) {
+	for {
+		i := 2 * k
+		if i > len(arr)-1 { //保证该节点是非叶子节点
+			break
+		}
+		if i+1 < len(arr) && bytes.Compare(arr[i+1], arr[i]) == 1 { //选择较大的子节点
+			i++
+		}
+		if bytes.Compare(arr[k], arr[i]) == 1 || bytes.Equal(arr[k], arr[i]) {
+			break
+		}
+		swap(arr, k, i)
+		k = i
+	}
+}
+func swap(s [][]byte, i int, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
@@ -282,6 +340,7 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 				min = setsIter[i].Value()
 			}
 		}
+		fmt.Println(string(min))
 		members, err = moveMembers(setsIter, min, members)
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())

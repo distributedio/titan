@@ -686,3 +686,92 @@ func TestStringBitPos(t *testing.T) {
 		})
 	}
 }
+
+func TestStringBitOp(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          []string
+		preSet        func()
+		wantResult    string
+		wantDestValue string
+	}{
+		{
+			name: "1",
+			args: []string{"and", "dest", "key1", "key2"},
+			preSet: func() {
+				CallTest("set", "key1", "foobar")
+				CallTest("set", "key2", "abcdef")
+			},
+			wantResult:    ":6",
+			wantDestValue: "`bc`ab",
+		},
+		{
+			name: "2",
+			args: []string{"and", "dest", "key1", "key2"},
+			preSet: func() {
+				CallTest("set", "key1", "foo")
+				CallTest("set", "key2", "abcdef")
+			},
+			wantResult:    ":6",
+			wantDestValue: "`bc\x00\x00\x00",
+		},
+		{
+			name: "3",
+			args: []string{"xor", "dest", "key1", "key2"},
+			preSet: func() {
+				CallTest("set", "key1", "hello")
+				CallTest("set", "key2", "abcdef")
+			},
+			wantResult:    ":6",
+			wantDestValue: "\t\a\x0f\b\nf",
+		},
+		{
+			name: "4",
+			args: []string{"or", "dest", "key1", "key2"},
+			preSet: func() {
+				CallTest("set", "key1", "hello")
+				CallTest("set", "key2", "foo")
+			},
+			wantResult:    ":5",
+			wantDestValue: "noolo",
+		},
+		{
+			name: "5",
+			args: []string{"not", "dest", "key1"},
+			preSet: func() {
+				CallTest("set", "key1", "hello")
+			},
+			wantResult:    ":5",
+			wantDestValue: "\x97\x9a\x93\x93\x90",
+		},
+		{
+			name: "6",
+			args: []string{"and", "dest", "key1", "key2", "key3", "key4", "key5"},
+			preSet: func() {
+				CallTest("set", "key1", "hello")
+				CallTest("set", "key2", "hel")
+				CallTest("set", "key3", "foo")
+				CallTest("set", "key4", "123456")
+				CallTest("set", "key5", "test")
+			},
+			wantResult:    ":6",
+			wantDestValue: "   \x00\x00\x00",
+		},
+		{
+			name: "7",
+			args: []string{"and", "dest", "key-unknown", "key-unknown"},
+			preSet: func() {
+			},
+			wantResult:    ":0",
+			wantDestValue: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.preSet()
+			out := CallTest("bitop", tt.args...)
+			assert.Contains(t, out.String(), tt.wantResult)
+			EqualGet(t, "dest", tt.wantDestValue, nil)
+		})
+	}
+}

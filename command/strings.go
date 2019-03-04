@@ -3,7 +3,6 @@ package command
 import (
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/meitu/titan/db"
@@ -640,22 +639,107 @@ func BitPos(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // BitOp perform bitwise operations between strings
 func BitOp(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	//TODO
-	if strings.EqualFold(ctx.Args[0], "and") {
-	} else if strings.EqualFold(ctx.Args[0], "or") {
-	} else if strings.EqualFold(ctx.Args[0], "xor") {
-	} else if strings.EqualFold(ctx.Args[0], "not") {
+	if len(ctx.Args) < 3 {
+		return nil, ErrBitOp
+	}
+
+	// Get source keys value
+	keys := make([][]byte, len(ctx.Args[2:]))
+	values := make([][]byte, len(ctx.Args[2:]))
+	for i, _ := range ctx.Args[2:] {
+		keys[i] = []byte(ctx.Args[2+i])
+	}
+
+	strs, err := txn.Strings(keys)
+	if err != nil {
+		return nil, errors.New("ERR" + err.Error())
+	}
+	for i, str := range strs {
+		if str == nil || !str.Exist() {
+			values[i] = nil
+			continue
+		}
+		values[i], _ = str.Get()
+	}
+
+	var result []byte
+	switch ctx.Args[0] {
+	case "and", "AND", "or", "OR", "xor", "XOR":
+		result = doBitOp(ctx.Args[0], values)
+	case "not", "NOT":
 		if len(ctx.Args) != 3 {
 			return nil, ErrBitOp
 		}
-	} else {
-		return nil, ErrSyntax
+		if values[0] != nil {
+			for i, _ := range values[0] {
+				values[0][i] = ^values[0][i]
+			}
+		}
+		result = values[0]
+	default:
+		return nil, ErrBitOp
 	}
-	return Integer(ctx.Out, int64(0)), nil
+
+	destination := ctx.Args[1]
+	str, err := txn.String([]byte(destination))
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+
+		return nil, errors.New("ERR " + err.Error())
+	}
+	err = str.Set(result)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	return Integer(ctx.Out, int64(len(result))), nil
 }
 
 // BitField perform arbitrary bitfield integer operations on strings
 func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//TODO
 	return Integer(ctx.Out, int64(0)), nil
+}
+
+func doBitOp(operation string, values [][]byte) []byte {
+	var result = values[0]
+	for i := 1; i < len(values); i++ {
+		next := values[i]
+
+		if (result == nil) && (next == nil) {
+			result = nil
+		}
+
+		if len(result) < len(next) {
+			for i := len(result); i < len(next); i++ {
+				result = append(result, byte(0))
+			}
+		}
+
+		if len(result) > len(next) {
+			for i := len(next); i < len(result); i++ {
+				next = append(next, byte(0))
+			}
+		}
+
+		for i, _ := range result {
+			result[i] = byteBoolOp(operation)(result[i], next[i])
+		}
+	}
+	return result
+}
+
+func byteBoolOp(operation string) func(a, b byte) byte {
+	switch operation {
+	case "and", "AND":
+		return func(a, b byte) byte { return a & b }
+	case "or", "OR":
+		return func(a, b byte) byte { return a | b }
+	case "xor", "XOR":
+		return func(a, b byte) byte { return a ^ b }
+	default:
+		return nil
+	}
 }

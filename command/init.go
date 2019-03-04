@@ -135,7 +135,7 @@ func init() {
 		"decrby":      Desc{Proc: AutoCommit(DecrBy), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
 		"incrbyfloat": Desc{Proc: AutoCommit(IncrByFloat), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
 		"setbit":      Desc{Proc: AutoCommit(SetBit), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
-		// "bitop":       Desc{Proc: AutoCommit(BitOp), Cons: Constraint{-4, flags("wm"), 2, -1, 1}},
+		"bitop":       Desc{Proc: AutoCommit(BitOp), Cons: Constraint{-4, flags("wm"), 2, -1, 1}},
 		// "bitfield":    Desc{Proc: AutoCommit(BitField), Cons: Constraint{-2, flags("wm"), 1, 1, 1}},
 		"getbit":   Desc{Proc: AutoCommit(GetBit), Cons: Constraint{3, flags("r"), 1, 1, 1}},
 		"bitcount": Desc{Proc: AutoCommit(BitCount), Cons: Constraint{-2, flags("r"), 1, 1, 1}},

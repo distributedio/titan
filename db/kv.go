@@ -192,8 +192,8 @@ func (kv *Kv) FlushAll(ctx context.Context) error {
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
 		return ErrStorageRetry
 	}
-	sysStart := sysPrefix(sysNamespace, sysDatabaseID)
-	sysEnd := sysPrefix(sysNamespace, sysDatabaseID+1)
+	sysStart := sysPrefix(sysNamespace, byte(sysDatabaseID))
+	sysEnd := sysPrefix(sysNamespace, byte(sysDatabaseID+1))
 	if err := unsafeDeleteRange(ctx, kv.txn.db, sysStart, sysEnd); err != nil {
 		return ErrStorageRetry
 	}

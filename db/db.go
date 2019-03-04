@@ -273,10 +273,10 @@ func dbPrefix(ns string, id []byte) []byte {
 	return prefix
 }
 
-func sysPrefix(ns string, id int) []byte {
+func sysPrefix(ns string, id byte) []byte {
 	b := []byte{}
 	b = append(b, sysNamespace...)
-	b = append(b, ':', byte(sysDatabaseID), ':')
+	b = append(b, ':', id, ':')
 	return b
 }
 

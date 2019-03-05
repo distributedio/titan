@@ -305,13 +305,13 @@ func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) err
 		go func() {
 			defer wg.Done()
 			_, storeErr := tikvCli.SendRequest(ctx, address, req, tikv.UnsafeDestroyRangeTimeout)
-			if sotreErr != nil {
+			if storeErr != nil {
 				zap.L().Error("destroy range on store  failed with ",
 					zap.Uint64("store_id", storeID),
 					zap.String("addr", address),
 					zap.ByteString("start", startKey),
 					zap.ByteString("end", endKey),
-					zap.Error(err1))
+					zap.Error(storeErr))
 				err = storeErr
 			}
 		}()

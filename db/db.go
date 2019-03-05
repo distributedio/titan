@@ -20,6 +20,7 @@ var (
 	// ErrTypeMismatch indicates object type of key is not as expect
 	ErrTypeMismatch = errors.New("type mismatch")
 
+	// ErrKeyNotFound key not exist
 	ErrKeyNotFound = errors.New("key not found")
 
 	// ErrInteger valeu is not interge

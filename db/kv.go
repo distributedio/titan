@@ -174,6 +174,11 @@ func (kv *Kv) FlushDB(ctx context.Context) error {
 	endKey := dbPrefix(kv.txn.db.Namespace, nextID.Bytes())
 
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+		zap.L().Error("flushdb data unsafe clear err",
+			zap.ByteString("start", prefix),
+			zap.ByteString("end", endKey),
+			zap.Error(err))
+
 		return ErrStorageRetry
 	}
 
@@ -190,11 +195,20 @@ func (kv *Kv) FlushAll(ctx context.Context) error {
 	maxID := EncodeInt64(256)
 	endKey := dbPrefix(kv.txn.db.Namespace, maxID)
 	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+		zap.L().Error("flushall data unsafe clear err",
+			zap.ByteString("start", prefix),
+			zap.ByteString("end", endKey),
+			zap.Error(err))
 		return ErrStorageRetry
 	}
 	sysStart := sysPrefix(sysNamespace, byte(sysDatabaseID))
 	sysEnd := sysPrefix(sysNamespace, byte(sysDatabaseID+1))
 	if err := unsafeDeleteRange(ctx, kv.txn.db, sysStart, sysEnd); err != nil {
+		zap.L().Error("flushall sys data unsafe clear err",
+			zap.ByteString("start", sysStart),
+			zap.ByteString("end", sysEnd),
+			zap.Error(err))
+
 		return ErrStorageRetry
 	}
 
@@ -239,14 +253,20 @@ func clearSysRangeData(ctx context.Context, db *DB, startKey, endKey []byte) err
 	gcStart := toTikvGCKey(startKey)
 	gcEnd := toTikvGCKey(endKey)
 	if err := unsafeDeleteRange(ctx, db, gcStart, gcEnd); err != nil {
-		zap.L().Error("[GC] clear err", zap.Error(err))
+		zap.L().Error("[GC] unsafe clear err",
+			zap.ByteString("start", gcStart),
+			zap.ByteString("end", gcEnd),
+			zap.Error(err))
 		return err
 	}
 
 	ztStart := toZTKey(startKey)
 	ztEnd := toZTKey(endKey)
 	if err := unsafeDeleteRange(ctx, db, ztStart, ztEnd); err != nil {
-		zap.L().Error("[ZT] clear err", zap.Error(err))
+		zap.L().Error("[ZT] unsafe clear err",
+			zap.ByteString("start", ztStart),
+			zap.ByteString("end", ztEnd),
+			zap.Error(err))
 		return err
 	}
 	return nil
@@ -284,10 +304,15 @@ func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) err
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err1 := tikvCli.SendRequest(ctx, address, req, tikv.UnsafeDestroyRangeTimeout)
-			if err1 != nil {
-				zap.L().Error("destroy range on store  failed with ", zap.Uint64("store_id", storeID), zap.String("addr", address), zap.Error(err1))
-				err = err1
+			_, storeErr := tikvCli.SendRequest(ctx, address, req, tikv.UnsafeDestroyRangeTimeout)
+			if sotreErr != nil {
+				zap.L().Error("destroy range on store  failed with ",
+					zap.Uint64("store_id", storeID),
+					zap.String("addr", address),
+					zap.ByteString("start", startKey),
+					zap.ByteString("end", endKey),
+					zap.Error(err1))
+				err = storeErr
 			}
 		}()
 	}

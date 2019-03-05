@@ -222,7 +222,7 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[1])
 	obj, err := txn.Object(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if obj.Type == db.ObjectHash {
 		hash, err := txn.Hash(key)
@@ -341,7 +341,7 @@ func RedisCommand(ctx *Context) {
 func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushDB(ctx); err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }
@@ -352,7 +352,7 @@ func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	if err := kv.FlushAll(ctx); err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }

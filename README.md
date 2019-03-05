@@ -174,19 +174,19 @@ redis-cli -p 7369
 
 ### Sets
 
-- [ ] sadd
-- [ ] scard
-- [ ] sdiff
+- [x] sadd
+- [x] scard
+- [x] sdiff
 - [ ] sdiffstore
-- [ ] sinter
+- [x] sinter
 - [ ] sinterstore
-- [ ] sismember
-- [ ] smembers
-- [ ] smove
-- [ ] spop
+- [x] sismember
+- [x] smembers
+- [x] smove
+- [x] spop
 - [ ] srandmember
-- [ ] srem
-- [ ] sunion
+- [x] srem
+- [x] sunion
 - [ ] sunionstore
 - [ ] sscan
 

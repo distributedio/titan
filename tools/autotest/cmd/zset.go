@@ -152,6 +152,33 @@ func (ez *ExampleZSet) ZRevRangeEqual(t *testing.T, key string, start int, stop 
     ez.ZAnyOrderRangeEqual(t, key, start, stop, false, withScore)
 }
 
+func (ez *ExampleZSet) ZCardEqual(t *testing.T, key string) {
+    reply, err := redis.Int(ez.conn.Do("zcard", key))
+    assert.Equal(t, len(ez.memberScores[key]), reply)
+    assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZScoreEqual(t *testing.T, key string, member string) {
+    msmap, ok := ez.memberScores[key]
+    reply, err := redis.String(ez.conn.Do("zscore", key, member))
+    if !ok {
+        assert.Equal(t, "", reply)
+        assert.EqualError(t, err, "redigo: nil returned")
+        return
+    }
+
+    score, ok := msmap[member]
+    if !ok {
+        assert.Equal(t,"", reply)
+        assert.EqualError(t, err, "redigo: nil returned")
+        return
+    }
+
+    val := strconv.FormatFloat(score, 'f', -1, 64)
+    assert.Equal(t,val, reply)
+    assert.Nil(t, err)
+}
+
 func getAllOutput(msmap map[string]float64, positiveOrder bool, withScore bool)([]string){
     scoreMembers := make(map[float64][]string)
     for member, score := range msmap {

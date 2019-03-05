@@ -109,6 +109,11 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 //TODO
 func (ac *AutoClient) ZSetCase(t *testing.T) {
     ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1", "-1.5", "member2", "3.6", "member3", "-3.5", "member4", "2.5", "member1")
+	ac.ez.ZCardEqual(t, "key-zset")
+	ac.ez.ZCardEqual(t, "key-zset1")
+	ac.ez.ZScoreEqual(t, "key-zset1", "member1")
+	ac.ez.ZScoreEqual(t, "key-zset", "member1")
+	ac.ez.ZScoreEqual(t, "key-zset", "member5")
     ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
     ac.ez.ZRangeEqual(t, "key-zset", 0, -1, false)
     ac.ez.ZRangeEqual(t, "key-zset", 1, 4, true)

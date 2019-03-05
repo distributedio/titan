@@ -69,7 +69,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of command call",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandCallHistogramVec)
@@ -94,7 +94,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "txn_commit_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of txn commit",
 		}, multiLabel)
 	prometheus.MustRegister(gm.TxnCommitHistogramVec)
@@ -119,7 +119,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "lrange_seek_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of list lrange seek",
 		})
 	prometheus.MustRegister(gm.LRangeSeekHistogram)

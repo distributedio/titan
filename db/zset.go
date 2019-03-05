@@ -264,6 +264,25 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 
     return deleted, zset.updateMeta()
 }
+func (zset *ZSet) ZCard() int64 {
+    return zset.meta.Len
+}
+
+func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
+    dkey := DataKey(zset.txn.db, zset.meta.ID)
+    memberKey := zsetMemberKey(dkey, member)
+    bytesScore, err := zset.txn.t.Get(memberKey)
+    if err != nil {
+        if IsErrNotFound(err) {
+            return nil, nil
+        }
+        return nil, err
+    }
+
+    fscore := DecodeFloat64(bytesScore)
+    sscore := strconv.FormatFloat(fscore, 'f', -1, 64)
+    return []byte(sscore), nil
+}
 
 func zsetMemberKey(dkey []byte, member []byte) []byte {
     dkey = append(dkey, ':')

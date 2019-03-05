@@ -129,3 +129,46 @@ func ZRem(ctx *Context, txn *db.Transaction)(OnCommit, error) {
 
     return Integer(ctx.Out, deleted), nil
 }
+
+func ZCard(ctx *Context, txn *db.Transaction)(OnCommit, error) {
+    key := []byte(ctx.Args[0])
+
+    zset, err := txn.ZSet(key)
+    if err != nil {
+        if err == db.ErrTypeMismatch {
+            return nil, ErrTypeMismatch
+        }
+        return nil, errors.New("ERR " + err.Error())
+    }
+    if !zset.Exist() {
+        return Integer(ctx.Out, 0), nil
+    }
+
+    return Integer(ctx.Out, zset.ZCard()), nil
+}
+
+func ZScore(ctx *Context, txn *db.Transaction)(OnCommit, error) {
+    key := []byte(ctx.Args[0])
+    member := []byte(ctx.Args[1])
+
+    zset, err := txn.ZSet(key)
+    if err != nil {
+        if err == db.ErrTypeMismatch {
+            return nil, ErrTypeMismatch
+        }
+        return nil, errors.New("ERR " + err.Error())
+    }
+    if !zset.Exist() {
+        return NullBulkString(ctx.Out), nil
+    }
+
+    score, err := zset.ZScore(member)
+    if err != nil {
+        return nil, errors.New("ERR " + err.Error())
+    }
+    if score == nil {
+        return NullBulkString(ctx.Out), nil
+    }
+
+    return BulkString(ctx.Out, string(score)), nil
+}

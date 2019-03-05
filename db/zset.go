@@ -3,6 +3,7 @@ package db
 import (
     "strconv"
     "encoding/binary"
+    "go.uber.org/zap"
 )
 
 // ZSetMeta is the meta data of the sorted set
@@ -187,20 +188,17 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
     }
 
     var items [][]byte
-    var scoreAndMember []byte
-    var member, score []byte
     for i := int64(0); i <= stop && err == nil && iter.Valid() && iter.Key().HasPrefix(scorePrefix); err = iter.Next()  {
         if i >= start {
-            score = nil
-            member = nil
-            scoreAndMember = iter.Key()[len(scorePrefix)+1:]
-            for pos, c := range scoreAndMember {
-                if c == ':' {
-                    score = scoreAndMember[0:pos]
-                    member = scoreAndMember[pos+1:]
-                    break
-                }
+            if len(iter.Key()) < len(scorePrefix) + len(":") + 8 + len(":") {
+                zap.L().Error("score&member's length isn't enough to be decoded",
+                    zap.ByteString("meta key", zset.key), zap.ByteString("data key", iter.Key()))
+                continue
             }
+
+            scoreAndMember := iter.Key()[len(scorePrefix)+len(":"):]
+            score := scoreAndMember[0:8]
+            member := scoreAndMember[8+len(":"):]
             items = append(items, member)
             if withScore {
                 val := []byte(strconv.FormatFloat(DecodeFloat64(score), 'f', -1, 64))

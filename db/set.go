@@ -1,7 +1,8 @@
 package db
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/binary"
 )
 
 // SetNilValue is the value set to a tikv key for tikv do not support a real empty value
@@ -15,69 +16,149 @@ type SetMeta struct {
 
 // Set implements the set data structure
 type Set struct {
-	meta SetMeta
-	key  []byte
-	txn  *Transaction
+	meta   *SetMeta
+	key    []byte
+	exists bool
+	txn    *Transaction
 }
 
 // GetSet returns a set object, create new one if nonexists
 func GetSet(txn *Transaction, key []byte) (*Set, error) {
-	set := &Set{txn: txn, key: key}
-
+	set := newSet(txn, key)
 	mkey := MetaKey(txn.db, key)
 	meta, err := txn.t.Get(mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
-			now := Now()
-			set.meta.CreatedAt = now
-			set.meta.UpdatedAt = now
-			set.meta.ExpireAt = 0
-			set.meta.ID = UUID()
-			set.meta.Type = ObjectSet
-			set.meta.Encoding = ObjectEncodingHT
-			set.meta.Len = 0
 			return set, nil
 		}
 		return nil, err
 	}
-	if err := json.Unmarshal(meta, &set.meta); err != nil {
+	smeta, err := DecodeSetMeta(meta)
+	if err != nil {
 		return nil, err
 	}
-	if set.meta.Type != ObjectSet {
+	if smeta.Type != ObjectSet {
 		return nil, ErrTypeMismatch
 	}
+	if IsExpired(&set.meta.Object, Now()) {
+		return set, nil
+	}
+	set.meta = smeta
+	set.exists = true
 	return set, nil
 }
 
-func setItemKey(key []byte, member []byte) []byte {
-	key = append(key, ':')
-	return append(key, member...)
+// SetIter is the struct of Iterator and prefix
+type SetIter struct {
+	Iter   Iterator
+	Prefix []byte
 }
 
+// Iter returns the SetIter object
+func (set *Set) Iter() (*SetIter, error) {
+	var siter SetIter
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+	iter, _ := set.txn.t.Iter(prefix, nil)
+	siter.Iter = iter
+	siter.Prefix = prefix
+	return &siter, nil
+}
+
+// Value returns the member pointed by iter
+func (siter *SetIter) Value() []byte {
+	res := siter.Iter.Key()[len(siter.Prefix):]
+	return res
+
+}
+
+// Valid judgies whether the key directed by iter has the same prifix
+func (siter *SetIter) Valid() bool {
+	if !siter.Iter.Key().HasPrefix(siter.Prefix) {
+		return false
+	}
+	return true
+}
+
+//newSet create new Set object
+func newSet(txn *Transaction, key []byte) *Set {
+	now := Now()
+	return &Set{
+		txn: txn,
+		key: key,
+		meta: &SetMeta{
+			Object: Object{
+				ID:        UUID(),
+				CreatedAt: now,
+				UpdatedAt: now,
+				ExpireAt:  0,
+				Type:      ObjectSet,
+				Encoding:  ObjectEncodingHT,
+			},
+			Len: 0,
+		},
+	}
+}
+
+//DecodeSetMeta decode meta data into meta field
+func DecodeSetMeta(b []byte) (*SetMeta, error) {
+	if len(b[ObjectEncodingLength:]) != 8 {
+		return nil, ErrInvalidLength
+	}
+	obj, err := DecodeObject(b)
+	if err != nil {
+		return nil, err
+	}
+	smeta := &SetMeta{Object: *obj}
+	m := b[ObjectEncodingLength:]
+	smeta.Len = int64(binary.BigEndian.Uint64(m[:8]))
+	return smeta, nil
+}
+
+//EncodeSetMeta encodes meta data into byte slice
+func encodeSetMeta(meta *SetMeta) []byte {
+	b := EncodeObject(&meta.Object)
+	m := make([]byte, 8)
+	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
+	return append(b, m...)
+}
+func setItemKey(key []byte, member []byte) []byte {
+	var ikeys []byte
+	ikeys = append(ikeys, key...)
+	ikeys = append(ikeys, ':')
+	ikeys = append(ikeys, member...)
+	return ikeys
+}
 func (set *Set) updateMeta() error {
-	meta, err := json.Marshal(set.meta)
+	meta := encodeSetMeta(set.meta)
+	err := set.txn.t.Set(MetaKey(set.txn.db, set.key), meta)
 	if err != nil {
 		return err
 	}
-	return set.txn.t.Set(MetaKey(set.txn.db, set.key), meta)
+	set.meta.UpdatedAt = Now()
+	if !set.exists {
+		set.exists = true
+	}
+	return nil
 }
 
 // SAdd adds the specified members to the set stored at key
-func (set *Set) SAdd(members [][]byte) (int64, error) {
+func (set *Set) SAdd(members ...[]byte) (int64, error) {
+	// Namespace:DBID:D:ObjectID
 	dkey := DataKey(set.txn.db, set.meta.ID)
-	ikeys := make([][]byte, len(members))
-
-	for i := range members {
-		ikeys[i] = setItemKey(dkey, members[i])
+	// Remove the duplicate
+	ms := RemoveRepByMap(members)
+	ikeys := make([][]byte, len(ms))
+	for i := range ms {
+		ikeys[i] = setItemKey(dkey, ms[i])
 	}
-
+	// {Namespace}:{DBID}:{D}:{ObjectID}:{ms[i]}
 	values, err := BatchGetValues(set.txn, ikeys)
 	if err != nil {
 		return 0, nil
 	}
-
 	added := int64(0)
-	for i := range members {
+	for i := range ikeys {
 		if values[i] == nil {
 			added++
 		}
@@ -85,7 +166,6 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 			return 0, err
 		}
 	}
-
 	set.meta.Len += added
 	if err := set.updateMeta(); err != nil {
 		return 0, err
@@ -94,8 +174,30 @@ func (set *Set) SAdd(members [][]byte) (int64, error) {
 	return added, nil
 }
 
+// RemoveRepByMap filters duplicate elements through the map's unique primary key feature
+func RemoveRepByMap(members [][]byte) [][]byte {
+	result := [][]byte{}
+	// tempMap saves non-repeating primary keys
+	tempMap := map[string]int{}
+	for _, m := range members {
+		_, ok := tempMap[string(m)]
+		if !ok {
+			result = append(result, m)
+		}
+	}
+	return result
+}
+
+// Exists check set exist
+func (set *Set) Exists() bool {
+	return set.exists
+}
+
 // SMembers returns all the members of the set value stored at key
 func (set *Set) SMembers() ([][]byte, error) {
+	if !set.Exists() {
+		return nil, nil
+	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
 
@@ -115,4 +217,159 @@ func (set *Set) SMembers() ([][]byte, error) {
 		count--
 	}
 	return members, nil
+}
+
+// SCard returns the set cardinality (number of elements) of the set stored at key
+func (set *Set) SCard() (int64, error) {
+	if !set.Exists() {
+		return 0, nil
+	}
+	return set.meta.Len, nil
+}
+
+// SIsmember returns if member is a member of the set stored at key
+func (set *Set) SIsmember(member []byte) (int64, error) {
+	if !set.Exists() {
+		return 0, nil
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	ikey := setItemKey(dkey, member)
+
+	value, err := set.txn.t.Get(ikey)
+	if err != nil {
+		if IsErrNotFound(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	if !bytes.Equal(value, SetNilValue) {
+		return 0, nil
+	}
+	return 1, nil
+}
+
+// SPop removes and returns one or more random elements from the set value store at key.
+func (set *Set) SPop(count int64) (members [][]byte, err error) {
+	if !set.Exists() || set.meta.Len == 0 {
+		return nil, nil
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	prefix := append(dkey, ':')
+	iter, err := set.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+	var del int64
+	var ms [][]byte
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		if count == 0 {
+			ms = append(ms, iter.Key()[len(prefix):])
+			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+				return nil, err
+			}
+			set.meta.Len--
+			break
+		} else {
+			ms = append(ms, iter.Key()[len(prefix):])
+			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+				return nil, err
+			}
+			del++
+			count--
+			if count == 0 {
+				set.meta.Len -= del
+				break
+			}
+			if err := iter.Next(); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if count != 0 {
+		set.meta.Len = 0
+	}
+	if err := set.updateMeta(); err != nil {
+		return nil, err
+	}
+	return ms, nil
+}
+
+// SRem removes the specified members from the set stored at key
+func (set *Set) SRem(members [][]byte) (int64, error) {
+	var num int64
+	if !set.Exists() {
+		return 0, nil
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	ms := RemoveRepByMap(members)
+	ikeys := make([][]byte, len(ms))
+	for i := range ms {
+		ikeys[i] = setItemKey(dkey, ms[i])
+		value, err := set.txn.t.Get(ikeys[i])
+		if err != nil {
+			if IsErrNotFound(err) {
+				continue
+			}
+			return 0, err
+		}
+		if bytes.Equal(value, SetNilValue) {
+			if err := set.txn.t.Delete([]byte(ikeys[i])); err != nil {
+				return 0, err
+			}
+			num++
+		}
+	}
+	set.meta.Len -= num
+	if err := set.updateMeta(); err != nil {
+		return 0, err
+	}
+	return num, nil
+}
+
+// SMove movies member from the set at source to the set at destination
+func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
+
+	if !set.Exists() {
+		return 0, nil
+	}
+	res, err := set.SIsmember(member)
+	if err != nil {
+		return 0, err
+	}
+	if res == 0 {
+		return 0, nil
+	}
+	destset, _ := GetSet(set.txn, destination)
+	res, err = destset.SIsmember(member)
+	if err != nil {
+		return 0, err
+	}
+	if res == 0 {
+		if _, err := destset.SAdd(member); err != nil {
+			return 0, err
+		}
+		destset.meta.Len++
+	}
+	dkey := DataKey(set.txn.db, set.meta.ID)
+	ikey := setItemKey(dkey, member)
+
+	value, err := set.txn.t.Get(ikey)
+	if err != nil {
+		if IsErrNotFound(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	if bytes.Equal(value, SetNilValue) {
+		if err := set.txn.t.Delete([]byte(ikey)); err != nil {
+			return 0, err
+		}
+		set.meta.Len--
+		if err := set.updateMeta(); err != nil {
+			return 0, err
+		}
+		return 1, nil
+	}
+	return 0, nil
 }

@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/meitu/titan/db"
@@ -131,7 +130,7 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SUnion returns the members of the set resulting from the union of all the given sets.
 func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
+	setsIter := make([]*db.SetIter, len(ctx.Args))
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -145,9 +144,9 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		setsIter[i] = siter
 	}
 	for {
-		sum := getNodeCount(len(setsIter)) //计算完全二叉树的节点总个数
-		k := sum - len(setsIter) + 1       //败者树中非终端节点的总个数
-		ls := make([]int, k)               //表示非终端结点
+		sum := getNodeCount(len(setsIter))
+		k := sum - len(setsIter) + 1
+		ls := make([]int, k)
 		min := getMinMember(ls, setsIter)
 		l := len(setsIter)
 		for i, j := 0, 0; i < l; i, j = i+1, j+1 {
@@ -169,6 +168,7 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, members), nil
 }
 
+// getMinMember gets minimum in members
 func getMinMember(ls []int, sets []*db.SetIter) []byte {
 	for i := len(ls) - 1; i >= 0; i-- {
 		adjustMin(ls, sets, i)
@@ -177,6 +177,8 @@ func getMinMember(ls []int, sets []*db.SetIter) []byte {
 	return res
 
 }
+
+// getNodeCount calculaties the total number of nodes in a complete binary tree
 func getNodeCount(count int) (sum int) {
 	if count == 2 {
 		sum = 3
@@ -191,6 +193,8 @@ func getNodeCount(count int) (sum int) {
 	}
 	return
 }
+
+// adjustMin adjust the loser tree
 func adjustMin(ls []int, sets []*db.SetIter, s int) {
 	t := (s + len(ls)) / 2
 	for t > 0 {
@@ -207,7 +211,7 @@ func adjustMin(ls []int, sets []*db.SetIter, s int) {
 // SInter returns the members of the set resulting from the intersection of all the given sets.
 func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
+	setsIter := make([]*db.SetIter, len(ctx.Args))
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -254,6 +258,8 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return BytesArray(ctx.Out, members), nil
 }
+
+// getMaxMember gets the maximum value in members
 func getMaxMember(sets []*db.SetIter) []byte {
 	var arr [][]byte
 	for i := 0; i < len(sets); i++ {
@@ -265,6 +271,8 @@ func getMaxMember(sets []*db.SetIter) []byte {
 	res := arr[0]
 	return res
 }
+
+// adjustHeap adjust big root heap
 func adjustHeap(arr [][]byte, k int) {
 	for {
 		i := 2 * k
@@ -281,6 +289,8 @@ func adjustHeap(arr [][]byte, k int) {
 		k = i
 	}
 }
+
+// swap swaps two values
 func swap(s [][]byte, i int, j int) {
 	s[i], s[j] = s[j], s[i]
 }
@@ -289,8 +299,7 @@ func swap(s [][]byte, i int, j int) {
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
 	var err error
-	count := 0
-	setsIter := make([]*db.SetIter, len(ctx.Args)) //存储每个set当前的迭代器位置
+	setsIter := make([]*db.SetIter, len(ctx.Args))
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
@@ -305,19 +314,13 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	min := setsIter[0].Value()
 	for {
-	Loop:
 		// check to see if the same element exists as the current membet for the benchmark key
-		for i := 0; i < len(ctx.Args); i++ {
-			if !setsIter[i].Valid() {
-				continue
+		for {
+			match, err := check(setsIter, min, len(ctx.Args))
+			if err != nil {
+				return nil, errors.New("ERR " + err.Error())
 			}
-			if bytes.Equal(min, setsIter[i].Value()) {
-				if i == 0 || !setsIter[i].Valid() {
-					continue
-				}
-				if err := setsIter[i].Iter.Next(); err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
+			if match {
 				if err := setsIter[0].Iter.Next(); err != nil {
 					return nil, errors.New("ERR " + err.Error())
 				}
@@ -325,7 +328,8 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 					return BytesArray(ctx.Out, members), nil
 				}
 				min = setsIter[0].Value()
-				goto Loop
+			} else {
+				break
 			}
 		}
 		//find min in members
@@ -340,7 +344,6 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 				min = setsIter[i].Value()
 			}
 		}
-		fmt.Println(string(min))
 		members, err = moveMembers(setsIter, min, members)
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
@@ -349,18 +352,38 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if setsIter[0].Valid() {
 			min = setsIter[0].Value()
 		}
-		j := 0
-		for i := 0; i < len(ctx.Args); i++ {
-			if !setsIter[i].Valid() {
-				j++
-			}
-		}
-		count = j
-		if count == len(ctx.Args) {
+
+		if stopcirculation(setsIter, len(ctx.Args)) == len(ctx.Args) {
 			break
 		}
 	}
 	return BytesArray(ctx.Out, members), nil
+}
+
+// stopcirculation determines when to stop the loop
+func stopcirculation(sets []*db.SetIter, length int) (count int) {
+	for i := 0; i < length; i++ {
+		if !sets[i].Valid() {
+			count++
+		}
+	}
+	return
+}
+
+// check checks to see if the same element exists as the current membet for the benchmark key
+func check(sets []*db.SetIter, min []byte, length int) (bool, error) {
+	for i := 1; i < length; i++ {
+		if !sets[i].Valid() {
+			continue
+		}
+		if bytes.Equal(min, sets[i].Value()) {
+			if err := sets[i].Iter.Next(); err != nil {
+				return false, errors.New("ERR " + err.Error())
+			}
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // moveMembers finds the smallest element in the current member and move the pointer back

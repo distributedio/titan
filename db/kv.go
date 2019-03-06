@@ -2,9 +2,17 @@ package db
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"math/rand"
+	"sync"
 
 	"github.com/meitu/titan/db/store"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
+	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb/store/tikv"
+	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"go.uber.org/zap"
 )
 
 // Kv supplies key releated operations
@@ -159,45 +167,52 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 	return count, nil
 }
 
-// FlushDB clear current db. FIXME one txn is limited for number of entries
-func (kv *Kv) FlushDB() error {
+// FlushDB clear current db.
+func (kv *Kv) FlushDB(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
-	txn := kv.txn.t
+	nextID := kv.txn.db.ID + 1
+	endKey := dbPrefix(kv.txn.db.Namespace, nextID.Bytes())
 
-	iter, err := txn.Iter(prefix, nil)
-	if err != nil {
-		return err
+	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+		zap.L().Error("flushdb data unsafe clear err",
+			zap.ByteString("start", prefix),
+			zap.ByteString("end", endKey),
+			zap.Error(err))
+
+		return ErrStorageRetry
 	}
-	for iter.Valid() && iter.Key().HasPrefix(prefix) {
-		if err := txn.Delete(iter.Key()); err != nil {
-			return err
-		}
-		if err := iter.Next(); err != nil {
-			return err
-		}
+
+	if err := clearSysRangeData(ctx, kv.txn.db, prefix, endKey); err != nil {
+		return ErrStorageRetry
 	}
+
 	return nil
 }
 
-// FlushAll clean up all databases. FIXME one txn is limited for number of entries
-func (kv *Kv) FlushAll() error {
-	prefix := []byte(kv.txn.db.Namespace + ":")
-	txn := kv.txn.t
+// FlushAll clean up all databases.
+func (kv *Kv) FlushAll(ctx context.Context) error {
+	prefix := kv.txn.db.Prefix()
+	maxID := EncodeInt64(256)
+	endKey := dbPrefix(kv.txn.db.Namespace, maxID)
+	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+		zap.L().Error("flushall data unsafe clear err",
+			zap.ByteString("start", prefix),
+			zap.ByteString("end", endKey),
+			zap.Error(err))
+		return ErrStorageRetry
+	}
+	sysStart := sysPrefix(sysNamespace, byte(sysDatabaseID))
+	sysEnd := sysPrefix(sysNamespace, byte(sysDatabaseID+1))
+	if err := unsafeDeleteRange(ctx, kv.txn.db, sysStart, sysEnd); err != nil {
+		zap.L().Error("flushall sys data unsafe clear err",
+			zap.ByteString("start", sysStart),
+			zap.ByteString("end", sysEnd),
+			zap.Error(err))
 
-	iter, err := txn.Iter(prefix, nil)
-	if err != nil {
-		return err
+		return ErrStorageRetry
 	}
-	for iter.Valid() && iter.Key().HasPrefix(prefix) {
-		if err := txn.Delete(iter.Key()); err != nil {
-			return err
-		}
-		if err := iter.Next(); err != nil {
-			return err
-		}
-	}
+
 	return nil
-
 }
 
 // RandomKey return a key from current db randomly
@@ -231,4 +246,76 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 		return iter.Key()[len(prefix):], nil
 	}
 	return nil, err
+}
+
+//clear system range data(GC/ZT)
+func clearSysRangeData(ctx context.Context, db *DB, startKey, endKey []byte) error {
+	gcStart := toTikvGCKey(startKey)
+	gcEnd := toTikvGCKey(endKey)
+	if err := unsafeDeleteRange(ctx, db, gcStart, gcEnd); err != nil {
+		zap.L().Error("[GC] unsafe clear err",
+			zap.ByteString("start", gcStart),
+			zap.ByteString("end", gcEnd),
+			zap.Error(err))
+		return err
+	}
+
+	ztStart := toZTKey(startKey)
+	ztEnd := toZTKey(endKey)
+	if err := unsafeDeleteRange(ctx, db, ztStart, ztEnd); err != nil {
+		zap.L().Error("[ZT] unsafe clear err",
+			zap.ByteString("start", ztStart),
+			zap.ByteString("end", ztEnd),
+			zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) error {
+	storage, ok := db.kv.Storage.(tikv.Storage)
+	if !ok {
+		zap.L().Error("delete ranges: storage conversion PDClient failed")
+		return errors.New("Storage not available")
+	}
+	stores, err := storage.GetRegionCache().PDClient().GetAllStores(ctx)
+	if err != nil {
+		zap.L().Error("delete ranges: got an error while trying to get store list from PD:", zap.Error(err))
+		return err
+	}
+
+	req := &tikvrpc.Request{
+		Type: tikvrpc.CmdUnsafeDestroyRange,
+		UnsafeDestroyRange: &kvrpcpb.UnsafeDestroyRangeRequest{
+			StartKey: startKey,
+			EndKey:   endKey,
+		},
+	}
+	tikvCli := storage.GetTiKVClient()
+
+	var wg sync.WaitGroup
+	for _, store := range stores {
+		if store.State != metapb.StoreState_Up {
+			continue
+		}
+
+		address := store.Address
+		storeID := store.Id
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, storeErr := tikvCli.SendRequest(ctx, address, req, tikv.UnsafeDestroyRangeTimeout)
+			if storeErr != nil {
+				zap.L().Error("destroy range on store  failed with ",
+					zap.Uint64("store_id", storeID),
+					zap.String("addr", address),
+					zap.ByteString("start", startKey),
+					zap.ByteString("end", endKey),
+					zap.Error(storeErr))
+				err = storeErr
+			}
+		}()
+	}
+	wg.Wait()
+	return err
 }

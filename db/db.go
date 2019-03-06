@@ -38,6 +38,9 @@ var (
 	// ErrEncodingMismatch object encoding type
 	ErrEncodingMismatch = errors.New("error object encoding type")
 
+	// ErrStorageRetry storage err and try again later
+	ErrStorageRetry = errors.New("Storage err and try again later")
+
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
 
@@ -144,12 +147,7 @@ func (db *DB) Begin() (*Transaction, error) {
 
 // Prefix returns the prefix of a DB object
 func (db *DB) Prefix() []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(db.Namespace)...)
-	prefix = append(prefix, ':')
-	prefix = append(prefix, db.ID.Bytes()...)
-	prefix = append(prefix, ':')
-	return prefix
+	return dbPrefix(db.Namespace, db.ID.Bytes())
 }
 
 // Commit a transaction
@@ -265,6 +263,22 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 	skey = append(skey, ':')
 	skey = append(skey, slotID...)
 	return skey
+}
+
+func dbPrefix(ns string, id []byte) []byte {
+	var prefix []byte
+	prefix = append(prefix, []byte(ns)...)
+	prefix = append(prefix, ':')
+	prefix = append(prefix, id...)
+	prefix = append(prefix, ':')
+	return prefix
+}
+
+func sysPrefix(ns string, id byte) []byte {
+	b := []byte{}
+	b = append(b, sysNamespace...)
+	b = append(b, ':', id, ':')
+	return b
 }
 
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {

@@ -2,6 +2,7 @@ module github.com/meitu/titan
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20180725035823-b12b22c5341f // indirect
+	github.com/apex/log v1.1.0
 	github.com/arthurkiller/rollingWriter v1.0.1
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
@@ -31,7 +32,7 @@ require (
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/goleveldb v0.0.0-20171020122428-b9ff6c35079e // indirect
-	github.com/pingcap/kvproto v0.0.0-20190110035000-d4fe6b336379 // indirect
+	github.com/pingcap/kvproto v0.0.0-20190110035000-d4fe6b336379
 	github.com/pingcap/tidb v0.0.0-20190121074118-82eebf17ed8c
 	github.com/pingcap/tidb-tools v2.1.3-0.20190104033906-883b07a04a73+incompatible // indirect
 	github.com/pingcap/tipb v0.0.0-20190107072121-abbec73437b7 // indirect

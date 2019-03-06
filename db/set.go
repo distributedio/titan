@@ -79,7 +79,7 @@ func (siter *SetIter) Valid() bool {
 	return true
 }
 
-//newSet create new Set object
+// newSet create new Set object
 func newSet(txn *Transaction, key []byte) *Set {
 	now := Now()
 	return &Set{
@@ -150,7 +150,7 @@ func newSet(txn *Transaction, key []byte) *Set {
 	}
 }
 
-//DecodeSetMeta decode meta data into meta field
+// DecodeSetMeta decode meta data into meta field
 func DecodeSetMeta(b []byte) (*SetMeta, error) {
 	if len(b[ObjectEncodingLength:]) != 8 {
 		return nil, ErrInvalidLength
@@ -165,13 +165,14 @@ func DecodeSetMeta(b []byte) (*SetMeta, error) {
 	return smeta, nil
 }
 
-//EncodeSetMeta encodes meta data into byte slice
+// encodeSetMeta encodes meta data into byte slice
 func encodeSetMeta(meta *SetMeta) []byte {
 	b := EncodeObject(&meta.Object)
 	m := make([]byte, 8)
 	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
 	return append(b, m...)
 }
+
 func setItemKey(key []byte, member []byte) []byte {
 	var ikeys []byte
 	ikeys = append(ikeys, key...)
@@ -179,6 +180,7 @@ func setItemKey(key []byte, member []byte) []byte {
 	ikeys = append(ikeys, member...)
 	return ikeys
 }
+
 func (set *Set) updateMeta() error {
 	meta := encodeSetMeta(set.meta)
 	err := set.txn.t.Set(MetaKey(set.txn.db, set.key), meta)

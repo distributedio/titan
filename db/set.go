@@ -80,7 +80,7 @@ func (siter *SetIter) Valid() bool {
 	return true
 }
 
-// newSet create new Set object
+//newSet create new Set object
 func newSet(txn *Transaction, key []byte) *Set {
 	now := Now()
 	return &Set{
@@ -115,7 +115,7 @@ func DecodeSetMeta(b []byte) (*SetMeta, error) {
 	return smeta, nil
 }
 
-// encodeSetMeta encodes meta data into byte slice
+//encodeSetMeta encodes meta data into byte slice
 func encodeSetMeta(meta *SetMeta) []byte {
 	b := EncodeObject(&meta.Object)
 	m := make([]byte, 8)

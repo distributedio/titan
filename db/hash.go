@@ -146,6 +146,7 @@ func (hash *Hash) getSlotID(limit int64) int64 {
 	return rand.Int63n(limit)
 }
 
+// MetaSlotEnabled judgies hash.meta.MetaSlot
 func (hash *Hash) MetaSlotEnabled() bool {
 	if hash.meta.MetaSlot != 0 {
 		return true

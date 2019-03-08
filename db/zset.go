@@ -4,6 +4,7 @@ import (
     "strconv"
     "encoding/binary"
     "go.uber.org/zap"
+    "time"
 )
 
 // ZSetMeta is the meta data of the sorted set
@@ -29,7 +30,9 @@ func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
     zset := &ZSet{txn: txn, key: key}
 
     mkey := MetaKey(txn.db, key)
+    start := time.Now()
     meta, err := txn.t.Get(mkey)
+    zap.L().Debug("zset get metaKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
     if err != nil {
         if IsErrNotFound(err) {
             now := Now()
@@ -59,7 +62,9 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
     oldValues := make([][]byte, len(members))
     var err error
     if zset.meta.Len > 0 {
+        start := time.Now()
         oldValues, err = zset.MGet(members)
+        zap.L().Debug("zset mget", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
         if err != nil {
             return 0, err
         }
@@ -68,6 +73,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
     dkey := DataKey(zset.txn.db, zset.meta.ID)
     scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
     var found bool
+    var start time.Time
     for i := range members {
         found = false
         if oldValues[i] != nil {
@@ -83,14 +89,19 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
         }
         memberKey := zsetMemberKey(dkey, members[i])
         bytesScore := EncodeFloat64(scores[i])
+        start = time.Now()
         if err = zset.txn.t.Set(memberKey, bytesScore); err != nil {
             return added, err
         }
+        zap.L().Debug("zset set memberKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 
         scoreKey := zsetScoreKey(scorePrefix, bytesScore, members[i])
+        start = time.Now()
         if err = zset.txn.t.Set(scoreKey, NilValue); err != nil {
             return added, err
         }
+        zap.L().Debug("zset set scoreKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+
 
         if !found {
             added += 1
@@ -98,9 +109,12 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
     }
 
     zset.meta.Len += added
+    start = time.Now()
     if err = zset.updateMeta(); err != nil {
         return 0, err
     }
+    zap.L().Debug("zset update meta key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+
     return added, nil
 }
 

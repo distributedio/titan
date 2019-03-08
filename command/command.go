@@ -197,7 +197,9 @@ func AutoCommit(cmd TxnCommand) Command {
 				return err
 			}
 
+			start := time.Now()
 			onCommit, err := cmd(ctx, txn)
+			zap.L().Debug("command ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
@@ -210,7 +212,7 @@ func AutoCommit(cmd TxnCommand) Command {
 				return err
 			}
 
-			start := time.Now()
+			start = time.Now()
 			mtFunc := func() {
 				cost := time.Since(start).Seconds()
 				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
@@ -240,10 +242,13 @@ func AutoCommit(cmd TxnCommand) Command {
 					zap.Error(err))
 				return err
 			}
+			zap.L().Debug("commit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 
+			start = time.Now()
 			if onCommit != nil {
 				onCommit()
 			}
+			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			mtFunc()
 			return nil
 		})

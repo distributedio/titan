@@ -84,7 +84,7 @@ func zAnyOrderRange(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCo
         return nil, errors.New("ERR " + err.Error())
     }
     if !zset.Exist() {
-        return BytesArray(ctx.Out, nil), nil
+        return BytesArrayOnce(ctx.Out, nil), nil
     }
 
     items, err := zset.ZAnyOrderRange(start, stop, withScore, positiveOrder)
@@ -92,9 +92,9 @@ func zAnyOrderRange(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCo
         return nil, errors.New("ERR " + err.Error())
     }
     if len(items) == 0 {
-        return BytesArray(ctx.Out, nil), nil
+        return BytesArrayOnce(ctx.Out, nil), nil
     }
-    return BytesArray(ctx.Out, items), nil
+    return BytesArrayOnce(ctx.Out, items), nil
 }
 
 func ZRem(ctx *Context, txn *db.Transaction)(OnCommit, error) {

@@ -205,6 +205,7 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
     }
 
     var items [][]byte
+    cost := int64(0)
     for i := int64(0); i <= stop  && iter.Valid() && iter.Key().HasPrefix(scorePrefix);  {
         if i >= start {
             if len(iter.Key()) < len(scorePrefix) + len(":") + 8 + len(":") {
@@ -228,11 +229,13 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
         i++
         startTime = time.Now()
         err = iter.Next()
-        zap.L().Debug("zset next", zap.Int64("cost(us)", time.Since(startTime).Nanoseconds()/1000))
+        cost += time.Since(startTime).Nanoseconds()/1000
         if err != nil {
             break
         }
     }
+    zap.L().Debug("zset all next", zap.Int64("cost(us)", cost))
+
     if !positiveOrder {
         for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
             items[i], items[j] = items[j], items[i]

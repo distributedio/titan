@@ -184,6 +184,7 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
     scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
     var iter Iterator
     var err error
+    startTime := time.Now()
     if positiveOrder {
         iter, err = zset.txn.t.Seek(scorePrefix)
     } else {
@@ -196,13 +197,15 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
         start = zset.meta.Len-1-stop
         stop = zset.meta.Len-1-tmp
     }
+    zap.L().Debug("zset seek", zap.Int64("cost(us)", time.Since(startTime).Nanoseconds()/1000))
+
 
     if err != nil {
         return nil, err
     }
 
     var items [][]byte
-    for i := int64(0); i <= stop && err == nil && iter.Valid() && iter.Key().HasPrefix(scorePrefix); err = iter.Next()  {
+    for i := int64(0); i <= stop  && iter.Valid() && iter.Key().HasPrefix(scorePrefix);  {
         if i >= start {
             if len(iter.Key()) < len(scorePrefix) + len(":") + 8 + len(":") {
                 zap.L().Error("score&member's length isn't enough to be decoded",
@@ -223,6 +226,12 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
             }
         }
         i++
+        startTime = time.Now()
+        err = iter.Next()
+        zap.L().Debug("zset next", zap.Int64("cost(us)", time.Since(startTime).Nanoseconds()/1000))
+        if err != nil {
+            break
+        }
     }
     if !positiveOrder {
         for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {

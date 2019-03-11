@@ -32,6 +32,11 @@ func SetAuth(auth string) {
 	cfg.Auth = auth
 }
 
+// SetAddr set server listen addr
+func SetAddr(addr string) {
+	cfg.Listen = addr
+}
+
 //Start start server
 //1.open db
 //2.start server fd

@@ -93,6 +93,14 @@ var (
 
 	//ErrDiscard without multi
 	ErrDiscard = errors.New("ERR DISCARD without MULTI")
+
+	ErrInvalidBitfieldType = errors.New("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
+
+	ErrInvalidBitfieldOffset = errors.New("ERR bit offset is not an integer or out of range")
+
+	ErrInvalidBitfieldValue = errors.New("ERR value is not an integer or out of range")
+
+	ErrInvalidBitfieldOverflowType = errors.New("ERR Invalid OVERFLOW type specified")
 )
 
 //ErrUnKnownCommand return RedisError of the cmd

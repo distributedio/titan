@@ -2,6 +2,7 @@ package command
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -772,6 +773,212 @@ func TestStringBitOp(t *testing.T) {
 			out := CallTest("bitop", tt.args...)
 			assert.Contains(t, out.String(), tt.wantResult)
 			EqualGet(t, "dest", tt.wantDestValue, nil)
+		})
+	}
+}
+
+// Translate from redis-5.0.3 unit test
+// TODO: Need to generate wantResult in the easy way that don't know RESP
+func TestStringBitField(t *testing.T) {
+	tests := []struct {
+		name       string
+		commands   []string
+		preSet     func()
+		wantResult []string
+	}{
+		{
+			commands: []string{
+				"bitfield bits set i8 0 -100",
+				"bitfield bits set i8 0 101",
+				"bitfield bits get i8 0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":-100",
+				":101",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 0 255",
+				"bitfield bits set u8 0 100",
+				"bitfield bits get u8 0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":255",
+				"100",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 0 255",
+				"bitfield bits set u8 0 100",
+				"bitfield bits get u8 0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":255",
+				"100",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 65",
+				"bitfield bits set u8 #1 66",
+				"bitfield bits set u8 #2 67",
+				"get bits",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":0",
+				":0",
+				"ABC",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 10",
+				"bitfield bits incrby u8 #0 100",
+				"bitfield bits incrby u8 #0 100",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				"110",
+				"210",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 10",
+				"bitfield bits incrby u8 #0 100 incrby u8 #0 100",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":110\r\n:210",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 100",
+				"bitfield bits overflow wrap incrby u8 #0 257",
+				"bitfield bits get u8 #0",
+				"bitfield bits overflow wrap incrby u8 #0 255",
+				"bitfield bits get u8 #0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":101",
+				":101",
+				":100",
+				":100",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 100",
+				"bitfield bits overflow sat incrby u8 #0 257",
+				"bitfield bits get u8 #0",
+				"bitfield bits overflow sat incrby u8 #0 -255",
+				"bitfield bits get u8 #0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":255",
+				":255",
+				":0",
+				":0",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set i8 #0 100",
+				"bitfield bits overflow wrap incrby i8 #0 257",
+				"bitfield bits get u8 #0",
+				"bitfield bits overflow wrap incrby i8 #0 255",
+				"bitfield bits get u8 #0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":101",
+				":101",
+				":100",
+				":100",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 100",
+				"bitfield bits overflow sat incrby i8 #0 257",
+				"bitfield bits get u8 #0",
+				"bitfield bits overflow sat incrby i8 #0 -255",
+				"bitfield bits get i8 #0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				":127",
+				":127",
+				":-128",
+				":-128",
+			},
+		},
+		{
+			commands: []string{
+				"bitfield bits set u8 #0 100",
+				"bitfield bits overflow fail incrby i8 #0 257",
+				"bitfield bits get u8 #0",
+			},
+			preSet: func() {
+				CallTest("del", "bits")
+			},
+			wantResult: []string{
+				":0",
+				"$-1",
+				":100",
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			if tt.preSet != nil {
+				tt.preSet()
+			}
+			for i, c := range tt.commands {
+				tokens := strings.Split(c, " ")
+				result := CallTest(tokens[0], tokens[1:]...)
+				assert.Contains(t, result.String(), tt.wantResult[i])
+			}
 		})
 	}
 }

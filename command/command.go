@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shafreeck/retry"
 	"github.com/meitu/titan/context"
 	"github.com/meitu/titan/db"
 	"github.com/meitu/titan/encoding/resp"
 	"github.com/meitu/titan/metrics"
+	"github.com/shafreeck/retry"
 	"go.uber.org/zap"
 )
 
@@ -55,6 +55,19 @@ func NullBulkString(w io.Writer) OnCommit {
 func Integer(w io.Writer, v int64) OnCommit {
 	return func() {
 		resp.ReplyInteger(w, v)
+	}
+}
+
+func IntegerArray(w io.Writer, a [][]byte) OnCommit {
+	return func() {
+		resp.ReplyArray(w, len(a))
+		for i := range a {
+			if a[i] == nil {
+				resp.ReplyNullBulkString(w)
+				continue
+			}
+			resp.ReplyInteger(w, a[i])
+		}
 	}
 }
 

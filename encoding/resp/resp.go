@@ -32,7 +32,7 @@ func ReplyNullBulkString(w io.Writer) error {
 }
 
 // ReplyInteger replies an integer
-func ReplyInteger(w io.Writer, val int64) error {
+func ReplyInteger(w io.Writer, val interface{}) error {
 	return NewEncoder(w).Integer(val)
 }
 
@@ -106,9 +106,18 @@ func (r *Encoder) NullBulkString() error {
 }
 
 // Integer builds a RESP integer
-func (r *Encoder) Integer(v int64) error {
-	s := strconv.FormatInt(v, 10)
-	_, err := r.w.Write([]byte(":" + s + "\r\n"))
+func (r *Encoder) Integer(v interface{}) error {
+	var err error
+	switch v := v.(type) {
+	case int64:
+		s := strconv.FormatInt(v, 10)
+		_, err = r.w.Write([]byte(":" + s + "\r\n"))
+	case int:
+		s := strconv.Itoa(v)
+		_, err = r.w.Write([]byte(":" + s + "\r\n"))
+	case []byte:
+		_, err = r.w.Write([]byte(":" + string(v) + "\r\n"))
+	}
 	return err
 }
 

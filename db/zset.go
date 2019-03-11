@@ -229,12 +229,12 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
         i++
         startTime = time.Now()
         err = iter.Next()
-        cost += time.Since(startTime).Nanoseconds()/1000
+        cost += time.Since(startTime).Nanoseconds()
         if err != nil {
             break
         }
     }
-    zap.L().Debug("zset all next", zap.Int64("cost(us)", cost))
+    zap.L().Debug("zset all next", zap.Int64("cost(us)", cost/1000))
 
     if !positiveOrder {
         for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {

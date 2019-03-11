@@ -198,7 +198,9 @@ func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
 		retry.Ensure(ctx, func() error {
 			mt := metrics.GetMetrics()
+            start := time.Now()
 			txn, err := ctx.Client.DB.Begin()
+            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
@@ -210,9 +212,9 @@ func AutoCommit(cmd TxnCommand) Command {
 				return err
 			}
 
-			start := time.Now()
+			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
-			zap.L().Debug("command ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
@@ -350,7 +352,9 @@ func feedMonitors(ctx *Context) {
 		id := strconv.FormatInt(int64(ctx.Client.DB.ID), 10)
 
 		line := ts + " [" + id + " " + ctx.Client.RemoteAddr + "]" + " " + ctx.Name + " " + strings.Join(ctx.Args, " ")
+        start := time.Now()
 		err := resp.ReplySimpleString(mCtx.Out, line)
+        zap.L().Debug("feedMonitors reply", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 		if err != nil {
 			ctx.Server.Monitors.Delete(k)
 		}

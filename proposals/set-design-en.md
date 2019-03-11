@@ -17,19 +17,19 @@ Functions of calculating intersections, unions and difference sets are designate
 
 ### Struct *Set*
 
-type Set struct *{*
-	    *meta*     **SetMeta*
-	    *key*      *[ ]byte*
-	    *exist*    *bool*
-	    *txn*      *\*Transaction*
-	    *}*
+    type Set struct {
+        meta     SetMeta
+        key      [ ]byte
+	    exist    bool
+        txn      Transaction
+	}
 
 ### Struct *SetMeta*
 
-type SetMeta struct *{*
-	     *Object*
-	     *Len*     *int64*
-	 *}*
+    type SetMeta struct {
+	     Object
+	     Len     int64
+	}
 
 ### Key Points
 

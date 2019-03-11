@@ -244,7 +244,7 @@ redis-cli -p 7369
 
 ### Scripting
 
-- [ ] eval
+- [x] eval
 - [ ] evalsha
 - [ ] script debug
 - [ ] script exists

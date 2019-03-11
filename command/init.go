@@ -180,5 +180,8 @@ func init() {
 		// sets
 		"sadd":     Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
 		"smembers": Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
+
+		// scripting
+		"eval": Desc{Proc: Eval, Cons: Constraint{0, flags("rF"), 1, 1, 1}},
 	}
 }

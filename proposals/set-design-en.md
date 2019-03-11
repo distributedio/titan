@@ -112,7 +112,7 @@ type SetMeta struct *{*
 
 ### Set-based command processing
 
-  For the set-class command, the most intuitive scheme to calculating intersections, unions and difference sets is to read all members into the memory first. Although the performance can be partially improved by using map to do the deduplicating and sorting process, it still meets with the problem of insufficient memory in case of large sets with so many elements. Another idea is based on the merging thought for each member in the set is saved in order in the memory. The detailed implementation is as follows.
+  For the set-based command, the most intuitive scheme to calculating intersections, unions and difference sets is to read all members into the memory first. Although the performance can be partially improved by using map to do the deduplicating and sorting process, it still meets with the problem of insufficient memory in case of large sets with so many elements. Another idea is based on the merging thought for each member in the set is saved in order in the memory. The detailed implementation is as follows.
 
 #### SUion -- Returns the members of the set resulting from the union of all the given sets.
 ##### Implementation steps

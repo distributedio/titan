@@ -74,6 +74,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
     scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
     var found bool
     var start time.Time
+    costDel, costSetMem, costSetScore := int64(0), int64(0), int64(0)
     for i := range members {
         found = false
         if oldValues[i] != nil {
@@ -83,30 +84,37 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
                 continue
             }
             oldScoreKey := zsetScoreKey(scorePrefix, oldValues[i], members[i])
-            if err = zset.txn.t.Delete(oldScoreKey); err != nil {
+            start = time.Now()
+            err = zset.txn.t.Delete(oldScoreKey)
+            costDel += time.Since(start).Nanoseconds()
+            if err != nil {
                 return added, err
             }
         }
         memberKey := zsetMemberKey(dkey, members[i])
         bytesScore := EncodeFloat64(scores[i])
         start = time.Now()
-        if err = zset.txn.t.Set(memberKey, bytesScore); err != nil {
+        err = zset.txn.t.Set(memberKey, bytesScore)
+        costSetMem += time.Since(start).Nanoseconds()
+        if err != nil {
             return added, err
         }
-        zap.L().Debug("zset set memberKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 
         scoreKey := zsetScoreKey(scorePrefix, bytesScore, members[i])
         start = time.Now()
-        if err = zset.txn.t.Set(scoreKey, NilValue); err != nil {
+        err = zset.txn.t.Set(scoreKey, NilValue)
+        costSetScore += time.Since(start).Nanoseconds()
+        if  err != nil {
             return added, err
         }
-        zap.L().Debug("zset set scoreKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
-
 
         if !found {
             added += 1
         }
     }
+    zap.L().Debug("zset cost(us)", zap.Int64("del oldScoreKey", costDel/1000),
+                                        zap.Int64("set memberKey", costSetMem/1000),
+                                        zap.Int64("set scoreKey", costSetScore/1000))
 
     zset.meta.Len += added
     start = time.Now()

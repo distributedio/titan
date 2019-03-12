@@ -11,6 +11,51 @@ var (
 	ErrInvalidProtocol = errors.New("invalid protocol")
 )
 
+type Type byte
+
+const (
+	SimpleString Type = '+'
+	Error        Type = '-'
+	Integer      Type = ':'
+	BulkString   Type = '$'
+	Array        Type = '*'
+)
+
+// The 'Value' design is referenced from https://github.com/tidwall/resp
+type Value struct {
+	respType Type
+	str      string
+	integer  int64
+	array    []Value
+}
+
+// TODO: Add more types.
+func IntegerValue(v int64) Value {
+	return Value{respType: Integer, integer: v}
+}
+
+func NullValue() Value {
+	return Value{respType: BulkString, str: "-1"}
+}
+
+// ReplyArray2 will combine multiple RESP types elements to one array.
+func ReplyArray2(w io.Writer, values []Value) error {
+	// Write array's size
+	_, err := w.Write([]byte("*" + strconv.Itoa(len(values)) + "\r\n"))
+	if err != nil {
+		return err
+	}
+	// Write element according to its specific type
+	encoder := NewEncoder(w)
+	for _, v := range values {
+		err := encoder.WriteValue(v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ReplyError replies an error
 func ReplyError(w io.Writer, msg string) error {
 	return NewEncoder(w).Error(msg)
@@ -32,7 +77,7 @@ func ReplyNullBulkString(w io.Writer) error {
 }
 
 // ReplyInteger replies an integer
-func ReplyInteger(w io.Writer, val interface{}) error {
+func ReplyInteger(w io.Writer, val int64) error {
 	return NewEncoder(w).Integer(val)
 }
 
@@ -94,8 +139,12 @@ func (r *Encoder) SimpleString(s string) error {
 
 //BulkString builds a RESP bulkstring
 func (r *Encoder) BulkString(s string) error {
-	length := strconv.Itoa(len(s))
-	_, err := r.w.Write([]byte("$" + length + "\r\n" + s + "\r\n"))
+	var length string
+	// If it is not a null value
+	if s != "-1" {
+		length = strconv.Itoa(len(s)) + "\r\n"
+	}
+	_, err := r.w.Write([]byte("$" + length + s + "\r\n"))
 	return err
 }
 
@@ -106,18 +155,9 @@ func (r *Encoder) NullBulkString() error {
 }
 
 // Integer builds a RESP integer
-func (r *Encoder) Integer(v interface{}) error {
-	var err error
-	switch v := v.(type) {
-	case int64:
-		s := strconv.FormatInt(v, 10)
-		_, err = r.w.Write([]byte(":" + s + "\r\n"))
-	case int:
-		s := strconv.Itoa(v)
-		_, err = r.w.Write([]byte(":" + s + "\r\n"))
-	case []byte:
-		_, err = r.w.Write([]byte(":" + string(v) + "\r\n"))
-	}
+func (r *Encoder) Integer(v int64) error {
+	s := strconv.FormatInt(v, 10)
+	_, err := r.w.Write([]byte(":" + s + "\r\n"))
 	return err
 }
 
@@ -126,6 +166,40 @@ func (r *Encoder) Array(size int) error {
 	s := strconv.Itoa(size)
 	_, err := r.w.Write([]byte("*" + s + "\r\n"))
 	return err
+}
+
+func (r *Encoder) Array2(values []Value) error {
+	// Write array's size
+	_, err := r.w.Write([]byte("*" + strconv.Itoa(len(values)) + "\r\n"))
+	if err != nil {
+		return err
+	}
+
+	// Write element according to its specific type
+	for _, v := range values {
+		err := r.WriteValue(v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Encoder) WriteValue(value Value) error {
+	switch value.respType {
+	case SimpleString:
+		return r.SimpleString(value.str)
+	case Error:
+		return r.Error(value.str)
+	case Integer:
+		return r.Integer(value.integer)
+	case BulkString:
+		return r.BulkString(value.str)
+	case Array:
+		return r.Array2(value.array)
+	default:
+		return errors.New("Unknown RESP type")
+	}
 }
 
 // Decoder implements the decoder interface

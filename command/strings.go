@@ -2,6 +2,7 @@ package command
 
 import (
 	"errors"
+	"github.com/meitu/titan/encoding/resp"
 	"math"
 	"strconv"
 	"strings"
@@ -720,7 +721,7 @@ func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
 		currentOverflowType = "wrap"
 		bitfieldOperations  []func()
-		result              [][]byte
+		result              []resp.Value
 		command             = ctx.Args[1:]
 		isChanged           = false
 	)
@@ -757,7 +758,7 @@ func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 
 			bitfieldOperations = append(bitfieldOperations, func() {
-				result = append(result, []byte(strconv.FormatInt(bitfieldGet(value, bits, offset, isSigned), 10)))
+				result = append(result, resp.IntegerValue(bitfieldGet(value, bits, offset, isSigned)))
 			})
 			i = i + 3
 		} else if c == "set" {
@@ -798,7 +799,7 @@ func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 			bitfieldOperations = append(bitfieldOperations, func() {
 				r, data := bitfieldSet(value, newValue, bits, offset, isSigned)
-				result = append(result, []byte(strconv.FormatInt(r, 10)))
+				result = append(result, resp.IntegerValue(r))
 				value = data
 				isChanged = true
 			})
@@ -842,9 +843,9 @@ func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			bitfieldOperations = append(bitfieldOperations, func() {
 				r, data := bitfieldIncrby(value, incr, bits, offset, currentOverflowType, isSigned)
 				if data == nil {
-					result = append(result, nil)
+					result = append(result, resp.NullValue())
 				} else {
-					result = append(result, []byte(strconv.FormatInt(r, 10)))
+					result = append(result, resp.IntegerValue(r))
 				}
 				// Reset to the default type
 				currentOverflowType = "wrap"
@@ -885,7 +886,7 @@ func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 	}
 
-	return IntegerArray(ctx.Out, result), nil
+	return Array(ctx.Out, result), nil
 }
 
 // The type MUST format as: [u|i][1-64].

@@ -58,16 +58,9 @@ func Integer(w io.Writer, v int64) OnCommit {
 	}
 }
 
-func IntegerArray(w io.Writer, a [][]byte) OnCommit {
+func Array(w io.Writer, v []resp.Value) OnCommit {
 	return func() {
-		resp.ReplyArray(w, len(a))
-		for i := range a {
-			if a[i] == nil {
-				resp.ReplyNullBulkString(w)
-				continue
-			}
-			resp.ReplyInteger(w, a[i])
-		}
+		resp.ReplyArray2(w, v)
 	}
 }
 

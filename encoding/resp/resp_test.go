@@ -2,6 +2,7 @@ package resp
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -155,4 +156,59 @@ func TestNullBulkString_Encode(t *testing.T) {
 	err := e.NullBulkString()
 	assert.NoError(err)
 	assert.Equal("$-1\r\n", out.String())
+}
+
+func TestWriteValue_Encode(t *testing.T) {
+	tests := []struct {
+		value        Value
+		wantedResult string
+	}{
+		{
+			value:        Value{respType: SimpleString, str: "OK"},
+			wantedResult: "+OK\r\n",
+		},
+		{
+			value:        Value{respType: Error, str: "Error message"},
+			wantedResult: "-Error message\r\n",
+		},
+		{
+			value:        Value{respType: Integer, integer: 789789},
+			wantedResult: ":789789\r\n",
+		},
+		{
+			value:        Value{respType: BulkString, str: "foobar"},
+			wantedResult: "$6\r\nfoobar\r\n",
+		},
+		{
+			value: Value{respType: Array, array: []Value{
+				{respType: Integer, integer: 123},
+				{respType: Integer, integer: 456},
+				{respType: BulkString, str: "-1"},
+				{respType: Integer, integer: 789},
+			}},
+			wantedResult: "*4\r\n:123\r\n:456\r\n$-1\r\n:789\r\n",
+		},
+		{
+			value: Value{respType: Array, array: []Value{
+				{respType: Integer, integer: 1},
+				{respType: Integer, integer: 2},
+				{respType: Integer, integer: 3},
+				{respType: Integer, integer: 4},
+				{respType: BulkString, str: "foobar"},
+			}},
+			wantedResult: "*5\r\n:1\r\n:2\r\n:3\r\n:4\r\n$6\r\nfoobar\r\n",
+		},
+	}
+
+	for i, tt := range tests {
+		buf := bytes.NewBuffer(nil)
+		encoder := NewEncoder(buf)
+		err := encoder.WriteValue(tt.value)
+		if err != nil {
+			t.Errorf("Run %d test error: %v", i, err)
+		}
+		if reflect.DeepEqual(buf.String(), tt.wantedResult) != true {
+			t.Errorf("Run %d test failed, want: %v, got: %v", i, tt.wantedResult, buf)
+		}
+	}
 }

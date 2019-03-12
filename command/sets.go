@@ -143,11 +143,15 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
+	sum := getNodeCount(len(setsIter))
+	k := sum - len(setsIter) + 1
+	ls := make([]int, k)
+	idx := CreateLoserTree(ls, setsIter)
 	for {
 		sum := getNodeCount(len(setsIter))
 		k := sum - len(setsIter) + 1
 		ls := make([]int, k)
-		min := getMinMember(ls, setsIter)
+		min := adjustMin(ls, setsIter, idx)
 		l := len(setsIter)
 		for i, j := 0, 0; i < l; i, j = i+1, j+1 {
 			if bytes.Equal(setsIter[j].Value(), min) {
@@ -168,13 +172,13 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, members), nil
 }
 
-// getMinMember gets minimum in members
-func getMinMember(ls []int, sets []*db.SetIter) []byte {
+// CreateLoserTree creates losertree
+func CreateLoserTree(ls []int, sets []*db.SetIter) int {
 	for i := len(ls) - 1; i >= 0; i-- {
 		adjustMin(ls, sets, i)
 	}
-	res := sets[ls[0]].Value()
-	return res
+	//res := sets[ls[0]].Value()
+	return ls[0]
 
 }
 
@@ -194,8 +198,8 @@ func getNodeCount(count int) (sum int) {
 	return
 }
 
-// adjustMin adjust the loser tree
-func adjustMin(ls []int, sets []*db.SetIter, s int) {
+// adjustMin adjusts the loser tree and return the smallest element
+func adjustMin(ls []int, sets []*db.SetIter, s int) []byte {
 	t := (s + len(ls)) / 2
 	for t > 0 {
 		if bytes.Compare(sets[s].Value(), sets[ls[t]].Value()) == 1 {
@@ -205,7 +209,8 @@ func adjustMin(ls []int, sets []*db.SetIter, s int) {
 		}
 		t = t / 2
 	}
-	ls[0] = s
+	res := sets[s].Value()
+	return res
 }
 
 // SInter returns the members of the set resulting from the intersection of all the given sets.

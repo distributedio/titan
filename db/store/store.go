@@ -57,5 +57,5 @@ func LockKeys(txn Transaction, keys [][]byte) error {
 // BatchGetValues issue batch requests to get values
 func BatchGetValues(txn Transaction, keys [][]byte) (map[string][]byte, error) {
 	kvkeys := *(*[]kv.Key)(unsafe.Pointer(&keys))
-	return kv.BatchGetValues(txn, kvkeys)
+	return txn.BatchGet(kvkeys)
 }

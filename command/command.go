@@ -200,7 +200,11 @@ func AutoCommit(cmd TxnCommand) Command {
 			mt := metrics.GetMetrics()
             start := time.Now()
 			txn, err := ctx.Client.DB.Begin()
-            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			key := ""
+			if len(ctx.Args) > 0 {
+				key = ctx.Args[0]
+			}
+            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("name", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())

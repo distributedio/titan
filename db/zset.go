@@ -255,46 +255,66 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
     deleted := int64(0)
 
+    start := time.Now()
     scores, err := zset.MGet(members)
+    zap.L().Debug("zrem mget", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
     if err != nil {
         return 0, err
     }
 
     dkey := DataKey(zset.txn.db, zset.meta.ID)
     scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
+    costDelMem, costDelScore := int64(0), int64(0)
     for i := range members{
         if scores[i] == nil {
             continue
         }
 
         scoreKey := zsetScoreKey(scorePrefix, scores[i], members[i])
-        if err = zset.txn.t.Delete(scoreKey); err != nil {
+        start = time.Now()
+        err = zset.txn.t.Delete(scoreKey)
+        costDelScore += time.Since(start).Nanoseconds()
+        if err != nil {
             return deleted, err
         }
 
         memberKey := zsetMemberKey(dkey, members[i])
-        if err = zset.txn.t.Delete(memberKey); err != nil {
+        start = time.Now()
+        err = zset.txn.t.Delete(memberKey)
+        costDelMem += time.Since(start).Nanoseconds()
+        if err != nil {
             return deleted, err
         }
 
         deleted += 1
     }
+    zap.L().Debug("zrem cost(us)", zap.Int64("del memberKey", costDelMem/1000),
+                                        zap.Int64("del scoreKey", costDelScore/1000))
     zset.meta.Len -= deleted
 
     if zset.meta.Len == 0 {
         mkey := MetaKey(zset.txn.db, zset.key)
-        if err = zset.txn.t.Delete(mkey); err != nil {
+        start = time.Now()
+        err = zset.txn.t.Delete(mkey)
+        zap.L().Debug("zrem delete meta key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+        if  err != nil {
             return deleted, err
         }
         if zset.meta.Object.ExpireAt > 0 {
-            if err := unExpireAt(zset.txn.t, mkey, zset.meta.Object.ExpireAt); err != nil {
+            start = time.Now()
+            err := unExpireAt(zset.txn.t, mkey, zset.meta.Object.ExpireAt)
+            zap.L().Debug("zrem delete expire key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+            if  err != nil {
                 return deleted, err
             }
         }
         return deleted, nil
     }
 
-    return deleted, zset.updateMeta()
+    start = time.Now()
+    err = zset.updateMeta()
+    zap.L().Debug("zrem update meta key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+    return deleted, err
 }
 func (zset *ZSet) ZCard() int64 {
     return zset.meta.Len

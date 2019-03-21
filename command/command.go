@@ -229,11 +229,10 @@ func AutoCommit(cmd TxnCommand) Command {
 			}
 			if err := txn.Commit(ctx); err != nil {
 				txn.Rollback()
-				if db.IsConflictError(err) {
-					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				}
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				if db.IsRetryableError(err) {
 					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 					mtFunc()
 					zap.L().Error("txn commit retry",
 						zap.Int64("clientid", ctx.Client.ID),
@@ -242,7 +241,6 @@ func AutoCommit(cmd TxnCommand) Command {
 						zap.Error(err))
 					return retry.Retriable(err)
 				}
-				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
 				mtFunc()
 				zap.L().Error("txn commit failed",

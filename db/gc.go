@@ -121,7 +121,7 @@ func doGC(db *DB, limit int64) error {
 		}
 
 		if count < limit {
-			zap.L().Debug("[GC] delete prefix succeed", zap.String("prefix", string(prefix)))
+			zap.L().Debug("[GC] delete prefix succeed", zap.String("prefix", string(prefix)), zap.Int64("deleted", count))
 			if err := gcComplete(txn.t, prefix); err != nil {
 				txn.Rollback()
 				return err
@@ -131,6 +131,7 @@ func doGC(db *DB, limit int64) error {
 				txn.Rollback()
 				return nil
 			}
+			zap.L().Debug("[GC] part of delete prefix", zap.String("prefix", string(prefix)), zap.Int64("deleted", count))
 		}
 		//either < or >= limit, the "left" should be decreased count,
 		// else current thread will busy in gc and don't update lease, another thread will also do gc

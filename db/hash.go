@@ -166,20 +166,9 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	for _, field := range fields {
 		fieldKeys = append(fieldKeys, hashItemKey(dkey, field))
 	}
-	kvMap, hlen, err := hash.getHashFieldAndLength(fieldKeys)
-	if err != nil {
-		return 0, err
-	}
-	vlen := int64(len(kvMap))
-	if vlen >= hlen {
-		if err := hash.Destroy(); err != nil {
-			return 0, err
-		}
-		return vlen, nil
-	}
 
-	for k := range kvMap {
-		if err := hash.txn.t.Delete([]byte(k)); err != nil {
+	for _, k := range fieldKeys {
+		if err := hash.txn.t.Delete(k); err != nil {
 			return 0, err
 		}
 		num++
@@ -188,14 +177,6 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 		return 0, nil
 	}
 
-	// update Len and UpdateAt
-	if err := hash.addLength(-num); err != nil {
-		return 0, err
-	}
-	//update and save meta
-	if err := hash.updateMeta(); err != nil {
-		return 0, err
-	}
 	return num, nil
 }
 
@@ -253,16 +234,15 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 		return 0, err
 	}
 
+	if !hash.Exists() {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
+	}
 	if !newField {
 		return 0, nil
 	}
-	if err := hash.addLength(1); err != nil {
-		return 0, err
-	}
-	//update and save meta
-	if err := hash.updateMeta(); err != nil {
-		return 0, err
-	}
+
 	return 1, nil
 }
 
@@ -281,13 +261,12 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	if err := hash.txn.t.Set(ikey, value); err != nil {
 		return 0, err
 	}
-	if err := hash.addLength(1); err != nil {
-		return 0, err
-	}
 
 	//update and save meta
-	if err := hash.updateMeta(); err != nil {
-		return 0, err
+	if !hash.Exists() {
+		if err := hash.updateMeta(); err != nil {
+			return 0, err
+		}
 	}
 	return 1, nil
 }
@@ -379,7 +358,6 @@ func (hash *Hash) HExists(field []byte) (bool, error) {
 // HIncrBy increments the number stored at field in the hash stored at key by increment
 func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 	var n int64
-	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 
@@ -389,7 +367,6 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 			if !IsErrNotFound(err) {
 				return 0, err
 			}
-			newField = true
 		} else {
 			n, err = strconv.ParseInt(string(val), 10, 64)
 			if err != nil {
@@ -405,11 +382,10 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 		return 0, err
 	}
 
-	if newField || !hash.Exists() {
+	if !hash.Exists() {
 		if err := hash.updateMeta(); err != nil {
 			return 0, err
 		}
-
 	}
 
 	return n, nil
@@ -419,7 +395,6 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 // and representing a floating point number, by the specified increment
 func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	var n float64
-	newField := false
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 	if hash.Exists() {
@@ -428,7 +403,6 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 			if !IsErrNotFound(err) {
 				return 0, err
 			}
-			newField = true
 		} else {
 			n, err = strconv.ParseFloat(string(val), 64)
 			if err != nil {
@@ -444,12 +418,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 		return 0, err
 	}
 
-	if newField {
-		if err := hash.addLength(1); err != nil {
-			return 0, err
-		}
-	}
-	if newField || !hash.Exists() {
+	if !hash.Exists() {
 		if err := hash.updateMeta(); err != nil {
 			return 0, err
 		}
@@ -464,14 +433,21 @@ func (hash *Hash) HLen() (int64, error) {
 	if !hash.Exists() {
 		return 0, nil
 	}
-	if hash.MetaSlotEnabled() {
-		slot, err := hash.getAllSlot()
-		if err != nil {
+	dkey := DataKey(hash.txn.db, hash.meta.ID)
+	prefix := append(dkey, ':')
+	iter, err := hash.txn.t.Iter(prefix, nil)
+	if err != nil {
+		return 0, err
+	}
+	var length int64
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		length++
+		if err := iter.Next(); err != nil {
 			return 0, err
 		}
-		return slot.Len, nil
 	}
-	return hash.meta.Len, nil
+
+	return length, nil
 }
 
 // Object new object from hash
@@ -522,12 +498,10 @@ func (hash *Hash) HMSet(fields, values [][]byte) error {
 	if added == 0 {
 		return nil
 	}
-	if err := hash.addLength(added); err != nil {
-		return err
-	}
-
-	if err := hash.updateMeta(); err != nil {
-		return err
+	if !hash.Exists() {
+		if err := hash.updateMeta(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

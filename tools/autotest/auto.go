@@ -35,7 +35,7 @@ func (ac *AutoClient) Start(addr string) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = redis.String(conn.Do("auth", "titan"))
+	_, err = redis.String(conn.Do("auth", "test-1542098935-1-7ca41bda4efc2a1889c04e"))
 	if err != nil {
 		panic(err)
 	}
@@ -226,7 +226,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 //SystemCase check system case
 func (ac *AutoClient) SystemCase(t *testing.T) {
 	//auth
-	ac.AuthEqual(t, "titan")
+	ac.AuthEqual(t, "test-1542098935-1-7ca41bda4efc2a1889c04e")
 	//ping
 	ac.PingEqual(t)
 }

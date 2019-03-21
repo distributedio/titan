@@ -5,8 +5,8 @@ import (
 )
 
 func Test(t *testing.T) {
-	at.ZSetCase(t)
 	at.SystemCase(t)
+	at.ZSetCase(t)
 	at.StringCase(t)
 	at.KeyCase(t)
 	at.ListCase(t)

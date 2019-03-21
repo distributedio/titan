@@ -55,36 +55,29 @@ func (t *Base) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-//Verify token auth //wangzongsheng modify this function
 func Verify(token, key []byte) ([]byte, error) {
-	//encodedSignLen := hex.EncodedLen(tokenSignLen)
-	if len(key) == 0 { // || len(token) < encodedSignLen
+	encodedSignLen := hex.EncodedLen(tokenSignLen)
+	if len(token) < encodedSignLen || len(key) == 0 {
 		return nil, errors.New("token or key is parameter illegal")
+
 	}
 
-	// sign := make([]byte, tokenSignLen)
-	// hex.Decode(sign, token[len(token)-encodedSignLen:])
+	sign := make([]byte, tokenSignLen)
+	hex.Decode(sign, token[len(token)-encodedSignLen:])
 
-	// meta := token[:len(token)-encodedSignLen-1] //counting in the ":"
-	// mac := hmac.New(sha256.New, key)
-	// mac.Write(meta)
+	meta := token[:len(token)-encodedSignLen-1] //counting in the ":"
+	mac := hmac.New(sha256.New, key)
+	mac.Write(meta)
 
-	strToken := string(token)
-	strKey := string(key)
-	if strToken != strKey {
+	if !hmac.Equal(mac.Sum(nil)[:tokenSignLen], sign) {
 		return nil, errors.New("token mismatch")
 	}
 
-	// if !hmac.Equal(mac.Sum(nil)[:tokenSignLen], sign) {
-	// 	return nil, errors.New("token mismatch")
-	// }
-
-	// var t Base
-	// if err := t.UnmarshalBinary(meta); err != nil {
-	// 	return nil, err
-	// }
-	// return t.Namespace, nil
-	return token, nil
+	var t Base
+	if err := t.UnmarshalBinary(meta); err != nil {
+		return nil, err
+	}
+	return t.Namespace, nil
 }
 
 //Token token create through key server namespace create time

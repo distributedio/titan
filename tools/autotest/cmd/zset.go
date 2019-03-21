@@ -70,6 +70,11 @@ func (ez *ExampleZSet) ZAddEqual(t *testing.T, key string, values ...string) {
     assert.Nil(t, err)
 }
 
+func (ez *ExampleZSet) ZAddEqualErr(t *testing.T, errValue string, args ...interface{}) {
+    _, err := ez.conn.Do("zadd", args...)
+    assert.EqualError(t, err, errValue)
+}
+
 func (ez *ExampleZSet) ZRemEqual(t *testing.T, key string, members ...string) {
     req := make([]interface{}, 0, len(members))
     req = append(req, key)
@@ -93,6 +98,11 @@ func (ez *ExampleZSet) ZRemEqual(t *testing.T, key string, members ...string) {
     reply,err := redis.Int(ez.conn.Do("zrem", req...))
     assert.Equal(t, deleted, reply)
     assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZRemEqualErr(t *testing.T, errValue string, args ...interface{}) {
+    _, err := ez.conn.Do("zrem", args...)
+    assert.EqualError(t, err, errValue)
 }
 
 func (ez *ExampleZSet) ZAnyOrderRangeEqual(t *testing.T, key string, start int, stop int, positiveOrder bool, withScore bool) {
@@ -148,14 +158,29 @@ func (ez *ExampleZSet) ZRangeEqual(t *testing.T, key string, start int, stop int
     ez.ZAnyOrderRangeEqual(t, key, start, stop, true, withScore)
 }
 
+func (ez *ExampleZSet) ZRangeEqualErr(t *testing.T, errValue string, args ...interface{}) {
+    _, err := ez.conn.Do("zrange", args...)
+    assert.EqualError(t, err, errValue)
+}
+
 func (ez *ExampleZSet) ZRevRangeEqual(t *testing.T, key string, start int, stop int, withScore bool) {
     ez.ZAnyOrderRangeEqual(t, key, start, stop, false, withScore)
+}
+
+func (ez *ExampleZSet) ZRevRangeEqualErr(t *testing.T, errValue string, args ...interface{}) {
+    _, err := ez.conn.Do("zrevrange", args...)
+    assert.EqualError(t, err, errValue)
 }
 
 func (ez *ExampleZSet) ZCardEqual(t *testing.T, key string) {
     reply, err := redis.Int(ez.conn.Do("zcard", key))
     assert.Equal(t, len(ez.memberScores[key]), reply)
     assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZCardEqualErr(t *testing.T, errValue string, args ...interface{}) {
+    _, err := ez.conn.Do("zcard", args...)
+    assert.EqualError(t, err, errValue)
 }
 
 func (ez *ExampleZSet) ZScoreEqual(t *testing.T, key string, member string) {
@@ -177,6 +202,11 @@ func (ez *ExampleZSet) ZScoreEqual(t *testing.T, key string, member string) {
     val := strconv.FormatFloat(score, 'f', -1, 64)
     assert.Equal(t,val, reply)
     assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZScoreEqualErr(t *testing.T, errValue string, args ...interface{}) {
+    _, err := ez.conn.Do("zscore", args...)
+    assert.EqualError(t, err, errValue)
 }
 
 func getAllOutput(msmap map[string]float64, positiveOrder bool, withScore bool)([]string){

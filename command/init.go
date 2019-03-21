@@ -187,7 +187,7 @@ func init() {
 		"zrange": Desc{Proc: AutoCommit(ZRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
 		"zrevrange": Desc{Proc: AutoCommit(ZRevRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
 		"zrem":         Desc{Proc: AutoCommit(ZRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
-		"zcard":         Desc{Proc: AutoCommit(ZCard), Cons: Constraint{-2, flags("rF"), 1, 1, 1}},
-		"zscore":         Desc{Proc: AutoCommit(ZScore), Cons: Constraint{-3, flags("rF"), 1, 1, 1}},
+		"zcard":         Desc{Proc: AutoCommit(ZCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"zscore":         Desc{Proc: AutoCommit(ZScore), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
 	}
 }

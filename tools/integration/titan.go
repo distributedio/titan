@@ -49,6 +49,7 @@ func Start() {
 	svr = titan.New(&context.ServerContext{
 		RequirePass: cfg.Auth,
 		Store:       store,
+		ListZipThreshold: 100,
 	})
 	err = svr.ListenAndServe(cfg.Listen)
 	if err != nil {

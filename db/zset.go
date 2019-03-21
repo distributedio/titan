@@ -47,11 +47,9 @@ func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
         }
         return nil, err
     }
+
     if err := zset.decodeMeta(meta); err != nil {
         return nil, err
-    }
-    if zset.meta.Type != ObjectZSet {
-        return nil, ErrTypeMismatch
     }
     return zset, nil
 }
@@ -154,12 +152,16 @@ func (zset *ZSet) decodeMeta(b []byte) error {
     if err != nil {
         return err
     }
-    zset.meta.Object = *obj
+
+    if obj.Type != ObjectZSet {
+        return ErrTypeMismatch
+    }
 
     m := b[ObjectEncodingLength:]
     if len(m) != 8 {
         return ErrInvalidLength
     }
+    zset.meta.Object = *obj
     zset.meta.Len = int64(binary.BigEndian.Uint64(m[:8]))
     return nil
 }

@@ -106,7 +106,6 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 }
 
 //ZSetCase check zset case
-//TODO
 func (ac *AutoClient) ZSetCase(t *testing.T) {
     ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1", "-1.5", "member2", "3.6", "member3", "-3.5", "member4", "2.5", "member1")
 	ac.ez.ZCardEqual(t, "key-zset")
@@ -164,6 +163,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.TypeEqual(t, "key-set", "string")
 	ac.ek.ObjectEqual(t, "key-set", "raw")
 	ac.ek.ExpireEqual(t, "key-set", 2, 1)
+	time.Sleep(time.Millisecond)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.ExpireEqual(t, "key-set", 1, 0)
@@ -173,6 +173,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.el.LpushEqual(t, "key-set", "value")
 	ac.ek.TypeEqual(t, "key-set", "list")
 	ac.ek.PExpireEqual(t, "key-set", 2000, 1)
+	time.Sleep(time.Millisecond)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.PExpireEqual(t, "key-set", 1, 0)
@@ -214,6 +215,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ObjectEqual(t, "key-zset", "hashtable")
 	ac.ek.TTLEqual(t, "key-zset", -1)
 	ac.ek.ExpireEqual(t, "key-zset", 2, 1)
+	time.Sleep(time.Millisecond)
 	ac.ek.TTLEqual(t, "key-zset", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.ExpireEqual(t, "key-zset", 1, 0)

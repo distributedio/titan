@@ -12,6 +12,7 @@ func Test(t *testing.T) {
 	at.ListCase(t)
 	at.MultiCase(t)
 
+	an.ZSetCase(t)
 	an.StringCase(t)
 	an.ListCase(t)
 	an.KeyCase(t)

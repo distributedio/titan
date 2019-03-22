@@ -140,11 +140,16 @@ func (ac *AutoClient) ZSetCase(t *testing.T) {
 	ac.ez.ZRemEqual(t, "key-zset", "member2", "member1", "member3", "member4", "member1")
 	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
 
-	ac.ek.ExpireEqual(t, "key-zset", 86400000, 1)
+	ac.ek.ExpireEqual(t, "key-zset", 5, 1)
 	ac.ez.ZRemEqual(t, "key-zset", "member5", "member11", "member6", "member7")
 	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
 	ac.ek.ExistsEqual(t, 0, "key-zset")
 	ac.ek.TTLEqual(t, "key-set", -2)
+	//check expire won't delete old key(obj id is different with new one)
+	ac.ez.ZAddEqual(t, "key-zset", "1.0", "m1")
+	time.Sleep(time.Second *10)
+	ac.ek.ExistsEqual(t, 1, "key-zset")
+	ac.ek.DelEqual(t, 1, "key-zset")
 }
 
 //KeyCase check key case

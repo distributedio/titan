@@ -15,7 +15,8 @@ var (
 )
 
 const (
-	sysGCBurst              = 256
+	sysGCBurst              = 257
+	sysGCSeekNum            = 10
 	sysGCLeaseFlushInterval = 10
 )
 
@@ -42,7 +43,7 @@ func gc(txn store.Transaction, prefixs [][]byte) error {
 	return nil
 }
 
-func gcGetPrefix(txn store.Transaction) ([]byte, error) {
+func gcGetPrefix(txn store.Transaction) ([][]byte, error) {
 	gcPrefix := []byte{}
 	gcPrefix = append(gcPrefix, sysNamespace...)
 	gcPrefix = append(gcPrefix, ':', byte(sysDatabaseID))
@@ -53,14 +54,15 @@ func gcGetPrefix(txn store.Transaction) ([]byte, error) {
 	}
 	defer itr.Close()
 
-	if !itr.Valid() {
-		return nil, nil
+	keys := make([][]byte, 0, sysGCSeekNum)
+	for i := int64(0); i <= sysGCSeekNum && itr.Valid() && itr.Key().HasPrefix(gcPrefix); i++{
+		keys = append(keys, itr.Key()[len(gcPrefix):])
+
+		if err = itr.Next(); err != nil {
+			break
+		}
 	}
-	key := itr.Key()
-	if !key.HasPrefix(gcPrefix) {
-		return nil, nil
-	}
-	return key[len(gcPrefix):], nil
+	return keys, nil
 }
 
 func gcDeleteRange(txn store.Transaction, prefix []byte, limit int64) (int64, error) {
@@ -106,32 +108,41 @@ func doGC(db *DB, limit int64) error {
 			return err
 		}
 
-		prefix, err := gcGetPrefix(txn.t)
+		prefixs, err := gcGetPrefix(txn.t)
 		if err != nil {
 			return err
 		}
-		if prefix == nil {
+		if len(prefixs) == 0 {
 			zap.L().Debug("[GC] no gc item")
 			return nil
 		}
 		count := int64(0)
-		zap.L().Debug("[GC] start to delete prefix", zap.String("prefix", string(prefix)), zap.Int64("limit", limit))
-		if count, err = gcDeleteRange(txn.t, prefix, limit); err != nil {
-			return err
-		}
+		onceCount := int64(0)
+		zap.L().Debug("[GC] doGC loop once")
+		for i,num :=0,0 ; num<len(prefixs); num++ {
+			prefix := prefixs[i]
 
-		if count < limit {
-			zap.L().Debug("[GC] delete prefix succeed", zap.String("prefix", string(prefix)), zap.Int64("deleted", count))
-			if err := gcComplete(txn.t, prefix); err != nil {
-				txn.Rollback()
+			zap.L().Debug("[GC] start to delete prefix", zap.String("prefix", string(prefix)), zap.Int64("limit", limit))
+			if onceCount, err = gcDeleteRange(txn.t, prefix, limit); err != nil {
 				return err
 			}
-		} else {
-			if count == 0 {
-				txn.Rollback()
-				return nil
+			count += onceCount
+
+			if onceCount < limit {
+				zap.L().Debug("[GC] delete prefix succeed", zap.String("prefix", string(prefix)), zap.Int64("deleted", onceCount))
+				if err := gcComplete(txn.t, prefix); err != nil {
+					txn.Rollback()
+					return err
+				}
+				i++
+			} else {
+				if onceCount == 0 {
+					txn.Rollback()
+					return nil
+				}
+				//still need deleteRange for this prefix
+				zap.L().Debug("[GC] part of delete prefix", zap.String("prefix", string(prefix)), zap.Int64("deleted", onceCount))
 			}
-			zap.L().Debug("[GC] part of delete prefix", zap.String("prefix", string(prefix)), zap.Int64("deleted", count))
 		}
 		//either < or >= limit, the "left" should be decreased count,
 		// else current thread will busy in gc and don't update lease, another thread will also do gc
@@ -149,7 +160,7 @@ func doGC(db *DB, limit int64) error {
 // StartGC start gc
 //1.获取leader许可
 //2.leader 执行清理任务
-func StartGC(db *DB) {
+func StartGC(db *DB) {//empty
 	ticker := time.Tick(gcInterval * time.Second)
 	id := UUID()
 	for range ticker {

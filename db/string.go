@@ -87,7 +87,7 @@ func (s *String) Len() (int, error) {
 	return len(s.Meta.Value), nil
 }
 
-// Exist return ture if key exist
+// Exist returns ture if key exist
 func (s *String) Exist() bool {
 	if s.Meta.Value == nil {
 		return false
@@ -95,7 +95,7 @@ func (s *String) Exist() bool {
 	return true
 }
 
-// Append append a value to key
+// Append appends a value to key
 func (s *String) Append(value []byte) (int, error) {
 	s.Meta.Value = append(s.Meta.Value, value...)
 	if err := s.txn.t.Set(MetaKey(s.txn.db, s.key), s.encode()); err != nil {
@@ -104,7 +104,7 @@ func (s *String) Append(value []byte) (int, error) {
 	return len(s.Meta.Value), nil
 }
 
-// GetSet return old value ,value replace old value
+// GetSet returns old value ,value replace old value
 func (s *String) GetSet(value []byte) ([]byte, error) {
 	v := s.Meta.Value
 	if err := s.Set(value); err != nil {
@@ -113,7 +113,7 @@ func (s *String) GetSet(value []byte) ([]byte, error) {
 	return v, nil
 }
 
-// GetRange return string from the absolute of start to the absolute of end
+// GetRange returns string from the absolute of start to the absolute of end
 func (s *String) GetRange(start, end int) []byte {
 	vlen := len(s.Meta.Value)
 	if end < 0 {
@@ -134,7 +134,7 @@ func (s *String) GetRange(start, end int) []byte {
 	return s.Meta.Value[start : end+1]
 }
 
-// SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
+// SetRange overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func (s *String) SetRange(offset int64, value []byte) ([]byte, error) {
 	val := s.Meta.Value
 	if int64(len(val)) < offset+int64(len(value)) {
@@ -148,7 +148,7 @@ func (s *String) SetRange(offset int64, value []byte) ([]byte, error) {
 	return val, nil
 }
 
-// Incr increment the integer value by the given amount
+// Incr increments the integer value by the given amount
 // the old value  must be integer
 func (s *String) Incr(delta int64) (int64, error) {
 	value := s.Meta.Value
@@ -168,7 +168,7 @@ func (s *String) Incr(delta int64) (int64, error) {
 
 }
 
-// Incrf increment the float value by the given amount
+// Incrf increments the float value by the given amount
 // the old value  must be float
 func (s *String) Incrf(delta float64) (float64, error) {
 	value := s.Meta.Value
@@ -230,7 +230,7 @@ func (s *String) GetBit(offset int) (int, error) {
 	return bitval, nil
 }
 
-// BitCount Count the number of set bits (population counting) in a string.
+// BitCount counts the number of set bits (population counting) in a string.
 func (s *String) BitCount(begin, end int) (int, error) {
 	begin, end = initCursor(begin, end, len(s.Meta.Value))
 	if begin > end {
@@ -239,7 +239,7 @@ func (s *String) BitCount(begin, end int) (int, error) {
 	return redisPopcount(s.Meta.Value[begin : end+1]), nil
 }
 
-// BitPos find first bit set or clear in a string
+// BitPos finds first bit set or clear in a string
 func (s *String) BitPos(bit, begin, end int) (int, error) {
 	begin, end = initCursor(begin, end, len(s.Meta.Value))
 	// For empty ranges (start > end) we return -1 as an empty range does

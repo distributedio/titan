@@ -316,7 +316,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, OK), nil
 }
 
-// PSetEx set the value and expiration in milliseconds of a key
+// PSetEx sets the value and expiration in milliseconds of a key
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
@@ -342,7 +342,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, OK), nil
 }
 
-//SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
+//SetRange overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	offset, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
@@ -471,7 +471,7 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(delta)), nil
 }
 
-// SetBit Sets or clears the bit at offset in the string value stored at key.
+// SetBit sets or clears the bit at offset in the string value stored at key.
 func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	offset, err := strconv.Atoi(ctx.Args[1])
@@ -509,7 +509,7 @@ func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 0), nil
 }
 
-// GetBit get the bit at offset in the string value stored at key.
+// GetBit gets the bit at offset in the string value stored at key.
 func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	offset, err := strconv.Atoi(ctx.Args[1])
@@ -540,7 +540,7 @@ func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 0), nil
 }
 
-// BitCount Count the number of set bits (population counting) in a string.
+// BitCount counts the number of set bits (population counting) in a string.
 func BitCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	str, err := txn.String(key)
@@ -580,7 +580,7 @@ func BitCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(val)), nil
 }
 
-// BitPos find first bit set or clear in a string
+// BitPos finds first bit set or clear in a string
 func BitPos(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	bit, err := strconv.Atoi(string(ctx.Args[1]))
 	if err != nil {
@@ -638,7 +638,7 @@ func BitPos(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(val)), nil
 }
 
-// BitOp perform bitwise operations between strings
+// BitOp performs bitwise operations between strings
 func BitOp(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//TODO
 	if strings.EqualFold(ctx.Args[0], "and") {
@@ -654,7 +654,7 @@ func BitOp(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(0)), nil
 }
 
-// BitField perform arbitrary bitfield integer operations on strings
+// BitField performs arbitrary bitfield integer operations on strings
 func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//TODO
 	return Integer(ctx.Out, int64(0)), nil

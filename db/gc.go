@@ -55,7 +55,7 @@ func gcGetPrefix(txn store.Transaction) ([][]byte, error) {
 	defer itr.Close()
 
 	keys := make([][]byte, 0, sysGCSeekNum)
-	for i := int64(0); i <= sysGCSeekNum && itr.Valid() && itr.Key().HasPrefix(gcPrefix); i++{
+	for i := int64(0); i < sysGCSeekNum && itr.Valid() && itr.Key().HasPrefix(gcPrefix); i++{
 		keys = append(keys, itr.Key()[len(gcPrefix):])
 
 		if err = itr.Next(); err != nil {

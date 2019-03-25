@@ -229,7 +229,12 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
+	RegisterSDKMetrics()
+}
+
+func RegisterSDKMetrics() {
 	sdk_metrics.RegisterMetrics()
+	prometheus.MustRegister(sdk_metrics.TiKVTxnCmdCounter)
 }
 
 // GetMetrics return metrics object

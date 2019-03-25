@@ -88,3 +88,17 @@ func DecodeFloat64(d []byte) float64 {
 	}
 	return math.Float64frombits(uint64(vi))
 }
+
+// IncrLastByte increase the bytes last byte
+func IncrLastByte(key []byte) []byte {
+	l := len(key)
+	if l <= 0 {
+		return []byte{1}
+	}
+
+	b := make([]byte, l)
+	copy(b, key)
+	b[l-1] = b[l-1] + 1
+	return b
+
+}

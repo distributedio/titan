@@ -79,7 +79,7 @@ func Exec(ctx *Context) {
 		}
 		start := time.Now()
 		mt := metrics.GetMetrics()
-		mt.MultiCommandCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Add(float64(commandCount))
+		mt.MultiCommandHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(commandCount)
 		defer func() {
 			cost := time.Since(start).Seconds()
 			mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)

@@ -66,7 +66,7 @@ type Metrics struct {
 	TxnRetriesCounterVec        *prometheus.CounterVec
 	TxnConflictsCounterVec      *prometheus.CounterVec
 	TxnFailuresCounterVec       *prometheus.CounterVec
-	MultiCommandCounterVec      *prometheus.CounterVec
+	MultiCommandHistogramVec    *prometheus.HistogramVec
 
 	//logger
 	LogMetricsCounterVec *prometheus.CounterVec
@@ -154,14 +154,14 @@ func init() {
 		}, multiLabel)
 	prometheus.MustRegister(gm.TxnFailuresCounterVec)
 
-	gm.MultiCommandCounterVec = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
+	gm.MultiCommandHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "multi_command_total",
-			Help:      "The total of multi command",
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
+			Help:      "The number of command per txn",
 		}, multiLabel)
-
-	prometheus.MustRegister(gm.MultiCommandCounterVec)
+	prometheus.MustRegister(gm.MultiCommandHistogramVec)
 
 	gm.ConnectionOnlineGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

@@ -295,7 +295,8 @@ func (hash *Hash) HGetAll() ([][]byte, [][]byte, error) {
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := append(dkey, ':')
-	iter, err := hash.txn.t.Iter(prefix, nil)
+	endPrefix := append(prefix, 255)
+	iter, err := hash.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -435,7 +436,8 @@ func (hash *Hash) HLen() (int64, error) {
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := append(dkey, ':')
-	iter, err := hash.txn.t.Iter(prefix, nil)
+	endPrefix := append(prefix, 255)
+	iter, err := hash.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return 0, err
 	}
@@ -532,7 +534,8 @@ func (hash *Hash) HScan(cursor []byte, f func(key, val []byte) bool) error {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	prefix := hashItemKey(dkey, nil)
 	ikey := hashItemKey(dkey, cursor)
-	iter, err := hash.txn.t.Iter(ikey, nil)
+	endPrefix := append(prefix, 255)
+	iter, err := hash.txn.t.Iter(ikey, endPrefix)
 	if err != nil {
 		return err
 	}
@@ -701,7 +704,8 @@ func (hash *Hash) getSliceSlot(index int64) (*Slot, error) {
 	var rawSlots [][]byte
 	prefixKey := MetaSlotKey(hash.txn.db, hash.meta.ID, nil)
 	startKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(index))
-	iter, err := hash.txn.t.Iter(startKey, nil)
+	endPrefix := append(prefixKey, 255)
+	iter, err := hash.txn.t.Iter(startKey, endPrefix)
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/meitu/titan/conf"
 	"github.com/meitu/titan/db/store"
 	"github.com/meitu/titan/metrics"
+	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -122,7 +123,8 @@ func runExpire(db *DB, batchLimit int) {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
 		return
 	}
-	iter, err := txn.t.Iter(expireKeyPrefix, nil)
+	endPrefix := kv.Key(expireKeyPrefix).PrefixNext()
+	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
 		txn.Rollback()

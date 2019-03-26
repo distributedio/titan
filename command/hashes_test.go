@@ -474,29 +474,6 @@ func TestHVals(t *testing.T) {
 	clearList(t, key)
 
 }
-func TestHMSlot(t *testing.T) {
-	// init
-	key := "hash-key"
-
-	// case 1
-	ctx := ContextTest("hmslot", key, "20")
-	Call(ctx)
-	lines := ctxLines(ctx.Out)
-	assert.Equal(t, "-ERR key not found", lines[0])
-
-	//case 2
-	ctx = ContextTest("hset", key, "1", "abc")
-	Call(ctx)
-	lines = ctxLines(ctx.Out)
-	assert.Equal(t, ":1", lines[0])
-	ctx = ContextTest("hmslot", key, "20")
-	Call(ctx)
-	lines = ctxLines(ctx.Out)
-	assert.Equal(t, "+OK", lines[0])
-
-	clearList(t, key)
-
-}
 
 func TestHScan(t *testing.T) {
 	// init

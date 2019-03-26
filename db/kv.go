@@ -87,15 +87,7 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 			if IsExpired(obj, now) {
 				continue
 			}
-			if obj.Type == ObjectHash {
-				hash, err := kv.txn.Hash(mapping[k])
-				if err != nil {
-					return count, err
-				}
-				if err := hash.Destroy(); err != nil {
-					return count, err
-				}
-			} else if err := kv.txn.Destory(obj, mapping[k]); err != nil {
+			if err := kv.txn.Destory(obj, mapping[k]); err != nil {
 				return count, err
 			}
 			count++

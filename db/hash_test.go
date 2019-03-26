@@ -19,8 +19,6 @@ func compareGetHash(want, get *Hash) error {
 		return fmt.Errorf("meta.expireAt not equal, want=%v, get=%v", want.meta.ExpireAt, get.meta.ExpireAt)
 	case want.meta.Len != get.meta.Len:
 		return fmt.Errorf("meta.Len not equal, want=%v, get=%v", want.meta.Len, get.meta.Len)
-	case want.meta.MetaSlot != get.meta.MetaSlot:
-		return fmt.Errorf("meta.MeyaSlot not equal, want=%v, get=%v", want.meta.MetaSlot, get.meta.MetaSlot)
 	case want.meta.Type != get.meta.Type:
 		return fmt.Errorf("meta.Type not equal, want=%v, get=%v", want.meta.Type, get.meta.Type)
 	case want.exists != get.exists:
@@ -34,8 +32,6 @@ func compareNewHash(want, get *Hash) error {
 		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want.key), string(get.key))
 	case want.meta.Len != get.meta.Len:
 		return fmt.Errorf("meta.Len not equal, want=%v, get=%v", want.meta.Len, get.meta.Len)
-	case want.meta.MetaSlot != get.meta.MetaSlot:
-		return fmt.Errorf("meta.Type not equal, want=%v, get=%v", want.meta.MetaSlot, get.meta.MetaSlot)
 	}
 	return nil
 }
@@ -66,8 +62,7 @@ func Test_newHash(t *testing.T) {
 			},
 			want: &Hash{
 				meta: &HashMeta{
-					Len:      0,
-					MetaSlot: 0,
+					Len: 0,
 				},
 				key: []byte("TestNewHash"),
 				txn: txn,
@@ -93,9 +88,8 @@ func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) err
 	h := newHash(txn, key)
 	mkey := MetaKey(txn.db, key)
 	hm := &HashMeta{
-		Object:   h.meta.Object,
-		Len:      1,
-		MetaSlot: metaSlot,
+		Object: h.meta.Object,
+		Len:    1,
 	}
 	meta := EncodeHashMeta(hm)
 	err := txn.t.Set(mkey, meta)
@@ -113,34 +107,10 @@ func getHashMeta(t *testing.T, txn *Transaction, key []byte) *HashMeta {
 	return meta
 }
 
-func setSlotMeta(t *testing.T, txn *Transaction, key []byte, slotID int64) error {
-	h := newHash(txn, key)
-	slotKey := MetaSlotKey(txn.db, h.meta.ID, EncodeInt64(slotID))
-	slot := &Slot{
-		Len:       11,
-		UpdatedAt: Now(),
-	}
-	metaSlot := EncodeSlot(slot)
-	err := txn.t.Set(slotKey, metaSlot)
-	assert.NoError(t, err)
-	assert.NotNil(t, txn)
-	return nil
-}
-
 //删除设置的meta信息
 func destoryHashMeta(t *testing.T, txn *Transaction, key []byte) error {
 	metakey := MetaKey(txn.db, key)
 	if err := txn.t.Delete(metakey); err != nil {
-		return err
-	}
-	return nil
-}
-
-//删除设置的slotMeta信息
-func destorySlotMeta(t *testing.T, txn *Transaction, key []byte, SlotID int64) error {
-	hash := newHash(txn, key)
-	metaSlotKey := MetaSlotKey(hash.txn.db, hash.meta.ID, EncodeInt64(SlotID))
-	if err := hash.txn.t.Delete(metaSlotKey); err != nil {
 		return err
 	}
 	return nil
@@ -174,7 +144,6 @@ func TestGetHash(t *testing.T) {
 
 	setHashMeta(t, txn, []byte("TestGetHashExistKey"), 0)
 	setHashMeta(t, txn, []byte("TestGetHashSlotKey"), 100)
-	setSlotMeta(t, txn, []byte("TestGetHashSlotKey"), 13)
 	type args struct {
 		txn *Transaction
 		key []byte
@@ -202,8 +171,7 @@ func TestGetHash(t *testing.T) {
 						Object: Object{
 							Type: ObjectHash,
 						},
-						Len:      0,
-						MetaSlot: 0,
+						Len: 0,
 					},
 					key:    []byte("TestGetHashNoExistKey"),
 					exists: false,
@@ -224,8 +192,7 @@ func TestGetHash(t *testing.T) {
 					Object: Object{
 						Type: ObjectHash,
 					},
-					Len:      1,
-					MetaSlot: 0,
+					Len: 1,
 				},
 					key:    []byte("TestGetHashExistKey"),
 					exists: true,
@@ -246,8 +213,7 @@ func TestGetHash(t *testing.T) {
 					Object: Object{
 						Type: ObjectHash,
 					},
-					Len:      1,
-					MetaSlot: 100,
+					Len: 1,
 				},
 					key:    []byte("TestGetHashSlotKey"),
 					exists: true,
@@ -284,7 +250,6 @@ func TestGetHash(t *testing.T) {
 	}
 	destoryHashMeta(t, txn, []byte("TestGetHashExistKey"))
 	destoryHashMeta(t, txn, []byte("TestGetHashSlotKey"))
-	destorySlotMeta(t, txn, []byte("TestGetHashSlotKey"), 13)
 	txn.Commit(context.TODO())
 }
 
@@ -415,75 +380,6 @@ func TestHashHDel(t *testing.T) {
 			assert.NoError(t, err1)
 			assert.Equal(t, hlen, tt.want.len)
 			txn.Commit(context.TODO())
-		})
-	}
-}
-
-func TestHashdelHash(t *testing.T) {
-
-	hash, txn, err := getHash(t, []byte("TestHashdelHash"))
-	assert.NotNil(t, txn)
-	assert.NoError(t, err)
-	assert.NotNil(t, hash)
-
-	hash.HSet([]byte("TestHashdelHashFiled1"), []byte("TestHashdelHashValue1"))
-	hash.HSet([]byte("TestHashdelHashFiled2"), []byte("TestHashdelHashValue2"))
-	hash.HSet([]byte("TestHashdelHashFiled3"), []byte("TestHashdelHashValue3"))
-
-	txn.Commit(context.TODO())
-
-	var fileds [][]byte
-
-	var keys [][]byte
-	fileds = append(fileds, []byte("TestHashdelHashFiled1"))
-	fileds = append(fileds, []byte("TestHashdelHashFiled2"))
-	fileds = append(fileds, []byte("TestHashdelHashFiled3"))
-
-	dkey := DataKey(hash.txn.db, hash.meta.ID)
-	for _, field := range fileds {
-		keys = append(keys, hashItemKey(dkey, field))
-	}
-
-	type args struct {
-		keys [][]byte
-	}
-	type want struct {
-		kvMap map[string][]byte
-		len   int64
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			name: "TestHashdelHash",
-			args: args{
-				keys: keys,
-			},
-			want: want{
-				kvMap: map[string][]byte{
-					"TestHashdelHashFiled1": []byte("TestHashdelHashValue1"),
-					"TestHashdelHashFiled2": []byte("TestHashdelHashValue2"),
-					"TestHashdelHashFiled3": []byte("TestHashdelHashValue3"),
-				},
-				len: int64(3),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hash, txn, err := getHash(t, []byte("TestHashdelHash"))
-			assert.NotNil(t, txn)
-			assert.NoError(t, err)
-			assert.NotNil(t, hash)
-			got, got1, err := hash.getHashFieldAndLength(tt.args.keys)
-			assert.NoError(t, err)
-			assert.NotNil(t, got)
-			assert.NotNil(t, got1)
-
-			txn.Commit(context.TODO())
-			compareKvMap(t, got, tt.want.kvMap)
 		})
 	}
 }
@@ -636,53 +532,6 @@ func TestHashHGetAll(t *testing.T) {
 	}
 }
 
-func TestHashDestroy(t *testing.T) {
-
-	hash, txn, err := getHash(t, []byte("TestHashDestory"))
-	assert.NoError(t, err)
-	assert.NotNil(t, txn)
-	assert.NotNil(t, hash)
-
-	hash.HSet([]byte("TestHashDestoryfiled"), []byte("TestHashDestoryValue1"))
-	txn.Commit(context.TODO())
-	type want struct {
-		value []byte
-	}
-	tests := []struct {
-		name string
-		want want
-	}{
-		{
-			name: "TestHashDestory",
-			want: want{
-				value: nil,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hash, txn, err := getHash(t, []byte("TestHashDestory"))
-			assert.NoError(t, err)
-			assert.NotNil(t, txn)
-			assert.NotNil(t, hash)
-
-			err = hash.Destroy()
-			assert.NoError(t, err)
-
-			txn.Commit(context.TODO())
-			hash, txn, err = getHash(t, []byte("TestHashDestory"))
-			assert.NoError(t, err)
-			assert.NotNil(t, txn)
-			assert.NotNil(t, hash)
-
-			got, err := hash.HGet([]byte("TestHashDestoryfiled"))
-			txn.Commit(context.TODO())
-			assert.Equal(t, got, tt.want.value)
-			assert.NoError(t, err)
-		})
-	}
-}
 func TestHash_HExists(t *testing.T) {
 	hash, txn, err := getHash(t, []byte("TestHashExists"))
 	assert.NoError(t, err)
@@ -1005,61 +854,6 @@ func TestHashHMSet(t *testing.T) {
 
 			assert.Equal(t, got, tt.want.value)
 			assert.NoError(t, err)
-		})
-	}
-}
-
-func TestHashHMSlot(t *testing.T) {
-	key := []byte("TestHashHMSlot")
-	hash, txn, err := getHash(t, key)
-	assert.NoError(t, err)
-	assert.NotNil(t, txn)
-	assert.NotNil(t, hash)
-
-	hash.HSet([]byte("TestHashMSlotFiled1"), []byte("TestHashHMSlotValue1"))
-	txn.Commit(context.TODO())
-
-	type args struct {
-		metaSlot int64
-	}
-
-	type want struct {
-		len int64
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			name: "TestHashHMSlot",
-			args: args{
-				metaSlot: int64(10),
-			},
-			want: want{
-				len: int64(10),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hash, txn, err := getHash(t, key)
-			assert.NoError(t, err)
-			assert.NotNil(t, txn)
-			assert.NotNil(t, hash)
-
-			err = hash.HMSlot(tt.args.metaSlot)
-			assert.NoError(t, err)
-			txn.Commit(context.TODO())
-			got := hash.meta.MetaSlot
-			assert.Equal(t, got, tt.want.len)
-
-			txn, err = mockDB.Begin()
-			assert.NotNil(t, txn)
-			assert.NoError(t, err)
-			meta := getHashMeta(t, txn, key)
-			assert.Equal(t, tt.args.metaSlot, meta.MetaSlot)
-			txn.Commit(context.TODO())
 		})
 	}
 }

@@ -224,16 +224,6 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
-	if obj.Type == db.ObjectHash {
-		hash, err := txn.Hash(key)
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
-		}
-		obj, err = hash.Object()
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
-		}
-	}
 	return SimpleString(ctx.Out, obj.String()), nil
 }
 

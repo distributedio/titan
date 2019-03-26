@@ -281,24 +281,6 @@ func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
-// HMSlot specify the meta slot for hashes itself
-func HMSlot(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	key := []byte(ctx.Args[0])
-	count, err := strconv.ParseInt(ctx.Args[1], 10, 64)
-	if err != nil || count < 0 {
-		return nil, ErrInteger
-	}
-	hash, err := txn.Hash(key)
-	if err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-
-	if err := hash.HMSlot(count); err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	return SimpleString(ctx.Out, "OK"), nil
-}
-
 //HScan incrementally iterate hash fields and associated values
 func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (

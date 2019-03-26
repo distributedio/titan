@@ -63,7 +63,7 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//		}
 	//		return nil, errors.New("ERR " + err.Error())
 	//	}
-	return Integer(ctx.Out, 1), nil
+	//	return Integer(ctx.Out, 1), nil
 }
 
 // ExpireAt sets an absolute timestamp to expire on key
@@ -221,16 +221,6 @@ func Object(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		case "refcount", "freq":
 			return Integer(ctx.Out, 0), nil
 		case "idletime":
-			if obj.Type == db.ObjectHash {
-				hash, err := txn.Hash(key)
-				if err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-				obj, err = hash.Object()
-				if err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-			}
 			sec := int64(time.Since(time.Unix(0, obj.UpdatedAt)).Seconds())
 			return Integer(ctx.Out, sec), nil
 		case "encoding":

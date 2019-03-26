@@ -63,7 +63,7 @@ func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//		}
 	//		return nil, errors.New("ERR " + err.Error())
 	//	}
-	//	return Integer(ctx.Out, 1), nil
+	return Integer(ctx.Out, 1), nil
 }
 
 // ExpireAt sets an absolute timestamp to expire on key

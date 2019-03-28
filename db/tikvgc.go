@@ -27,6 +27,9 @@ func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 	uuid := UUID()
 	ctx := context.Background()
 	for range ticker.C {
+		if !tikvCfg.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysTikvGCLeader, uuid, tikvCfg.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[TikvGC] check TikvGC leader failed", zap.Error(err))

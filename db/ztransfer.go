@@ -6,6 +6,7 @@ import (
 
 	"github.com/meitu/titan/conf"
 	"github.com/meitu/titan/metrics"
+	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -162,7 +163,8 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 		zap.L().Error("[ZT] error in kv begin", zap.Error(err))
 		return toZTKey(nil), nil
 	}
-	iter, err := txn.t.Iter(prefix, nil)
+	endPrefix := kv.Key(prefix).PrefixNext()
+	iter, err := txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[ZT] error in seek", zap.ByteString("prefix", prefix), zap.Error(err))
 		return toZTKey(nil), err
@@ -198,6 +200,9 @@ func StartZT(db *DB, conf *conf.ZT) {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
+		if !conf.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysZTLeader, id, sysZTLeaderFlushInterval)
 		if err != nil {
 			zap.L().Error("[ZT] check ZT leader failed",

@@ -150,6 +150,9 @@ func StartGC(db *DB, conf *conf.GC) {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
+		if !conf.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysGCLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[GC] check GC leader failed",

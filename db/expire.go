@@ -85,6 +85,9 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
+		if !conf.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))

@@ -54,7 +54,6 @@ func (s *Server) Serve(lis net.Listener) error {
 			s.servCtx.Clients.Delete(cli.cliCtx.ID)
 		}(cli, conn)
 	}
-	return nil
 }
 
 // ListenAndServe serves on a specified address

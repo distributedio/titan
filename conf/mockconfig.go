@@ -21,7 +21,7 @@ func MockConf() *Titan {
 			},
 			ZT: ZT{
 				Enable:     true,
-				Wrokers:    5,
+				Workers:    5,
 				BatchCount: 10,
 				QueueDepth: 100,
 				Interval:   1000 * time.Millisecond,

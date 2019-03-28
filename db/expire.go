@@ -167,8 +167,7 @@ func runExpire(db *DB, batchLimit int) {
 			}
 		}
 		if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete metakey"); logEnv != nil {
-			logEnv.Write(zap.ByteString("mkey", mkey),
-				zap.String("key", string(rowkey)))
+			logEnv.Write(zap.ByteString("mkey", mkey))
 		}
 		// Remove from expire list
 		if err := txn.t.Delete(key); err != nil {

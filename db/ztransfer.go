@@ -198,7 +198,7 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 // StartZT start ZT fill in the queue(channel), and start the worker to consume.
 func StartZT(db *DB, conf *conf.ZT) {
 	ztQueue = make(chan []byte, conf.QueueDepth)
-	for i := 0; i < conf.Wrokers; i++ {
+	for i := 0; i < conf.Workers; i++ {
 		go ztWorker(db, conf.BatchCount, conf.Interval)
 	}
 

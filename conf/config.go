@@ -67,7 +67,7 @@ type Expire struct {
 // ZT config is the config of zlist
 type ZT struct {
 	Enable     bool          `cfg:"enable; true; boolean; true for enabling zt"`
-	Wrokers    int           `cfg:"workers;5;numeric;parallel workers count"`
+	Workers    int           `cfg:"workers;5;numeric;parallel workers count"`
 	BatchCount int           `cfg:"batch;10;numeric;object transfer limitation per-transection"`
 	QueueDepth int           `cfg:"depth;100;numeric;ZT Worker queue depth"`
 	Interval   time.Duration `cfg:"interval;1000ms; ;Queue fill interval in milsecond"`

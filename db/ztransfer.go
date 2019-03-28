@@ -64,7 +64,9 @@ func toZTKey(metakey []byte) []byte {
 
 // PutZList should be called after ZList created
 func PutZList(txn *Transaction, metakey []byte) error {
-	zap.L().Debug("[ZT] Zlist recorded in txn", zap.String("key", string(metakey)))
+	if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] Zlist recorded in txn"); logEnv != nil {
+		logEnv.Write(zap.String("key", string(metakey)))
+	}
 	return txn.t.Set(toZTKey(metakey), []byte{0})
 }
 
@@ -117,7 +119,10 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 		} else {
 			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("zlist").Add(float64(batchCount))
 			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("key").Add(float64(sum))
-			zap.L().Debug("[ZT] transfer zlist succeed", zap.Int("count", batchCount), zap.Int("n", sum))
+			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] transfer zlist succeed"); logEnv != nil {
+				logEnv.Write(zap.Int("count", batchCount),
+					zap.Int("n", sum))
+			}
 		}
 		txnstart = false
 		batchCount = 0
@@ -183,7 +188,10 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 			return iter.Key(), nil
 		}
 	}
-	zap.L().Debug("[ZT] no more ZT item, retrive iterator")
+	if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] no more ZT item, retrive iterator"); logEnv != nil {
+		logEnv.Write(zap.ByteString("prefix", prefix))
+	}
+
 	return toZTKey(nil), txn.Commit(context.Background())
 }
 
@@ -211,7 +219,15 @@ func StartZT(db *DB, conf *conf.ZT) {
 			continue
 		}
 		if !isLeader {
-			zap.L().Debug("[ZT] not ZT leader")
+			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] not ZT leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("leader", sysZTLeader),
+					zap.ByteString("uuid", id),
+					zap.Int("workers", conf.Workers),
+					zap.Int("batchcount", conf.BatchCount),
+					zap.Int("queue-depth", conf.QueueDepth),
+					zap.Duration("interval", conf.Interval),
+				)
+			}
 			continue
 		}
 

@@ -54,6 +54,7 @@ func (c *client)isEof() bool {
 
 // Write to conn and log error if needed
 func (c *client) Write(p []byte) (int, error) {
+	zap.L().Debug("write to client", zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
 		zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
@@ -128,6 +129,7 @@ func (c *client) serve(conn net.Conn) error {
 			Out:     c,
 			TraceID: GenerateTraceID(),
 		}
+		zap.L().Debug("recv msg", zap.String("command", ctx.Name), zap.Strings("arguments", ctx.Args))
 		innerCtx, cancel := context.WithCancel(rootCtx)
 		ctx.Context = innerCtx
 

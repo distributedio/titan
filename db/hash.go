@@ -190,9 +190,6 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	ikey := hashItemKey(dkey, field)
 
 	_, err := hash.txn.t.Get(ikey)
-	if err == nil {
-		return 0, nil
-	}
 	if !IsErrNotFound(err) {
 		return 0, err
 	}

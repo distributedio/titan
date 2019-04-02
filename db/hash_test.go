@@ -17,8 +17,6 @@ func compareGetHash(want, get *Hash) error {
 		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want.key), string(get.key))
 	case want.meta.ExpireAt != get.meta.ExpireAt:
 		return fmt.Errorf("meta.expireAt not equal, want=%v, get=%v", want.meta.ExpireAt, get.meta.ExpireAt)
-	case want.meta.Len != get.meta.Len:
-		return fmt.Errorf("meta.Len not equal, want=%v, get=%v", want.meta.Len, get.meta.Len)
 	case want.meta.Type != get.meta.Type:
 		return fmt.Errorf("meta.Type not equal, want=%v, get=%v", want.meta.Type, get.meta.Type)
 	case want.exists != get.exists:
@@ -30,8 +28,6 @@ func compareNewHash(want, get *Hash) error {
 	switch {
 	case !bytes.Equal(want.key, get.key):
 		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want.key), string(get.key))
-	case want.meta.Len != get.meta.Len:
-		return fmt.Errorf("meta.Len not equal, want=%v, get=%v", want.meta.Len, get.meta.Len)
 	}
 	return nil
 }
@@ -61,11 +57,9 @@ func Test_newHash(t *testing.T) {
 				key: []byte("TestNewHash"),
 			},
 			want: &Hash{
-				meta: &HashMeta{
-					Len: 0,
-				},
-				key: []byte("TestNewHash"),
-				txn: txn,
+				meta: &HashMeta{},
+				key:  []byte("TestNewHash"),
+				txn:  txn,
 			},
 		},
 	}
@@ -89,7 +83,6 @@ func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) err
 	mkey := MetaKey(txn.db, key)
 	hm := &HashMeta{
 		Object: h.meta.Object,
-		Len:    1,
 	}
 	meta := EncodeHashMeta(hm)
 	err := txn.t.Set(mkey, meta)
@@ -171,7 +164,6 @@ func TestGetHash(t *testing.T) {
 						Object: Object{
 							Type: ObjectHash,
 						},
-						Len: 0,
 					},
 					key:    []byte("TestGetHashNoExistKey"),
 					exists: false,
@@ -192,7 +184,6 @@ func TestGetHash(t *testing.T) {
 					Object: Object{
 						Type: ObjectHash,
 					},
-					Len: 1,
 				},
 					key:    []byte("TestGetHashExistKey"),
 					exists: true,
@@ -213,7 +204,6 @@ func TestGetHash(t *testing.T) {
 					Object: Object{
 						Type: ObjectHash,
 					},
-					Len: 1,
 				},
 					key:    []byte("TestGetHashSlotKey"),
 					exists: true,

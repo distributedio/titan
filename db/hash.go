@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/binary"
 	"errors"
 	"strconv"
 
@@ -12,30 +11,20 @@ import (
 // HashMeta is the meta data of the hashtable
 type HashMeta struct {
 	Object
-	Len int64
 }
 
 //EncodeHashMeta encodes meta data into byte slice
 func EncodeHashMeta(meta *HashMeta) []byte {
-	b := EncodeObject(&meta.Object)
-	m := make([]byte, 8)
-	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
-	return append(b, m...)
+	return EncodeObject(&meta.Object)
 }
 
 //DecodeHashMeta decode meta data into meta field
 func DecodeHashMeta(b []byte) (*HashMeta, error) {
-	if len(b[ObjectEncodingLength:]) != 8 {
-		return nil, ErrInvalidLength
-	}
 	obj, err := DecodeObject(b)
 	if err != nil {
 		return nil, err
 	}
-	hmeta := &HashMeta{Object: *obj}
-	m := b[ObjectEncodingLength:]
-	hmeta.Len = int64(binary.BigEndian.Uint64(m[:8]))
-	return hmeta, nil
+	return &HashMeta{Object: *obj}, nil
 }
 
 // Hash implements the hashtable
@@ -87,7 +76,6 @@ func newHash(txn *Transaction, key []byte) *Hash {
 				Type:      ObjectHash,
 				Encoding:  ObjectEncodingHT,
 			},
-			Len: 0,
 		},
 	}
 }

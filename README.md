@@ -148,27 +148,27 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 
 - [ ] bzpopmin
 - [ ] bzpopmax
-- [ ] zadd
-- [ ] zcard
+- [x] zadd
+- [x] zcard
 - [ ] zcount
 - [ ] zincrby
 - [ ] zinterstore
 - [ ] zlexcount
 - [ ] zpopmax
 - [ ] zpopmin
-- [ ] zrange
+- [x] zrange
 - [ ] zrangebylex
 - [ ] zrevrangebylex
 - [ ] zrangebyscore
 - [ ] zrank
-- [ ] zrem
+- [x] zrem
 - [ ] zremrangebylex
 - [ ] zremrangebyrank
 - [ ] zremrangebyscore
-- [ ] zrevrange
+- [x] zrevrange
 - [ ] zrevrangebyscore
 - [ ] zrevrank
-- [ ] zscore
+- [x] zscore
 - [ ] zunionstore
 - [ ] zscan
 

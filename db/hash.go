@@ -18,14 +18,14 @@ type HashMeta struct {
 //EncodeHashMeta encodes meta data into byte slice
 func EncodeHashMeta(meta *HashMeta) []byte {
 	b := EncodeObject(&meta.Object)
-	m := make([]byte, 16)
+	m := make([]byte, 8)
 	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
 	return append(b, m...)
 }
 
 //DecodeHashMeta decode meta data into meta field
 func DecodeHashMeta(b []byte) (*HashMeta, error) {
-	if len(b[ObjectEncodingLength:]) != 16 {
+	if len(b[ObjectEncodingLength:]) != 8 {
 		return nil, ErrInvalidLength
 	}
 	obj, err := DecodeObject(b)

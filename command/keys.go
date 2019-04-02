@@ -49,20 +49,20 @@ func Exists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // Expire sets a timeout on key
 func Expire(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	//	kv := txn.Kv()
-	//	key := []byte(ctx.Args[0])
-	//	seconds, err := strconv.ParseInt(ctx.Args[1], 10, 64)
-	//	if err != nil {
-	//		return nil, ErrInteger
-	//	}
-	//
-	//	at := time.Now().Add(time.Second * time.Duration(seconds)).UnixNano()
-	//	if err := kv.ExpireAt(key, at); err != nil {
-	//		if err == db.ErrKeyNotFound {
-	//			return Integer(ctx.Out, 0), nil
-	//		}
-	//		return nil, errors.New("ERR " + err.Error())
-	//	}
+	kv := txn.Kv()
+	key := []byte(ctx.Args[0])
+	seconds, err := strconv.ParseInt(ctx.Args[1], 10, 64)
+	if err != nil {
+		return nil, ErrInteger
+	}
+
+	at := time.Now().Add(time.Second * time.Duration(seconds)).UnixNano()
+	if err := kv.ExpireAt(key, at); err != nil {
+		if err == db.ErrKeyNotFound {
+			return Integer(ctx.Out, 0), nil
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
 	return Integer(ctx.Out, 1), nil
 }
 

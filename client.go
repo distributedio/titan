@@ -62,7 +62,8 @@ func (c *client) Write(p []byte) (int, error) {
 			zap.String("namespace", c.cliCtx.Namespace),
 			zap.Bool("multi", c.cliCtx.Multi),
 			zap.Bool("watching", c.cliCtx.Txn != nil),
-			zap.String("command", c.cliCtx.LastCmd))
+			zap.String("command", c.cliCtx.LastCmd),
+			zap.String("error", err.Error()))
 		c.conn.Close()
 	}
 	return n, err

@@ -22,6 +22,7 @@ coverage:
 
 build:
 	go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/
+	go build -ldflags '$(LDFLAGS)' -o token ./tools/token/
 
 clean:
 	rm -f ./titan

@@ -64,15 +64,28 @@ func Integer(w io.Writer, v int64) OnCommit {
 // BytesArray replies a [][]byte when commit
 func BytesArray(w io.Writer, a [][]byte) OnCommit {
 	return func() {
+		start := time.Now()
 		resp.ReplyArray(w, len(a))
+		zap.L().Debug("reply array size", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+		start = time.Now()
 		for i := range a {
 			if a[i] == nil {
 				resp.ReplyNullBulkString(w)
 				continue
 			}
 			resp.ReplyBulkString(w, string(a[i]))
+			if i % 10 == 9 {
+				zap.L().Debug("reply 10 bulk string", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+				start = time.Now()
+			}
 		}
 	}
+}
+
+func BytesArrayOnce(w io.Writer, a [][]byte) OnCommit {
+    return func() {
+        resp.ReplyStringArray(w, a)
+    }
 }
 
 // TxnCommand runs a command in transaction
@@ -185,7 +198,13 @@ func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
 		retry.Ensure(ctx, func() error {
 			mt := metrics.GetMetrics()
+            start := time.Now()
 			txn, err := ctx.Client.DB.Begin()
+			key := ""
+			if len(ctx.Args) > 0 {
+				key = ctx.Args[0]
+			}
+            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
@@ -197,7 +216,9 @@ func AutoCommit(cmd TxnCommand) Command {
 				return err
 			}
 
+			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
+			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
@@ -210,7 +231,7 @@ func AutoCommit(cmd TxnCommand) Command {
 				return err
 			}
 
-			start := time.Now()
+			start = time.Now()
 			mtFunc := func() {
 				cost := time.Since(start).Seconds()
 				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
@@ -240,10 +261,13 @@ func AutoCommit(cmd TxnCommand) Command {
 					zap.Error(err))
 				return err
 			}
+			zap.L().Debug("commit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 
+			start = time.Now()
 			if onCommit != nil {
 				onCommit()
 			}
+			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			mtFunc()
 			return nil
 		})
@@ -332,7 +356,9 @@ func feedMonitors(ctx *Context) {
 		id := strconv.FormatInt(int64(ctx.Client.DB.ID), 10)
 
 		line := ts + " [" + id + " " + ctx.Client.RemoteAddr + "]" + " " + ctx.Name + " " + strings.Join(ctx.Args, " ")
+        start := time.Now()
 		err := resp.ReplySimpleString(mCtx.Out, line)
+        zap.L().Debug("feedMonitors reply", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 		if err != nil {
 			ctx.Server.Monitors.Delete(k)
 		}

@@ -21,14 +21,12 @@ type Context struct {
 	In      io.Reader
 	Out     io.Writer
 	TraceID string
+	stashErr error
 	*context.Context
 }
 
 // Command is a redis command implementation
 type Command func(ctx *Context)
-
-// Command2 is a redis command implementation and return error, for flushdb and flushall
-type Command2 func(ctx *Context) error
 
 // OnCommit returns by TxnCommand and will be called after a transaction being committed
 type OnCommit func()
@@ -165,8 +163,9 @@ func Call(ctx *Context) {
 	//wangzongsheng add below
 	if ctx.Name == "flushdb" || ctx.Name == "flushall" {
 		for {
-			err := cmdInfoCommand.Proc2(ctx)
-			if err != nil && err.Error() == db.ERR_MAX_FLUSH_COUNT {
+			cmdInfoCommand.Proc(ctx)
+			if ctx.stashErr != nil && ctx.stashErr.Error() == db.ERR_MAX_FLUSH_COUNT {
+				ctx.stashErr = nil
 				continue
 			} else {
 				break
@@ -219,6 +218,14 @@ func AutoCommit(cmd TxnCommand) Command {
 			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
 			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			if (ctx.Name == "flushdb" || ctx.Name == "flushall") && err.Error() == db.ERR_MAX_FLUSH_COUNT{
+				//flushdb/flushall will commit fail if deleted keys > 50000, so these function will just delete 50000 keys
+				// and return a error to notify Call() to continue handle
+				//but the autoCommit() function shouldn't return error, else the command handling function without return value(Auth/Echo/Ping... ) will compile fail
+				//so just set a ctx.stashErr when flushDb once, and clear it when finish
+				ctx.stashErr = err
+				err = nil
+			}
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
@@ -274,76 +281,6 @@ func AutoCommit(cmd TxnCommand) Command {
 	}
 }
 
-// AutoCommit2 commits to database after run a txn command
-func AutoCommit2(cmd TxnCommand) Command2 {
-	return func(ctx *Context) error {
-		return retry.Ensure(ctx, func() error {
-			mt := metrics.GetMetrics()
-			txn, err := ctx.Client.DB.Begin()
-			if err != nil {
-				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				resp.ReplyError(ctx.Out, "ERR "+err.Error())
-				zap.L().Error("txn begin failed",
-					zap.Int64("clientid", ctx.Client.ID),
-					zap.String("command", ctx.Name),
-					zap.String("traceid", ctx.TraceID),
-					zap.Error(err))
-				return err
-			}
-
-			onCommit, err := cmd(ctx, txn)
-			if err != nil {
-				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				resp.ReplyError(ctx.Out, err.Error())
-				txn.Rollback()
-				zap.L().Error("command process failed",
-					zap.Int64("clientid", ctx.Client.ID),
-					zap.String("command", ctx.Name),
-					zap.String("traceid", ctx.TraceID),
-					zap.Error(err))
-				return err
-			}
-
-			start := time.Now()
-			mtFunc := func() {
-				cost := time.Since(start).Seconds()
-				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
-			}
-			if err := txn.Commit(ctx); err != nil {
-				txn.Rollback()
-				if db.IsConflictError(err) {
-					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				}
-				if db.IsRetryableError(err) {
-					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-					mtFunc()
-					zap.L().Error("txn commit retry",
-						zap.Int64("clientid", ctx.Client.ID),
-						zap.String("command", ctx.Name),
-						zap.String("traceid", ctx.TraceID),
-						zap.Error(err))
-					return retry.Retriable(err)
-				}
-				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				resp.ReplyError(ctx.Out, "ERR "+err.Error())
-				mtFunc()
-				zap.L().Error("txn commit failed",
-					zap.Int64("clientid", ctx.Client.ID),
-					zap.String("command", ctx.Name),
-					zap.String("traceid", ctx.TraceID),
-					zap.Error(err))
-				return err
-			}
-
-			if onCommit != nil {
-				onCommit()
-			}
-			mtFunc()
-			return nil
-		})
-	}
-}
-
 func feedMonitors(ctx *Context) {
 	ctx.Server.Monitors.Range(func(k, v interface{}) bool {
 		mCtx := v.(*Context)
@@ -389,7 +326,6 @@ func (e *Executor) Execute(ctx *Context) {
 // Desc describes a command with constraints
 type Desc struct {
 	Proc  Command
-	Proc2 Command2
 	Stat  Statistic
 	Cons  Constraint
 }

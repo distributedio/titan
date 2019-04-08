@@ -157,8 +157,8 @@ func init() {
 		"client":   Desc{Proc: Client, Cons: Constraint{-2, flags("as"), 0, 0, 0}},
 		"debug":    Desc{Proc: AutoCommit(Debug), Cons: Constraint{-2, flags("as"), 0, 0, 0}},
 		"command":  Desc{Proc: RedisCommand, Cons: Constraint{0, flags("lt"), 0, 0, 0}},
-		"flushdb":  Desc{Proc2: AutoCommit2(FlushDB), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
-		"flushall": Desc{Proc2: AutoCommit2(FlushAll), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
+		"flushdb":  Desc{Proc: AutoCommit(FlushDB), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
+		"flushall": Desc{Proc: AutoCommit(FlushAll), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
 		"time":     Desc{Proc: Time, Cons: Constraint{1, flags("RF"), 0, 0, 0}},
 		"info":     Desc{Proc: Info, Cons: Constraint{-1, flags("lt"), 0, 0, 0}},
 

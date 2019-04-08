@@ -218,7 +218,7 @@ func AutoCommit(cmd TxnCommand) Command {
 			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
 			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
-			if (ctx.Name == "flushdb" || ctx.Name == "flushall") && err.Error() == db.ERR_MAX_FLUSH_COUNT{
+			if err != nil && err.Error() == db.ERR_MAX_FLUSH_COUNT{
 				//flushdb/flushall will commit fail if deleted keys > 50000, so these function will just delete 50000 keys
 				// and return a error to notify Call() to continue handle
 				//but the autoCommit() function shouldn't return error, else the command handling function without return value(Auth/Echo/Ping... ) will compile fail

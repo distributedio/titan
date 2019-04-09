@@ -591,3 +591,98 @@ func TestStringGetBit(t *testing.T) {
 		})
 	}
 }
+
+func TestStringBitCount(t *testing.T) {
+	CallTest("setbit", "bit-count", "5", "1")
+	CallTest("setbit", "bit-count", "9", "1")
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "1",
+			args: []string{"bit-count", "1"},
+			want: ErrSyntax.Error(),
+		},
+		{
+			name: "2",
+			args: []string{"bit-count", "x", "1"},
+			want: ErrInteger.Error(),
+		},
+		{
+			name: "3",
+			args: []string{"bit-count", "1", "x"},
+			want: ErrInteger.Error(),
+		},
+		{
+			name: "4",
+			args: []string{"bit-count"},
+			want: ":2",
+		},
+		{
+			name: "5",
+			args: []string{"bit-count", "1", "1"},
+			want: ":1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := CallTest("bitcount", tt.args...)
+			assert.Contains(t, out.String(), tt.want)
+		})
+	}
+}
+
+func TestStringBitPos(t *testing.T) {
+	CallTest("set", "bit-pos", "5")
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "1",
+			args: []string{"bit-pos", "2"},
+			want: ErrBitInvaild.Error(),
+		},
+		{
+			name: "2",
+			args: []string{"bitnpos", "0", "0", "1"},
+			want: ":0",
+		},
+		{
+			name: "3",
+			args: []string{"bitnpos", "1", "0", "1"},
+			want: ":-1",
+		},
+		{
+			name: "4",
+			args: []string{"bit-pos", "1", "1", "1"},
+			want: ":-1",
+		},
+		{
+			name: "5",
+			args: []string{"bit-pos", "1", "1"},
+			want: ":-1",
+		},
+		{
+			name: "6",
+			args: []string{"bit-pos", "1"},
+			want: ":2",
+		},
+		{
+			name: "7",
+			args: []string{"bit-pos", "1", "1", "1", "1", "1"},
+			want: ErrSyntax.Error(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := CallTest("bitpos", tt.args...)
+			assert.Contains(t, out.String(), tt.want)
+		})
+	}
+}

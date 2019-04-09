@@ -701,3 +701,109 @@ func TestStringGetBit(t *testing.T) {
 		})
 	}
 }
+
+func TestStringCountBit(t *testing.T) {
+	key := []byte("bit-count")
+	callFunc := func(txn *Transaction) {
+		s, err := GetString(txn, key)
+		assert.NoError(t, err)
+		s.SetBit(4, 1)
+	}
+	MockTest(t, callFunc)
+
+	type args struct {
+		begin int
+		end   int
+	}
+	type want struct {
+		count int
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "one",
+			args: args{
+				begin: 0,
+				end:   10,
+			},
+			want: want{
+				count: 1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, key)
+				assert.NoError(t, err)
+				count, err := s.BitCount(tt.args.begin, tt.args.end)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want.count, count)
+			}
+			MockTest(t, callFunc)
+		})
+	}
+}
+
+func TestStringBitPos(t *testing.T) {
+	key := []byte("bit-pos")
+	callFunc := func(txn *Transaction) {
+		s, err := GetString(txn, key)
+		assert.NoError(t, err)
+		s.Set([]byte("1"))
+	}
+	MockTest(t, callFunc)
+
+	type args struct {
+		bit   int
+		begin int
+		end   int
+	}
+	type want struct {
+		pos int
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "one",
+			args: args{
+				bit:   1,
+				begin: 0,
+				end:   10,
+			},
+			want: want{
+				pos: 2,
+			},
+		},
+		{
+			name: "two",
+			args: args{
+				bit:   0,
+				begin: 100,
+				end:   0,
+			},
+			want: want{
+				pos: -1,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callFunc := func(txn *Transaction) {
+				s, err := GetString(txn, key)
+				assert.NoError(t, err)
+				count, err := s.BitPos(tt.args.bit, tt.args.begin, tt.args.end)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want.pos, count)
+			}
+			MockTest(t, callFunc)
+		})
+	}
+}

@@ -49,8 +49,14 @@ var (
 	// ErrBitInteger bit is not an integer or out of range
 	ErrBitInteger = errors.New("ERR bit is not an integer or out of range")
 
+	// ErrBitInvaild the bit argument must be 1 or 0
+	ErrBitInvaild = errors.New("ERR The bit argument must be 1 or 0")
+
 	// ErrBitOffset bit offset is not an integer or out of range
 	ErrBitOffset = errors.New("ERR bit offset is not an integer or out of range")
+
+	//ErrBitOp not must be called with a single source key.
+	ErrBitOp = errors.New("BITOP NOT must be called with a single source key.")
 
 	// ErrOffset offset is out of range
 	ErrOffset = errors.New("ERR offset is out of range")

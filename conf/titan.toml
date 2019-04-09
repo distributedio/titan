@@ -51,6 +51,12 @@ pd-addrs = ""
 
 [tikv.gc]
 
+#type:        bool
+#rules:       boolean
+#description: true for enabling gc
+#default:     true
+#enable = true
+
 #type:        time.Duration
 #description: gc work tick interval
 #default:     1s
@@ -70,6 +76,12 @@ pd-addrs = ""
 
 [tikv.expire]
 
+#type:        bool
+#rules:       boolean
+#description: true for enabling expire
+#default:     true
+#enable = true
+
 #type:        time.Duration
 #description: expire work tick interval
 #default:     1s
@@ -88,6 +100,12 @@ pd-addrs = ""
 
 
 [tikv.zt]
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling zt
+#default:     true
+#enable = true
 
 #type:        int
 #rules:       numeric
@@ -114,6 +132,12 @@ pd-addrs = ""
 
 
 [tikv.tikv-gc]
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling tikv gc
+#default:     true
+#enable = true
 
 #type:        time.Duration
 #description: gc work tick interval

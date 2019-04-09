@@ -304,14 +304,17 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 			return false, err
 		}
 
-		zap.L().Debug("no leader now, create new lease",
-			zap.ByteString("key", key),
-			zap.ByteString("id", id))
+		if env := zap.L().Check(zap.DebugLevel, "no leader now, create new lease"); env != nil {
+			env.Write(zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Duration("interval", interval))
+		}
 
 		if err := flushLease(txn, key, id, interval); err != nil {
 			zap.L().Error("create lease failed",
 				zap.ByteString("key", key),
 				zap.ByteString("id", id),
+				zap.Duration("interval", interval),
 				zap.Error(err))
 			return false, err
 		}
@@ -327,6 +330,7 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 			zap.L().Error("create lease failed",
 				zap.ByteString("key", key),
 				zap.ByteString("id", id),
+				zap.Int64("last_ts", ts),
 				zap.Error(err))
 			return false, err
 		}

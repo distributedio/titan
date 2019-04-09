@@ -41,6 +41,7 @@ type Tikv struct {
 
 // TikvGC config is the config of implement tikv sdk gcwork
 type TikvGC struct {
+	Enable            bool          `cfg:"enable; true; boolean; true for enabling tikv gc"`
 	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
 	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
 	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
@@ -49,6 +50,7 @@ type TikvGC struct {
 
 // GC config is the config of Titan GC work
 type GC struct {
+	Enable         bool          `cfg:"enable; true; boolean; true for enabling gc"`
 	Interval       time.Duration `cfg:"interval;1s;;gc work tick interval"`
 	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
 	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
@@ -56,6 +58,7 @@ type GC struct {
 
 // Expire config is the config of Titan expire work
 type Expire struct {
+	Enable         bool          `cfg:"enable; true; boolean; true for enabling expire"`
 	Interval       time.Duration `cfg:"interval;1s;;expire work tick interval"`
 	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
 	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
@@ -63,7 +66,8 @@ type Expire struct {
 
 // ZT config is the config of zlist
 type ZT struct {
-	Wrokers    int           `cfg:"workers;5;numeric;parallel workers count"`
+	Enable     bool          `cfg:"enable; true; boolean; true for enabling zt"`
+	Workers    int           `cfg:"workers;5;numeric;parallel workers count"`
 	BatchCount int           `cfg:"batch;10;numeric;object transfer limitation per-transection"`
 	QueueDepth int           `cfg:"depth;100;numeric;ZT Worker queue depth"`
 	Interval   time.Duration `cfg:"interval;1000ms; ;Queue fill interval in milsecond"`

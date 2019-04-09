@@ -8,6 +8,7 @@ import (
 	"github.com/meitu/titan/conf"
 	"github.com/meitu/titan/db/store"
 	"github.com/meitu/titan/metrics"
+	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -84,13 +85,20 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
+		if !conf.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
 			continue
 		}
 		if !isLeader {
-			zap.L().Debug("[Expire] not expire leader")
+			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not expire leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("leader", sysExpireLeader),
+					zap.ByteString("uuid", id),
+					zap.Duration("leader-life-time", conf.LeaderLifeTime))
+			}
 			continue
 		}
 		runExpire(db, conf.BatchLimit)
@@ -122,7 +130,8 @@ func runExpire(db *DB, batchLimit int) {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
 		return
 	}
-	iter, err := txn.t.Iter(expireKeyPrefix, nil)
+	endPrefix := kv.Key(expireKeyPrefix).PrefixNext()
+	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
 		txn.Rollback()
@@ -157,8 +166,9 @@ func runExpire(db *DB, batchLimit int) {
 				return
 			}
 		}
-
-		zap.L().Debug("[Expire] delete metakey", zap.ByteString("mkey", mkey), zap.String("key", string(rawkey)))
+		if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete metakey"); logEnv != nil {
+			logEnv.Write(zap.ByteString("mkey", mkey))
+		}
 		// Remove from expire list
 		if err := txn.t.Delete(key); err != nil {
 			zap.L().Error("[Expire] delete failed",

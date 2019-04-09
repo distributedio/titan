@@ -27,13 +27,22 @@ func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 	uuid := UUID()
 	ctx := context.Background()
 	for range ticker.C {
+		if !tikvCfg.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysTikvGCLeader, uuid, tikvCfg.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[TikvGC] check TikvGC leader failed", zap.Error(err))
 			continue
 		}
 		if !isLeader {
-			zap.L().Debug("[TikvGC] not TikvGC leader")
+			if logEnv := zap.L().Check(zap.DebugLevel, "[TikvGC]  not TikvGC leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("leader", sysTikvGCLeader),
+					zap.ByteString("uuid", uuid),
+					zap.Duration("leader-life-time", tikvCfg.LeaderLifeTime),
+					zap.Duration("safe-point-life-time", tikvCfg.SafePointLifeTime),
+					zap.Int("concurrency", tikvCfg.Concurrency))
+			}
 			continue
 		}
 		if err := runTikvGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {

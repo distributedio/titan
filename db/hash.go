@@ -91,7 +91,7 @@ func hashItemKey(key []byte, field []byte) []byte {
 // HDel removes the specified fields from the hash stored at key
 func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	var (
-		fieldsMap  = make(map[string]bool, len(fields))
+		fieldsMap  = make(map[string]struct{}, len(fields))
 		num        int64
 		retainMeta bool
 	)
@@ -103,7 +103,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	for _, f := range fields {
 		field := hashItemKey(dkey, f)
-		fieldsMap[string(field)] = true
+		fieldsMap[string(field)] = struct{}{}
 	}
 	prefix := kv.Key(hashItemKey(dkey, nil))
 	endPrefix := prefix.PrefixNext()

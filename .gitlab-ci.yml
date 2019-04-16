@@ -5,23 +5,23 @@ stages:
   - build
 
 before_script:
-  - mkdir -p /go/src/github.com/meitu /go/src/_/builds
-  - cp -r `pwd` /go/src/github.com/meitu/titan
+  - mkdir -p /go/src/github.com/distributedio /go/src/_/builds
+  - cp -r `pwd` /go/src/github.com/distributedio/titan
 
 unit_tests:
   stage: test
   script:
-    - cd /go/src/github.com/meitu/titan
+    - cd /go/src/github.com/distributedio/titan
     - make test
 
 coverage:
   stage: test
   script:
-    - cd /go/src/github.com/meitu/titan
+    - cd /go/src/github.com/distributedio/titan
     - make coverage
 
 build:
   stage: build
   script:
-    - cd /go/src/github.com/meitu/titan
+    - cd /go/src/github.com/distributedio/titan
     - make

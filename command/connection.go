@@ -3,8 +3,8 @@ package command
 import (
 	"strconv"
 
-	"github.com/meitu/titan/encoding/resp"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/encoding/resp"
+	"github.com/distributedio/titan/metrics"
 )
 
 // Auth verifies the client

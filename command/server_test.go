@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
 	"github.com/stretchr/testify/assert"
 )
 

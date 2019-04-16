@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/meitu/titan/conf"
+	"github.com/distributedio/titan/conf"
 	"github.com/pingcap/tidb/store/mockstore"
 	"go.uber.org/zap"
 )

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
-	"github.com/meitu/titan/encoding/resp"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
+	"github.com/distributedio/titan/encoding/resp"
 )
 
 const sysAdminNamespace = "$sys.admin"

@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
+	"github.com/distributedio/titan/encoding/resp"
+	"github.com/distributedio/titan/metrics"
 	"github.com/shafreeck/retry"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
-	"github.com/meitu/titan/encoding/resp"
-	"github.com/meitu/titan/metrics"
 	"go.uber.org/zap"
 )
 

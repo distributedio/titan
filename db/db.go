@@ -11,9 +11,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/db/store"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/store"
+	"github.com/distributedio/titan/metrics"
 )
 
 var (

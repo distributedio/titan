@@ -9,7 +9,7 @@ import (
 
 	"time"
 
-	"github.com/meitu/titan/conf"
+	"github.com/distributedio/titan/conf"
 )
 
 //Server status server

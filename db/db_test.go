@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/meitu/titan/conf"
+	"github.com/distributedio/titan/conf"
 	"github.com/pingcap/tidb/store/mockstore"
 	"github.com/stretchr/testify/assert"
 )

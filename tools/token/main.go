@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/meitu/titan/command"
+	"github.com/distributedio/titan/command"
 )
 
 var (

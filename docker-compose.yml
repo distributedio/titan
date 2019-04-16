@@ -35,7 +35,7 @@ services:
     restart: on-failure
 
   titan:
-    image: meitu/titan
+    image: distributedio/titan
     ports:
       - "7369:7369"
     command:

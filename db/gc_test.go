@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/meitu/titan/db/store"
+	"github.com/distributedio/titan/db/store"
 	"github.com/stretchr/testify/assert"
 )
 

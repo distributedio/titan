@@ -33,7 +33,7 @@ Functions of calculating intersections, unions and difference sets are designate
 
 ### Key Points
 
-+ The present implementation is still designed to use  *Len* to keep the count of the elements within a set and we do not use the *slot* in hash. *[[Read More] Implementation of hash-slot](https://github.com/meitu/titan/pull/13#%E8%83%8C%E6%99%AF)*
++ The present implementation is still designed to use  *Len* to keep the count of the elements within a set and we do not use the *slot* in hash. *[[Read More] Implementation of hash-slot](https://github.com/distributedio/titan/pull/13#%E8%83%8C%E6%99%AF)*
 + The characteristics of set means that we don't need to store the *value*  in the *kv-storage*. So for the case of storing data in Tikv by calling the Set interface , we only need to save the concatenated member in the specific *key* of *tikv*.
 + The format of *MetaKey* is:
   {Namespace}:{DBID}:M:{key}

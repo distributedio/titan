@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 
-	"github.com/meitu/titan/db/store"
+	"github.com/distributedio/titan/db/store"
 )
 
 //Slot slot information about hash meta

@@ -3,8 +3,8 @@ package autotest
 import (
 	"testing"
 
+	"github.com/distributedio/titan/tools/autotest/cmd"
 	"github.com/gomodule/redigo/redis"
-	"github.com/meitu/titan/tools/autotest/cmd"
 )
 
 //Abnormal check error message

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/meitu/titan/command"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/encoding/resp"
+	"github.com/distributedio/titan/command"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/encoding/resp"
 	"go.uber.org/zap"
 )
 

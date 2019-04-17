@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meitu/titan/tools/integration"
+	"github.com/distributedio/titan/tools/integration"
 )
 
 var (

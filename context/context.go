@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/meitu/titan/db"
+	"github.com/distributedio/titan/db"
 )
 
 const (

@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/db/store"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/store"
+	"github.com/distributedio/titan/metrics"
 	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )

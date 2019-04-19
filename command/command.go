@@ -202,8 +202,13 @@ func AutoCommit(cmd TxnCommand) Command {
 			key := ""
 			if len(ctx.Args) > 0 {
 				key = ctx.Args[0]
+				if len(ctx.Args) > 1 {
+					mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args)-1))
+				}
 			}
-            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			cost := time.Since(start).Seconds()
+            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
+            mt.TxnBeginHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
@@ -217,7 +222,9 @@ func AutoCommit(cmd TxnCommand) Command {
 
 			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
-			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			cost = time.Since(start).Seconds()
+			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
+			mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			if err != nil && err.Error() == db.ERR_MAX_FLUSH_COUNT{
 				//flushdb/flushall will commit fail if deleted keys > 50000, so these function will just delete 50000 keys
 				// and return a error to notify Call() to continue handle
@@ -240,7 +247,7 @@ func AutoCommit(cmd TxnCommand) Command {
 
 			start = time.Now()
 			mtFunc := func() {
-				cost := time.Since(start).Seconds()
+				cost = time.Since(start).Seconds()
 				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			}
 			if err := txn.Commit(ctx); err != nil {
@@ -274,7 +281,9 @@ func AutoCommit(cmd TxnCommand) Command {
 			if onCommit != nil {
 				onCommit()
 			}
-			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			cost = time.Since(start).Seconds()
+			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
+			mt.ReplyFuncDoneHistogramVec.WithLabelValues(ctx.Client.Name, ctx.Name).Observe(cost)
 			mtFunc()
 			return nil
 		})

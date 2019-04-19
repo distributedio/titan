@@ -51,11 +51,15 @@ type Metrics struct {
 	ExpireKeysTotal *prometheus.CounterVec
 
 	//command biz
-	CommandCallHistogramVec *prometheus.HistogramVec
-	TxnCommitHistogramVec   *prometheus.HistogramVec
-	TxnRetriesCounterVec    *prometheus.CounterVec
-	TxnConflictsCounterVec  *prometheus.CounterVec
-	TxnFailuresCounterVec   *prometheus.CounterVec
+	CommandCallHistogramVec     *prometheus.HistogramVec
+	TxnBeginHistogramVec        *prometheus.HistogramVec
+	CommandFuncDoneHistogramVec *prometheus.HistogramVec
+	TxnCommitHistogramVec       *prometheus.HistogramVec
+	ReplyFuncDoneHistogramVec   *prometheus.HistogramVec
+	CommandArgsNumHistogramVec  *prometheus.HistogramVec
+	TxnRetriesCounterVec        *prometheus.CounterVec
+	TxnConflictsCounterVec      *prometheus.CounterVec
+	TxnFailuresCounterVec       *prometheus.CounterVec
 
 	//logger
 	LogMetricsCounterVec *prometheus.CounterVec
@@ -69,7 +73,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 30),
 			Help:      "The cost times of command call",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandCallHistogramVec)
@@ -90,14 +94,50 @@ func init() {
 		}, multiLabel)
 	prometheus.MustRegister(gm.TxnConflictsCounterVec)
 
+	gm.CommandArgsNumHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "command_args_num",
+			Buckets:   prometheus.ExponentialBuckets(1, 2, 20),
+			Help:      "The arguments num of command not including the key",
+		}, multiLabel)
+	prometheus.MustRegister(gm.CommandArgsNumHistogramVec)
+
+	gm.TxnBeginHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "txn_begin_seconds",
+			Buckets:   prometheus.ExponentialBuckets(0.0002, 2, 10),
+			Help:      "The cost times of txn begin",
+		}, multiLabel)
+	prometheus.MustRegister(gm.TxnBeginHistogramVec)
+
+	gm.CommandFuncDoneHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "command_func_done_seconds",
+			Buckets:   prometheus.ExponentialBuckets(0.0002, 2, 10),
+			Help:      "The cost times of command func",
+		}, multiLabel)
+	prometheus.MustRegister(gm.CommandFuncDoneHistogramVec)
+
 	gm.TxnCommitHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "txn_commit_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 30),
 			Help:      "The cost times of txn commit",
 		}, multiLabel)
 	prometheus.MustRegister(gm.TxnCommitHistogramVec)
+
+	gm.ReplyFuncDoneHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "reply_func_done_seconds",
+			Buckets:   prometheus.ExponentialBuckets(0.0002, 2, 10),
+			Help:      "The cost times of reply func",
+		}, multiLabel)
+	prometheus.MustRegister(gm.ReplyFuncDoneHistogramVec)
 
 	gm.TxnFailuresCounterVec = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -119,7 +159,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "lrange_seek_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 30),
 			Help:      "The cost times of list lrange seek",
 		})
 	prometheus.MustRegister(gm.LRangeSeekHistogram)

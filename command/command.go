@@ -217,7 +217,7 @@ func AutoCommit(cmd TxnCommand) Command {
 
 			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
-			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil && err.Error() == db.ERR_MAX_FLUSH_COUNT{
 				//flushdb/flushall will commit fail if deleted keys > 50000, so these function will just delete 50000 keys
 				// and return a error to notify Call() to continue handle
@@ -268,13 +268,13 @@ func AutoCommit(cmd TxnCommand) Command {
 					zap.Error(err))
 				return err
 			}
-			zap.L().Debug("commit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			zap.L().Debug("commit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 
 			start = time.Now()
 			if onCommit != nil {
 				onCommit()
 			}
-			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			mtFunc()
 			return nil
 		})

@@ -134,7 +134,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "reply_func_done_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0002, 2, 10),
+			Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 10),
 			Help:      "The cost times of reply func",
 		}, multiLabel)
 	prometheus.MustRegister(gm.ReplyFuncDoneHistogramVec)

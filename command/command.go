@@ -283,7 +283,7 @@ func AutoCommit(cmd TxnCommand) Command {
 			}
 			cost = time.Since(start).Seconds()
 			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
-			mt.ReplyFuncDoneHistogramVec.WithLabelValues(ctx.Client.Name, ctx.Name).Observe(cost)
+			mt.ReplyFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			mtFunc()
 			return nil
 		})

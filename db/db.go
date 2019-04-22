@@ -38,6 +38,9 @@ var (
 	// ErrEncodingMismatch object encoding type
 	ErrEncodingMismatch = errors.New("error object encoding type")
 
+	//ErrSetNilValue means the value corresponding to key is a non-zero value
+	ErrSetNilValue = errors.New("The value corresponding to key is a non-zero value")
+
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
 

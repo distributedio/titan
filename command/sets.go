@@ -177,9 +177,7 @@ func CreateLoserTree(ls []int, sets []*db.SetIter) int {
 	for i := len(ls) - 1; i >= 0; i-- {
 		adjustMin(ls, sets, i)
 	}
-	//res := sets[ls[0]].Value()
 	return ls[0]
-
 }
 
 // getNodeCount calculaties the total number of nodes in a complete binary tree

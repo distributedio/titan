@@ -130,57 +130,6 @@ func setItemKey(key []byte, member []byte) []byte {
 	return ikeys
 }
 
-//newSet create new Set object
-func newSet(txn *Transaction, key []byte) *Set {
-	now := Now()
-	return &Set{
-		txn: txn,
-		key: key,
-		meta: &SetMeta{
-			Object: Object{
-				ID:        UUID(),
-				CreatedAt: now,
-				UpdatedAt: now,
-				ExpireAt:  0,
-				Type:      ObjectSet,
-				Encoding:  ObjectEncodingHT,
-			},
-			Len: 0,
-		},
-	}
-}
-
-// DecodeSetMeta decode meta data into meta field
-func DecodeSetMeta(b []byte) (*SetMeta, error) {
-	if len(b[ObjectEncodingLength:]) != 8 {
-		return nil, ErrInvalidLength
-	}
-	obj, err := DecodeObject(b)
-	if err != nil {
-		return nil, err
-	}
-	smeta := &SetMeta{Object: *obj}
-	m := b[ObjectEncodingLength:]
-	smeta.Len = int64(binary.BigEndian.Uint64(m[:8]))
-	return smeta, nil
-}
-
-//encodeSetMeta encodes meta data into byte slice
-func encodeSetMeta(meta *SetMeta) []byte {
-	b := EncodeObject(&meta.Object)
-	m := make([]byte, 8)
-	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
-	return append(b, m...)
-}
-
-func setItemKey(key []byte, member []byte) []byte {
-	var ikeys []byte
-	ikeys = append(ikeys, key...)
-	ikeys = append(ikeys, ':')
-	ikeys = append(ikeys, member...)
-	return ikeys
-}
-
 func (set *Set) updateMeta() error {
 	meta := encodeSetMeta(set.meta)
 	err := set.txn.t.Set(MetaKey(set.txn.db, set.key), meta)

@@ -41,6 +41,9 @@ var (
 	// ErrStorageRetry storage err and try again later
 	ErrStorageRetry = errors.New("Storage err and try again later")
 
+	//ErrSetNilValue means the value corresponding to key is a non-zero value
+	ErrSetNilValue = errors.New("The value corresponding to key is a non-zero value")
+
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
 

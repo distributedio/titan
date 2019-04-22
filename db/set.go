@@ -69,7 +69,6 @@ func (set *Set) Iter() (*SetIter, error) {
 func (siter *SetIter) Value() []byte {
 	res := siter.Iter.Key()[len(siter.Prefix):]
 	return res
-
 }
 
 // Valid judgies whether the key directed by iter has the same prifix
@@ -102,7 +101,7 @@ func newSet(txn *Transaction, key []byte) *Set {
 
 // DecodeSetMeta decode meta data into meta field
 func DecodeSetMeta(b []byte) (*SetMeta, error) {
-	if len(b[ObjectEncodingLength:]) != 8 {
+	if b != nil && len(b[ObjectEncodingLength:]) != 8 {
 		return nil, ErrInvalidLength
 	}
 	obj, err := DecodeObject(b)
@@ -202,15 +201,12 @@ func (set *Set) SMembers() ([][]byte, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-
 	count := set.meta.Len
 	members := make([][]byte, 0, count)
-
 	iter, err := set.txn.t.Iter(prefix, nil)
 	if err != nil {
 		return nil, err
 	}
-
 	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
 		members = append(members, iter.Key()[len(prefix):])
 		if err := iter.Next(); err != nil {
@@ -245,15 +241,15 @@ func (set *Set) SIsmember(member []byte) (int64, error) {
 		return 0, err
 	}
 	if !bytes.Equal(value, SetNilValue) {
-		return 0, nil
+		return 0, ErrSetNilValue
 	}
 	return 1, nil
 }
 
 // SPop removes and returns one or more random elements from the set value store at key.
-func (set *Set) SPop(count int64) (members [][]byte, err error) {
+func (set *Set) SPop(count int64) ([][]byte, error) {
 	if !set.Exists() || set.meta.Len == 0 {
-		return nil, nil
+		return make([][]byte, 0), nil
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
@@ -262,30 +258,29 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 		return nil, err
 	}
 	defer iter.Close()
-	var del int64
-	var ms [][]byte
+	var deleted int64
+	var members [][]byte
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		if count == 0 {
-			ms = append(ms, iter.Key()[len(prefix):])
+			members = append(members, iter.Key()[len(prefix):])
 			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
 				return nil, err
 			}
 			set.meta.Len--
 			break
-		} else {
-			ms = append(ms, iter.Key()[len(prefix):])
-			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
-				return nil, err
-			}
-			del++
-			count--
-			if count == 0 {
-				set.meta.Len -= del
-				break
-			}
-			if err := iter.Next(); err != nil {
-				return nil, err
-			}
+		}
+		members = append(members, iter.Key()[len(prefix):])
+		if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
+			return nil, err
+		}
+		deleted++
+		count--
+		if count == 0 {
+			set.meta.Len -= deleted
+			break
+		}
+		if err := iter.Next(); err != nil {
+			return nil, err
 		}
 	}
 	if count != 0 {
@@ -294,7 +289,7 @@ func (set *Set) SPop(count int64) (members [][]byte, err error) {
 	if err := set.updateMeta(); err != nil {
 		return nil, err
 	}
-	return ms, nil
+	return members, nil
 }
 
 // SRem removes the specified members from the set stored at key
@@ -331,7 +326,6 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 
 // SMove movies member from the set at source to the set at destination
 func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
-
 	if !set.Exists() {
 		return 0, nil
 	}
@@ -355,23 +349,12 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	ikey := setItemKey(dkey, member)
-
-	value, err := set.txn.t.Get(ikey)
-	if err != nil {
-		if IsErrNotFound(err) {
-			return 0, nil
-		}
+	if err := set.txn.t.Delete([]byte(ikey)); err != nil {
 		return 0, err
 	}
-	if bytes.Equal(value, SetNilValue) {
-		if err := set.txn.t.Delete([]byte(ikey)); err != nil {
-			return 0, err
-		}
-		set.meta.Len--
-		if err := set.updateMeta(); err != nil {
-			return 0, err
-		}
-		return 1, nil
+	set.meta.Len--
+	if err := set.updateMeta(); err != nil {
+		return 0, err
 	}
-	return 0, nil
+	return 1, nil
 }

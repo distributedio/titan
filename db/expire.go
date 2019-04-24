@@ -140,63 +140,28 @@ func runExpire(db *DB, batchLimit int) {
 	limit := batchLimit
 	now := time.Now().UnixNano()
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
-		key := iter.Key()
-		val := iter.Value()
-		mkey := key[expireMetakeyOffset:]
-		namespace, dbid, rawkey := splitMetaKey(mkey)
-
-		ts := DecodeInt64(key[expireTimestampOffset : expireTimestampOffset+8])
+		rawKey := iter.Key()
+		ts := DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
 		if ts > now {
 			break
 		}
-
-		//get obj info
-		obj, err := getObject(txn, mkey)
-		if err != nil {
+		mkey := rawKey[expireMetakeyOffset:]
+		if err := doExpire(txn, mkey, iter.Value()); err != nil {
 			txn.Rollback()
 			return
 		}
-
-		// Delete object meta
-		if bytes.Equal(obj.ID, val) {
-			if err := txn.t.Delete(mkey); err != nil {
-				zap.L().Error("[Expire] delete failed",
-					zap.ByteString("key", rawkey),
-					zap.Error(err))
-				return
-			}
-		}
-		if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete metakey"); logEnv != nil {
-			logEnv.Write(zap.ByteString("mkey", mkey))
-		}
 		// Remove from expire list
-		if err := txn.t.Delete(key); err != nil {
+		if err := txn.t.Delete(rawKey); err != nil {
 			zap.L().Error("[Expire] delete failed",
-				zap.ByteString("key", rawkey),
+				zap.ByteString("mkey", mkey),
 				zap.Error(err))
 			txn.Rollback()
 			return
 		}
 
-		//Need gc two types of data:
-		//1.Normally expired data that requires gc to fall back to the composite data type
-		//2.Overwritten Writing Requires GC to drop old data.(String override string will also be added to gc, even if string type data does not require gc data)
-		if obj.Type != ObjectString || !bytes.Equal(obj.ID, val) {
-			if err := gc(txn.t, toTikvDataKey(namespace, dbid, val)); err != nil {
-				zap.L().Error("[Expire] gc failed",
-					zap.ByteString("key", rawkey),
-					zap.ByteString("namepace", namespace),
-					zap.Int64("dbid", int64(dbid)),
-					zap.ByteString("objid", val),
-					zap.Error(err))
-				txn.Rollback()
-				return
-			}
-		}
-		// Remove from expire list
 		if err := iter.Next(); err != nil {
 			zap.L().Error("[Expire] next failed",
-				zap.ByteString("key", rawkey),
+				zap.ByteString("mkey", mkey),
 				zap.Error(err))
 			txn.Rollback()
 			return
@@ -209,4 +174,45 @@ func runExpire(db *DB, batchLimit int) {
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
+}
+
+func doExpire(txn *Transaction, mkey, oldID []byte) error {
+	namespace, dbid, key := splitMetaKey(mkey)
+	obj, err := getObject(txn, mkey)
+	if err != nil {
+		// skip dirty data
+		if err == ErrKeyNotFound {
+			return nil
+		}
+		return err
+	}
+
+	// Delete object meta
+	if bytes.Equal(obj.ID, oldID) {
+		if err := txn.t.Delete(mkey); err != nil {
+			zap.L().Error("[Expire] delete failed",
+				zap.ByteString("key", key),
+				zap.Error(err))
+			return err
+		}
+	}
+	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete metakey"); logEnv != nil {
+		logEnv.Write(zap.ByteString("mkey", mkey))
+	}
+
+	//Need gc two types of data:
+	//1.Normally expired data that requires gc to fall back to the composite data type
+	//2.Overwritten Writing Requires GC to drop old data.(String override string will also be added to gc, even if string type data does not require gc data)
+	if obj.Type != ObjectString || !bytes.Equal(obj.ID, oldID) {
+		if err := gc(txn.t, toTikvDataKey(namespace, dbid, oldID)); err != nil {
+			zap.L().Error("[Expire] gc failed",
+				zap.ByteString("key", key),
+				zap.ByteString("namepace", namespace),
+				zap.Int64("dbid", int64(dbid)),
+				zap.ByteString("objid", oldID),
+				zap.Error(err))
+			return err
+		}
+	}
+	return nil
 }

@@ -266,19 +266,13 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 }
 
 func dbPrefix(ns string, id []byte) []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(ns)...)
+	prefix := []byte(ns)
 	prefix = append(prefix, ':')
-	prefix = append(prefix, id...)
-	prefix = append(prefix, ':')
+	if id != nil {
+		prefix = append(prefix, id...)
+		prefix = append(prefix, ':')
+	}
 	return prefix
-}
-
-func sysPrefix(ns string, id byte) []byte {
-	b := []byte{}
-	b = append(b, sysNamespace...)
-	b = append(b, ':', id, ':')
-	return b
 }
 
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {

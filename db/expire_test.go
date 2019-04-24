@@ -18,7 +18,6 @@ func getTxn(t *testing.T) *Transaction {
 }
 
 func Test_runExpire(t *testing.T) {
-
 	hashKey := []byte("TestExpiredHash")
 	strKey := []byte("TestExpiredString")
 	expireAt := (time.Now().Unix() - 30) * int64(time.Second)
@@ -119,6 +118,86 @@ func Test_runExpire(t *testing.T) {
 			gcKey := toTikvGCKey(toTikvDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
 
 			_, err := txn.t.Get(gcKey)
+			txn.Commit(context.TODO())
+			if tt.want.gckey {
+				assert.NoError(t, err)
+			} else {
+				assert.Equal(t, true, store.IsErrNotFound(err))
+			}
+		})
+	}
+
+}
+
+func Test_doExpire(t *testing.T) {
+	initHash := func(t *testing.T, key []byte) []byte {
+		hash, txn, err := getHash(t, key)
+		assert.NoError(t, err)
+		assert.NotNil(t, txn)
+		assert.NotNil(t, hash)
+		hash.HSet([]byte("field1"), []byte("val"))
+		txn.Commit(context.TODO())
+		return hash.meta.ID
+	}
+	hashId := initHash(t, []byte("TestExpiredHash"))
+	_ = initHash(t, []byte("TestExpiredRewriteHash"))
+	txn := getTxn(t)
+	type args struct {
+		mkey []byte
+		id   []byte
+	}
+	type want struct {
+		gckey bool
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "TestExpiredHash",
+			args: args{
+				mkey: MetaKey(txn.db, []byte("TestExpiredHash")),
+				id:   hashId,
+			},
+			want: want{
+				gckey: true,
+			},
+		},
+		{
+			name: "TestExpiredRewriteHash",
+			args: args{
+				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash")),
+				id:   []byte("nil"),
+			},
+			want: want{
+				gckey: true,
+			},
+		},
+		{
+			name: "TestExpiredNotExistsMeta",
+			args: args{
+				mkey: MetaKey(txn.db, []byte("test")),
+				id:   []byte("not exists"),
+			},
+			want: want{
+				gckey: false,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			txn := getTxn(t)
+			err := doExpire(txn, tt.args.mkey, tt.args.id)
+			txn.Commit(context.TODO())
+			assert.NoError(t, err)
+
+			txn = getTxn(t)
+			gcKey := toTikvGCKey(toTikvDataKey([]byte(txn.db.Namespace), txn.db.ID, tt.args.id))
+
+			_, err = txn.t.Get(gcKey)
 			txn.Commit(context.TODO())
 			if tt.want.gckey {
 				assert.NoError(t, err)

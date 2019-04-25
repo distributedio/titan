@@ -93,7 +93,7 @@ func Test_runExpire(t *testing.T) {
 				call: hashCall,
 			},
 			want: want{
-				gckey: true,
+				gckey: false,
 			},
 		},
 		{
@@ -103,7 +103,7 @@ func Test_runExpire(t *testing.T) {
 				call: stringCall,
 			},
 			want: want{
-				gckey: true,
+				gckey: false,
 			},
 		},
 	}
@@ -172,7 +172,7 @@ func Test_doExpire(t *testing.T) {
 				id:   []byte("nil"),
 			},
 			want: want{
-				gckey: true,
+				gckey: false,
 			},
 		},
 		{

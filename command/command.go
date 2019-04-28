@@ -21,7 +21,6 @@ type Context struct {
 	In      io.Reader
 	Out     io.Writer
 	TraceID string
-	stashErr error
 	*context.Context
 }
 
@@ -160,21 +159,7 @@ func Call(ctx *Context) {
 
 	feedMonitors(ctx)
 	start := time.Now()
-	//wangzongsheng add below
-	if ctx.Name == "flushdb" || ctx.Name == "flushall" {
-		for {
-			cmdInfoCommand.Proc(ctx)
-			if ctx.stashErr != nil && ctx.stashErr.Error() == db.ERR_MAX_FLUSH_COUNT {
-				ctx.stashErr = nil
-				continue
-			} else {
-				break
-			}
-		}
-	} else {
-		cmdInfoCommand.Proc(ctx)
-	}
-	//////
+	cmdInfoCommand.Proc(ctx)
 	cost := time.Since(start)
 
 	cmdInfoCommand.Stat.Calls++
@@ -225,14 +210,6 @@ func AutoCommit(cmd TxnCommand) Command {
 			cost = time.Since(start).Seconds()
 			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
-			if err != nil && err.Error() == db.ERR_MAX_FLUSH_COUNT{
-				//flushdb/flushall will commit fail if deleted keys > 50000, so these function will just delete 50000 keys
-				// and return a error to notify Call() to continue handle
-				//but the autoCommit() function shouldn't return error, else the command handling function without return value(Auth/Echo/Ping... ) will compile fail
-				//so just set a ctx.stashErr when flushDb once, and clear it when finish
-				ctx.stashErr = err
-				err = nil
-			}
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
@@ -334,7 +311,7 @@ func (e *Executor) Execute(ctx *Context) {
 
 // Desc describes a command with constraints
 type Desc struct {
-	Proc  Command
-	Stat  Statistic
-	Cons  Constraint
+	Proc Command
+	Stat Statistic
+	Cons Constraint
 }

@@ -3,14 +3,8 @@ package db
 import (
 	"bytes"
 	"math/rand"
-	"errors"
 
 	"github.com/meitu/titan/db/store"
-)
-
-const (
- 	MAX_FLUSH_COUNT uint32 		= 50000 
-	ERR_MAX_FLUSH_COUNT string 	= "err_max_flush_count" 
 )
 
 // Kv supplies key releated operations
@@ -167,17 +161,12 @@ func (kv *Kv) FlushDB() error {
 		return err
 	}
 
-	var count uint32 = 0
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
 		}
 		if err := iter.Next(); err != nil {
 			return err
-		}
-		count++
-		if count >= MAX_FLUSH_COUNT {
-			return errors.New(ERR_MAX_FLUSH_COUNT)
 		}
 	}
 
@@ -194,17 +183,12 @@ func (kv *Kv) FlushAll() error {
 		return err
 	}
 	
-	var count uint32 = 0
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
 		}
 		if err := iter.Next(); err != nil {
 			return err
-		}
-		count++
-		if count >= MAX_FLUSH_COUNT {
-			return errors.New(ERR_MAX_FLUSH_COUNT)
 		}
 	}
 

@@ -130,7 +130,7 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 	}
 
 	if at > 0 {
-		if err := expireAt(kv.txn.t, mkey, obj.ID, obj.ExpireAt, at); err != nil {
+		if err := expireAt(kv.txn.t, mkey, obj.ID, obj.Type, obj.ExpireAt, at); err != nil {
 			return err
 		}
 	}

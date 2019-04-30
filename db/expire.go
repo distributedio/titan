@@ -38,7 +38,7 @@ func expireKey(key []byte, ts int64) []byte {
 	return buf
 }
 
-func expireAt(txn store.Transaction, mkey []byte, objID []byte, oldAt int64, newAt int64) error {
+func expireAt(txn store.Transaction, mkey []byte, objID []byte, objType ObjectType, oldAt int64, newAt int64) error {
 	oldKey := expireKey(mkey, oldAt)
 	newKey := expireKey(mkey, newAt)
 
@@ -49,7 +49,10 @@ func expireAt(txn store.Transaction, mkey []byte, objID []byte, oldAt int64, new
 	}
 
 	if newAt > 0 {
-		if err := txn.Set(newKey, objID); err != nil {
+		idAndType := make([]byte, len(objID), len(objID)+1)
+		copy(idAndType, objID)
+		idAndType = append(idAndType, byte(objType))
+		if err := txn.Set(newKey, idAndType); err != nil {
 			return err
 		}
 	}
@@ -125,6 +128,16 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
+func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
+	var b []byte
+	b = append(b, namespace...)
+	b = append(b, ':')
+	b = append(b, id.Bytes()...)
+	b = append(b, ':', 'S', ':')
+	b = append(b, key...)
+	return b
+}
+
 func runExpire(db *DB, batchLimit int) {
 	txn, err := db.Begin()
 	if err != nil {
@@ -155,6 +168,7 @@ func runExpire(db *DB, batchLimit int) {
 			txn.Rollback()
 			return
 		}
+
 		// Remove from expire list
 		if err := txn.t.Delete(rawKey); err != nil {
 			zap.L().Error("[Expire] delete failed",
@@ -217,7 +231,11 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 
 	if obj.Type != ObjectString {
 		dkey := toTikvDataKey(namespace, dbid, id)
-		if err := gc(txn.t, dkey); err != nil {
+		deleted := [][]byte{dkey}
+		if obj.Type == ObjectZSet {
+			deleted = append(deleted, toTikvScorePrefix(namespace, dbid, id))
+		}
+		if err := gc(txn.t, deleted...); err != nil {
 			zap.L().Error("[Expire] gc failed",
 				zap.ByteString("key", key),
 				zap.ByteString("namepace", namespace),

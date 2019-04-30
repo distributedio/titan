@@ -55,6 +55,9 @@ var (
 
 	// sysDatabaseID default db id
 	sysDatabaseID = 0
+
+	NilValue = []byte{0}
+
 )
 
 // Iterator store.Iterator
@@ -223,6 +226,11 @@ func (txn *Transaction) Hash(key []byte) (*Hash, error) {
 // Set returns a set object
 func (txn *Transaction) Set(key []byte) (*Set, error) {
 	return GetSet(txn, key)
+}
+
+// ZSet returns a zset object
+func (txn *Transaction) ZSet(key []byte) (*ZSet, error) {
+	return GetZSet(txn, key)
 }
 
 // LockKeys tries to lock the entries with the keys in KV store.

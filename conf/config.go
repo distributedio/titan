@@ -24,9 +24,10 @@ type Hash struct {
 
 // Server config is the config of titan server
 type Server struct {
-	Auth          string `cfg:"auth;;;client connetion auth"`
-	Listen        string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
-	MaxConnection int64  `cfg:"max-connection;1000;numeric;client connection count"`
+	Auth             string `cfg:"auth;;;client connetion auth"`
+	Listen           string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
+	MaxConnection    int64  `cfg:"max-connection;1000;numeric;client connection count"`
+	ListZipThreshold int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
 }
 
 // Tikv config is the config of tikv sdk

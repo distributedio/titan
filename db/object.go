@@ -68,7 +68,7 @@ func (t ObjectType) String() string {
 		return "list"
 	case ObjectSet:
 		return "set"
-	case ObjectZset:
+	case ObjectZSet:
 		return "zset"
 	case ObjectHash:
 		return "hash"
@@ -81,7 +81,7 @@ const (
 	ObjectString = ObjectType(iota)
 	ObjectList
 	ObjectSet
-	ObjectZset
+	ObjectZSet
 	ObjectHash
 )
 
@@ -130,8 +130,12 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	if err := txn.t.Delete(mkey); err != nil {
 		return err
 	}
+	deleted := [][]byte{dkey}
 	if obj.Type != ObjectString {
-		if err := gc(txn.t, dkey); err != nil {
+		if obj.Type == ObjectZSet {
+			deleted = append(deleted, ZSetScorePrefix(txn.db, obj.ID))
+		}
+		if err := gc(txn.t, deleted...); err != nil {
 			return err
 		}
 	}

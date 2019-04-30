@@ -15,6 +15,7 @@ type AutoClient struct {
 	es *cmd.ExampleString
 	el *cmd.ExampleList
 	ek *cmd.ExampleKey
+	ez *cmd.ExampleZSet
 	*cmd.ExampleSystem
 	em *cmd.ExampleMulti
 	// addr string
@@ -42,6 +43,7 @@ func (ac *AutoClient) Start(addr string) {
 	ac.es = cmd.NewExampleString(conn)
 	ac.ek = cmd.NewExampleKey(conn)
 	ac.el = cmd.NewExampleList(conn)
+	ac.ez = cmd.NewExampleZSet(conn)
 	ac.ExampleSystem = cmd.NewExampleSystem(conn)
 	ac.em = cmd.NewExampleMulti(conn)
 }
@@ -103,6 +105,53 @@ func (ac *AutoClient) ListCase(t *testing.T) {
 	ac.el.LpopEqual(t, "zkey-list")
 }
 
+//ZSetCase check zset case
+func (ac *AutoClient) ZSetCase(t *testing.T) {
+    ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1", "-1.5", "member2", "3.6", "member3", "-3.5", "member4", "2.5", "member1")
+	ac.ez.ZCardEqual(t, "key-zset")
+	ac.ez.ZCardEqual(t, "key-zset1")
+	ac.ez.ZScoreEqual(t, "key-zset1", "member1")
+	ac.ez.ZScoreEqual(t, "key-zset", "member1")
+	ac.ez.ZScoreEqual(t, "key-zset", "member5")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, false)
+    ac.ez.ZRangeEqual(t, "key-zset", 1, 4, true)
+    ac.ez.ZRangeEqual(t, "key-zset", -4, 5, true)
+    ac.ez.ZRangeEqual(t, "key-zset", -6, 5, true)
+    ac.ez.ZRangeEqual(t, "key-zset", 4, 1, true)
+    ac.ez.ZRangeEqual(t, "key-zset", 6, 10, true)
+	ac.ez.ZRevRangeEqual(t, "key-zset", 0, -1, true)
+	ac.ez.ZRevRangeEqual(t, "key-zset", 0, -1, false)
+	ac.ez.ZRevRangeEqual(t, "key-zset", 1, 4, true)
+	ac.ez.ZRevRangeEqual(t, "key-zset", -4, 5, true)
+	ac.ez.ZRevRangeEqual(t, "key-zset", -6, 5, true)
+	ac.ez.ZRevRangeEqual(t, "key-zset", 4, 1, true)
+	ac.ez.ZRevRangeEqual(t, "key-zset", 6, 10, true)
+
+    ac.ez.ZAddEqual(t, "key-zset", "0.0", "member5", "1.5", "member2")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+    ac.ez.ZAddEqual(t, "key-zset", "3.6", "member3", "0.0", "member5")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+    ac.ez.ZAddEqual(t, "key-zset", "2.0", "member11", "2.05", "member6")
+    ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+	ac.ez.ZRemEqual(t, "key-zset", "member2", "member1", "member3", "member4", "member1")
+	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+
+	ac.ek.ExpireEqual(t, "key-zset", 5, 1)
+	ac.ez.ZRemEqual(t, "key-zset", "member5", "member11", "member6", "member7")
+	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
+	ac.ek.ExistsEqual(t, 0, "key-zset")
+	ac.ek.TTLEqual(t, "key-set", -2)
+	//check expire won't delete old key(obj id is different with new one)
+	ac.ez.ZAddEqual(t, "key-zset", "1.0", "m1")
+	time.Sleep(time.Second *10)
+	ac.ek.ExistsEqual(t, 1, "key-zset")
+	ac.ek.DelEqual(t, 1, "key-zset")
+}
+
 //KeyCase check key case
 //TODO
 func (ac *AutoClient) KeyCase(t *testing.T) {
@@ -119,6 +168,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.TypeEqual(t, "key-set", "string")
 	ac.ek.ObjectEqual(t, "key-set", "raw")
 	ac.ek.ExpireEqual(t, "key-set", 2, 1)
+	time.Sleep(time.Millisecond)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.ExpireEqual(t, "key-set", 1, 0)
@@ -128,6 +178,7 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.el.LpushEqual(t, "key-set", "value")
 	ac.ek.TypeEqual(t, "key-set", "list")
 	ac.ek.PExpireEqual(t, "key-set", 2000, 1)
+	time.Sleep(time.Millisecond)
 	ac.ek.TTLEqual(t, "key-set", 1)
 	time.Sleep(time.Second * 2)
 	ac.ek.PExpireEqual(t, "key-set", 1, 0)
@@ -161,6 +212,22 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ek.ExpireAtEqual(t, "zkey-listx", int(at), 1)
 	ac.ek.PersistEqual(t, "zkey-listx", 1)
 	ac.ek.PersistEqual(t, "zkey-listx", 0)
+
+	//test zset
+	ac.ez.ZAddEqual(t, "key-zset", "2.0", "member1")
+	ac.ek.ExistsEqual(t, 1, "key-zset")
+	ac.ek.TypeEqual(t, "key-zset", "zset")
+	ac.ek.ObjectEqual(t, "key-zset", "hashtable")
+	ac.ek.TTLEqual(t, "key-zset", -1)
+	ac.ek.ExpireEqual(t, "key-zset", 2, 1)
+	time.Sleep(time.Millisecond)
+	ac.ek.TTLEqual(t, "key-zset", 1)
+	time.Sleep(time.Second * 2)
+	ac.ek.ExpireEqual(t, "key-zset", 1, 0)
+
+	ac.ez.ZAddEqual(t, "key-zset1", "2.0", "member1")
+	ac.ek.DelEqual(t, 1, "key-zset1")
+	ac.ek.ExistsEqual(t, 0, "key-zset1")
 }
 
 //SystemCase check system case

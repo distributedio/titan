@@ -55,7 +55,6 @@ func (t *Base) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-//Verify token auth
 func Verify(token, key []byte) ([]byte, error) {
 	encodedSignLen := hex.EncodedLen(tokenSignLen)
 	if len(token) < encodedSignLen || len(key) == 0 {

@@ -69,8 +69,9 @@ func main() {
 	svr := metrics.NewServer(&config.Status)
 
 	serv := titan.New(&context.ServerContext{
-		RequirePass: config.Server.Auth,
-		Store:       store,
+		RequirePass:      config.Server.Auth,
+		Store:            store,
+		ListZipThreshold: config.Server.ListZipThreshold,
 	})
 
 	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)

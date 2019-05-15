@@ -10,6 +10,7 @@ import (
 	"github.com/distributedio/titan/db/store"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
+	sdk_kv "github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/store/tikv/tikvrpc"
 	"go.uber.org/zap"
@@ -129,7 +130,7 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 	}
 
 	if at > 0 {
-		if err := expireAt(kv.txn.t, mkey, obj.ID, obj.ExpireAt, at); err != nil {
+		if err := expireAt(kv.txn.t, mkey, obj.ID, obj.Type, obj.ExpireAt, at); err != nil {
 			return err
 		}
 	}
@@ -170,19 +171,17 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 // FlushDB clear current db.
 func (kv *Kv) FlushDB(ctx context.Context) error {
 	prefix := kv.txn.db.Prefix()
-	nextID := kv.txn.db.ID + 1
-	endKey := dbPrefix(kv.txn.db.Namespace, nextID.Bytes())
-
-	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+	endPrefix := sdk_kv.Key(prefix).PrefixNext()
+	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endPrefix); err != nil {
 		zap.L().Error("flushdb data unsafe clear err",
 			zap.ByteString("start", prefix),
-			zap.ByteString("end", endKey),
+			zap.ByteString("end", endPrefix),
 			zap.Error(err))
 
 		return ErrStorageRetry
 	}
 
-	if err := clearSysRangeData(ctx, kv.txn.db, prefix, endKey); err != nil {
+	if err := clearSysRangeData(ctx, kv.txn.db, prefix, endPrefix); err != nil {
 		return ErrStorageRetry
 	}
 
@@ -191,24 +190,16 @@ func (kv *Kv) FlushDB(ctx context.Context) error {
 
 // FlushAll clean up all databases.
 func (kv *Kv) FlushAll(ctx context.Context) error {
-	prefix := kv.txn.db.Prefix()
-	maxID := EncodeInt64(256)
-	endKey := dbPrefix(kv.txn.db.Namespace, maxID)
-	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endKey); err != nil {
+	prefix := dbPrefix(kv.txn.db.Namespace, nil)
+	endPrefix := sdk_kv.Key(prefix).PrefixNext()
+	if err := unsafeDeleteRange(ctx, kv.txn.db, prefix, endPrefix); err != nil {
 		zap.L().Error("flushall data unsafe clear err",
 			zap.ByteString("start", prefix),
-			zap.ByteString("end", endKey),
+			zap.ByteString("end", endPrefix),
 			zap.Error(err))
 		return ErrStorageRetry
 	}
-	sysStart := sysPrefix(sysNamespace, byte(sysDatabaseID))
-	sysEnd := sysPrefix(sysNamespace, byte(sysDatabaseID+1))
-	if err := unsafeDeleteRange(ctx, kv.txn.db, sysStart, sysEnd); err != nil {
-		zap.L().Error("flushall sys data unsafe clear err",
-			zap.ByteString("start", sysStart),
-			zap.ByteString("end", sysEnd),
-			zap.Error(err))
-
+	if err := clearSysRangeData(ctx, kv.txn.db, prefix, endPrefix); err != nil {
 		return ErrStorageRetry
 	}
 

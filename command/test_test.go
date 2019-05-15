@@ -22,8 +22,9 @@ func ContextTest(name string, args ...string) *Context {
 		DB: mockdb.DB("defalut", 1),
 	}
 	servCtx := &context.ServerContext{
-		RequirePass: "",
-		Store:       mockdb,
+		RequirePass:      "",
+		ListZipThreshold: 100,
+		Store:            mockdb,
 	}
 	rootCtx, _ := context.WithCancel(context.New(cliCtx, servCtx))
 	return &Context{

@@ -26,12 +26,17 @@ func toTikvGCKey(key []byte) []byte {
 
 // {sys.ns}:{sys.id}:{GC}:{prefix}
 // prefix: {user.ns}:{user.id}:{M/D}:{user.objectID}
-func gc(txn store.Transaction, prefix []byte) error {
-	if logEnv := zap.L().Check(zap.DebugLevel, "[GC] add to gc"); logEnv != nil {
-		logEnv.Write(zap.ByteString("prefix", prefix))
+func gc(txn store.Transaction, prefixes ...[]byte) error {
+	for _, prefix := range prefixes {
+		if logEnv := zap.L().Check(zap.DebugLevel, "[GC] add to gc"); logEnv != nil {
+			logEnv.Write(zap.ByteString("prefix", prefix))
+		}
+		metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("gc_add").Inc()
+		if err := txn.Set(toTikvGCKey(prefix), []byte{0}); err != nil {
+			return err
+		}
 	}
-	metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("gc_add").Inc()
-	return txn.Set(toTikvGCKey(prefix), []byte{0})
+	return nil
 }
 
 func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error) {

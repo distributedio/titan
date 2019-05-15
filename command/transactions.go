@@ -63,7 +63,9 @@ func Exec(ctx *Context) {
 			}
 			name := strings.ToLower(cmd.Name)
 			if _, ok := txnCommands[name]; ok {
+				start := time.Now()
 				onCommit, err = TxnCall(subCtx, txn)
+				zap.L().Debug("execute", zap.String("command", subCtx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 				if err != nil {
 					resp.ReplyError(out, err.Error())
 				}
@@ -79,7 +81,9 @@ func Exec(ctx *Context) {
 			cost := time.Since(start).Seconds()
 			mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 		}()
+		start = time.Now()
 		err = txn.Commit(ctx)
+		zap.L().Debug("commit", zap.String("command", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 		if err != nil {
 			mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 			if db.IsRetryableError(err) && !watching {

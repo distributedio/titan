@@ -58,6 +58,8 @@ var (
 
 	// sysDatabaseID default db id
 	sysDatabaseID = 0
+
+	NilValue = []byte{0}
 )
 
 // Iterator store.Iterator
@@ -228,6 +230,11 @@ func (txn *Transaction) Set(key []byte) (*Set, error) {
 	return GetSet(txn, key)
 }
 
+// ZSet returns a zset object
+func (txn *Transaction) ZSet(key []byte) (*ZSet, error) {
+	return GetZSet(txn, key)
+}
+
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
@@ -269,19 +276,13 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 }
 
 func dbPrefix(ns string, id []byte) []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(ns)...)
+	prefix := []byte(ns)
 	prefix = append(prefix, ':')
-	prefix = append(prefix, id...)
-	prefix = append(prefix, ':')
+	if id != nil {
+		prefix = append(prefix, id...)
+		prefix = append(prefix, ':')
+	}
 	return prefix
-}
-
-func sysPrefix(ns string, id byte) []byte {
-	b := []byte{}
-	b = append(b, sysNamespace...)
-	b = append(b, ':', id, ':')
-	return b
 }
 
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {

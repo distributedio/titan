@@ -51,6 +51,7 @@ func Exec(ctx *Context) {
 		}
 		outputs = make([]*bytes.Buffer, size)
 		onCommits = make([]OnCommit, size)
+		commandCount := 0
 		for i, cmd := range commands {
 			var onCommit OnCommit
 			out := bytes.NewBuffer(nil)
@@ -74,9 +75,11 @@ func Exec(ctx *Context) {
 			}
 			onCommits[i] = onCommit
 			outputs[i] = out
+			commandCount++
 		}
 		start := time.Now()
 		mt := metrics.GetMetrics()
+		mt.MultiCommandHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(commandCount))
 		defer func() {
 			cost := time.Since(start).Seconds()
 			mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
@@ -87,7 +90,13 @@ func Exec(ctx *Context) {
 		if err != nil {
 			mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 			if db.IsRetryableError(err) && !watching {
+				mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+				zap.L().Error("txn commit retry",
+					zap.Int64("clientid", ctx.Client.ID),
+					zap.String("command", ctx.Name),
+					zap.String("traceid", ctx.TraceID),
+					zap.Error(err))
 				return retry.Retriable(err)
 			}
 			zap.L().Error("commit failed",

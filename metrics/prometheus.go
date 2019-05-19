@@ -66,6 +66,7 @@ type Metrics struct {
 	TxnRetriesCounterVec        *prometheus.CounterVec
 	TxnConflictsCounterVec      *prometheus.CounterVec
 	TxnFailuresCounterVec       *prometheus.CounterVec
+	MultiCommandHistogramVec    *prometheus.HistogramVec
 
 	//logger
 	LogMetricsCounterVec *prometheus.CounterVec
@@ -153,6 +154,15 @@ func init() {
 		}, multiLabel)
 	prometheus.MustRegister(gm.TxnFailuresCounterVec)
 
+	gm.MultiCommandHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "multi_command_total",
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 20),
+			Help:      "The number of command per txn",
+		}, multiLabel)
+	prometheus.MustRegister(gm.MultiCommandHistogramVec)
+
 	gm.ConnectionOnlineGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -219,7 +229,12 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
+	RegisterSDKMetrics()
+}
+
+func RegisterSDKMetrics() {
 	sdk_metrics.RegisterMetrics()
+	prometheus.MustRegister(sdk_metrics.TiKVTxnCmdCounter)
 }
 
 // GetMetrics return metrics object

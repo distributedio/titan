@@ -262,19 +262,6 @@ func DataKey(db *DB, key []byte) []byte {
 	return dkey
 }
 
-// MetaSlotKey builds a meta slot key from a slot id
-func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
-	var skey []byte
-	skey = append(skey, []byte(db.Namespace)...)
-	skey = append(skey, ':')
-	skey = append(skey, db.ID.Bytes()...)
-	skey = append(skey, ':', 'M', 'S', ':')
-	skey = append(skey, objID...)
-	skey = append(skey, ':')
-	skey = append(skey, slotID...)
-	return skey
-}
-
 func dbPrefix(ns string, id []byte) []byte {
 	prefix := []byte(ns)
 	prefix = append(prefix, ':')

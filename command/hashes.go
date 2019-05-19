@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/meitu/titan/db"
-	"github.com/meitu/titan/encoding/resp"
+	"github.com/distributedio/titan/db"
+	"github.com/distributedio/titan/encoding/resp"
 )
 
 // HDel removes the specified fields from the hash stored at key

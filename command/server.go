@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
-	"github.com/meitu/titan/encoding/resp"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
+	"github.com/distributedio/titan/encoding/resp"
 )
 
 const sysAdminNamespace = "$sys.admin"
@@ -222,7 +222,7 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[1])
 	obj, err := txn.Object(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("ERR " + err.Error())
 	}
 	if obj.Type == db.ObjectHash {
 		hash, err := txn.Hash(key)
@@ -336,19 +336,23 @@ func RedisCommand(ctx *Context) {
 }
 
 // FlushDB clears current db
+// This function is **VERY DANGEROUS**. It's not only running on one single region, but it can
+// delete a large range that spans over many regions, bypassing the Raft layer.
 func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	if err := kv.FlushDB(); err != nil {
-		return nil, err
+	if err := kv.FlushDB(ctx); err != nil {
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }
 
 // FlushAll cleans up all databases
+// This function is **VERY DANGEROUS**. It's not only running on one single region, but it can
+// delete a large range that spans over many regions, bypassing the Raft layer.
 func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
-	if err := kv.FlushAll(); err != nil {
-		return nil, err
+	if err := kv.FlushAll(ctx); err != nil {
+		return nil, errors.New("ERR " + err.Error())
 	}
 	return SimpleString(ctx.Out, "OK"), nil
 }

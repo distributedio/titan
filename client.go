@@ -5,11 +5,12 @@ import (
 	"io/ioutil"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/meitu/titan/command"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/encoding/resp"
+	"github.com/distributedio/titan/command"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/encoding/resp"
 	"go.uber.org/zap"
 )
 
@@ -19,6 +20,9 @@ type client struct {
 	conn   net.Conn
 	exec   *command.Executor
 	r      *bufio.Reader
+
+	eofLock sync.Mutex //the lock of reading_writing 'eof'
+	eof     bool       //is over when read data from socket
 }
 
 func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
@@ -26,11 +30,27 @@ func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor)
 		cliCtx: cliCtx,
 		server: s,
 		exec:   exec,
+		eof:    false,
 	}
+}
+
+func (c *client) readEof() {
+	c.eofLock.Lock()
+	defer c.eofLock.Unlock()
+
+	c.eof = true
+}
+
+func (c *client) isEof() bool {
+	c.eofLock.Lock()
+	defer c.eofLock.Unlock()
+
+	return c.eof
 }
 
 // Write to conn and log error if needed
 func (c *client) Write(p []byte) (int, error) {
+	zap.L().Debug("write to client", zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
 		zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
@@ -38,7 +58,8 @@ func (c *client) Write(p []byte) (int, error) {
 			zap.String("namespace", c.cliCtx.Namespace),
 			zap.Bool("multi", c.cliCtx.Multi),
 			zap.Bool("watching", c.cliCtx.Txn != nil),
-			zap.String("command", c.cliCtx.LastCmd))
+			zap.String("command", c.cliCtx.LastCmd),
+			zap.String("error", err.Error()))
 		c.conn.Close()
 	}
 	return n, err
@@ -49,7 +70,7 @@ func (c *client) serve(conn net.Conn) error {
 	c.r = bufio.NewReader(conn)
 
 	var cmd []string
-	var err error
+	//var err error
 	for {
 		select {
 		case <-c.cliCtx.Done:
@@ -79,7 +100,9 @@ func (c *client) serve(conn net.Conn) error {
 			Out:     c,
 			TraceID: GenerateTraceID(),
 		}
+    
 		ctx.Context = context.New(c.cliCtx, c.server.servCtx)
+		zap.L().Debug("recv msg", zap.String("command", ctx.Name), zap.Strings("arguments", ctx.Args))
 
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
@@ -94,6 +117,7 @@ func (c *client) serve(conn net.Conn) error {
 				zap.String("traceid", ctx.TraceID),
 				zap.String("command", ctx.Name))
 		}
+
 		c.exec.Execute(ctx)
 	}
 }

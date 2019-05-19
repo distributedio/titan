@@ -3,9 +3,10 @@ package command
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/meitu/titan/db"
+	"github.com/distributedio/titan/db"
 )
 
 var (
@@ -247,11 +248,11 @@ func GetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	start, err := strconv.Atoi(string(ctx.Args[1]))
+	start, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
 		return nil, ErrInteger
 	}
-	end, err := strconv.Atoi(string(ctx.Args[2]))
+	end, err := strconv.Atoi(ctx.Args[2])
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -303,7 +304,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	s := db.NewString(txn, key)
-	ui, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
+	ui, err := strconv.ParseInt(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -315,7 +316,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, OK), nil
 }
 
-// PSetEx set the value and expiration in milliseconds of a key
+// PSetEx sets the value and expiration in milliseconds of a key
 func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	//get the key
 	key := []byte(ctx.Args[0])
@@ -329,7 +330,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	s := db.NewString(txn, key)
-	ui, err := strconv.ParseUint(string(ctx.Args[1]), 10, 64)
+	ui, err := strconv.ParseUint(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -341,9 +342,9 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return SimpleString(ctx.Out, OK), nil
 }
 
-//SetRange Overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
+//SetRange overwrites part of the string stored at key, starting at the specified offset, for the entire length of value.
 func SetRange(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	offset, err := strconv.Atoi(string(ctx.Args[1]))
+	offset, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -397,7 +398,7 @@ func IncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	delta, err := strconv.ParseInt(string(ctx.Args[1]), 10, 0)
+	delta, err := strconv.ParseInt(ctx.Args[1], 10, 0)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -419,7 +420,7 @@ func IncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	delta, err := strconv.ParseFloat(string(ctx.Args[1]), 64)
+	delta, err := strconv.ParseFloat(ctx.Args[1], 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -458,7 +459,7 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		}
 		return nil, errors.New("ERR " + err.Error())
 	}
-	delta, err := strconv.ParseInt(string(ctx.Args[1]), 10, 64)
+	delta, err := strconv.ParseInt(ctx.Args[1], 10, 64)
 	if err != nil {
 		return nil, ErrInteger
 	}
@@ -470,10 +471,10 @@ func DecrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, int64(delta)), nil
 }
 
-// SetBit Sets or clears the bit at offset in the string value stored at key.
+// SetBit sets or clears the bit at offset in the string value stored at key.
 func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	offset, err := strconv.Atoi(string(ctx.Args[1]))
+	offset, err := strconv.Atoi(ctx.Args[1])
 	if err != nil {
 		return nil, ErrBitOffset
 	}
@@ -481,7 +482,7 @@ func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, ErrBitOffset
 	}
 
-	on, err := strconv.Atoi(string(ctx.Args[2]))
+	on, err := strconv.Atoi(ctx.Args[2])
 	if err != nil {
 		return nil, ErrBitInteger
 	}
@@ -508,10 +509,10 @@ func SetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return Integer(ctx.Out, 0), nil
 }
 
-// GetBit get the bit at offset in the string value stored at key.
+// GetBit gets the bit at offset in the string value stored at key.
 func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	offset, err := strconv.Atoi(string(ctx.Args[1]))
+	offset, err := strconv.Atoi(ctx.Args[1])
 	if err != nil || offset < 0 {
 		return nil, ErrBitOffset
 	}
@@ -524,6 +525,10 @@ func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
+	if !str.Exist() {
+		return Integer(ctx.Out, 0), nil
+	}
+
 	val, err := str.GetBit(offset)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
@@ -533,4 +538,124 @@ func GetBit(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return Integer(ctx.Out, 1), nil
 	}
 	return Integer(ctx.Out, 0), nil
+}
+
+// BitCount counts the number of set bits (population counting) in a string.
+func BitCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if !str.Exist() {
+		return Integer(ctx.Out, 0), nil
+	}
+
+	var begin, end int
+	switch len(ctx.Args) {
+	case 3:
+		begin, err = strconv.Atoi(ctx.Args[1])
+		if err != nil {
+			return nil, ErrInteger
+		}
+		end, err = strconv.Atoi(ctx.Args[2])
+		if err != nil {
+			return nil, ErrInteger
+		}
+	case 1:
+		begin = 0
+		end = len(str.Meta.Value) - 1
+	default:
+		return nil, ErrSyntax
+	}
+
+	val, err := str.BitCount(begin, end)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(val)), nil
+}
+
+// BitPos finds first bit set or clear in a string
+func BitPos(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	bit, err := strconv.Atoi(string(ctx.Args[1]))
+	if err != nil {
+		return nil, ErrInteger
+	}
+
+	if (bit != 0) && (bit != 1) {
+		return nil, ErrBitInvaild
+	}
+
+	key := []byte(ctx.Args[0])
+	str, err := txn.String(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if !str.Exist() {
+		if bit == 1 {
+			return Integer(ctx.Out, -1), nil
+		}
+		return Integer(ctx.Out, 0), nil
+	}
+
+	var begin, end int
+	switch len(ctx.Args) {
+	case 4:
+		begin, err = strconv.Atoi(ctx.Args[2])
+		if err != nil {
+			return nil, ErrInteger
+		}
+		end, err = strconv.Atoi(ctx.Args[3])
+		if err != nil {
+			return nil, ErrInteger
+		}
+	case 3:
+		begin, err = strconv.Atoi(ctx.Args[2])
+		if err != nil {
+			return nil, ErrInteger
+		}
+		end = len(str.Meta.Value) - 1
+	case 2:
+		begin = 0
+		end = len(str.Meta.Value) - 1
+	default:
+		return nil, ErrSyntax
+	}
+
+	val, err := str.BitPos(bit, begin, end)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return Integer(ctx.Out, int64(val)), nil
+}
+
+// BitOp performs bitwise operations between strings
+func BitOp(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	//TODO
+	if strings.EqualFold(ctx.Args[0], "and") {
+	} else if strings.EqualFold(ctx.Args[0], "or") {
+	} else if strings.EqualFold(ctx.Args[0], "xor") {
+	} else if strings.EqualFold(ctx.Args[0], "not") {
+		if len(ctx.Args) != 3 {
+			return nil, ErrBitOp
+		}
+	} else {
+		return nil, ErrSyntax
+	}
+	return Integer(ctx.Out, int64(0)), nil
+}
+
+// BitField performs arbitrary bitfield integer operations on strings
+func BitField(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	//TODO
+	return Integer(ctx.Out, int64(0)), nil
 }

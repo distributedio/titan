@@ -5,13 +5,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/meitu/titan/db"
+	"github.com/distributedio/titan/db"
 )
 
-var (
-	// ListZipThreshold indicates to create a ziplist when it is exceeded to push elements
-	ListZipThreshold = 100
-)
+//wangzongsheng note this, we use config item
+// var (
+// 	// ListZipThreshold indicates to create a ziplist when it is exceeded to push elements
+// 	ListZipThreshold = 100
+// )
 
 // LPush inserts an entry to the head of the list
 func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
@@ -19,7 +20,7 @@ func LPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	// Create a ziplist if lpush with too much items
 	var opts []db.ListOption
-	if len(args[1:]) > ListZipThreshold {
+	if len(args[1:]) > ctx.Server.ListZipThreshold { //ListZipThreshold
 		opts = append(opts, db.UseZip())
 	}
 
@@ -351,7 +352,7 @@ func RPush(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	// Create a ziplist if lpush with too much items
 	var opts []db.ListOption
-	if len(args[1:]) > ListZipThreshold {
+	if len(args[1:]) > ctx.Server.ListZipThreshold { //ListZipThreshold
 		opts = append(opts, db.UseZip())
 	}
 

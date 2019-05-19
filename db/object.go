@@ -68,7 +68,7 @@ func (t ObjectType) String() string {
 		return "list"
 	case ObjectSet:
 		return "set"
-	case ObjectZset:
+	case ObjectZSet:
 		return "zset"
 	case ObjectHash:
 		return "hash"
@@ -81,7 +81,7 @@ const (
 	ObjectString = ObjectType(iota)
 	ObjectList
 	ObjectSet
-	ObjectZset
+	ObjectZSet
 	ObjectHash
 )
 
@@ -110,19 +110,10 @@ func (obj *Object) String() string {
 		UUIDString(obj.ID), obj.Type, obj.Encoding, obj.CreatedAt, obj.UpdatedAt, obj.ExpireAt)
 }
 
-// Object new object thougth key
+// Object returns the object associated with the key
 func (txn *Transaction) Object(key []byte) (*Object, error) {
-	obj := &Object{}
 	mkey := MetaKey(txn.db, key)
-
-	meta, err := txn.t.Get(mkey)
-	if err != nil {
-		if IsErrNotFound(err) {
-			return nil, ErrKeyNotFound
-		}
-		return nil, err
-	}
-	obj, err = DecodeObject(meta)
+	obj, err := getObject(txn, mkey)
 	if err != nil {
 		return nil, err
 	}
@@ -139,8 +130,12 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	if err := txn.t.Delete(mkey); err != nil {
 		return err
 	}
+	deleted := [][]byte{dkey}
 	if obj.Type != ObjectString {
-		if err := gc(txn.t, dkey); err != nil {
+		if obj.Type == ObjectZSet {
+			deleted = append(deleted, ZSetScorePrefix(txn.db, obj.ID))
+		}
+		if err := gc(txn.t, deleted...); err != nil {
 			return err
 		}
 	}
@@ -152,4 +147,20 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	}
 
 	return nil
+}
+
+func getObject(txn *Transaction, metaKey []byte) (*Object, error) {
+	obj := &Object{}
+	meta, err := txn.t.Get(metaKey)
+	if err != nil {
+		if IsErrNotFound(err) {
+			return nil, ErrKeyNotFound
+		}
+		return nil, err
+	}
+	obj, err = DecodeObject(meta)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

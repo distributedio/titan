@@ -12,8 +12,8 @@ Following this reference to deploy tikv: https://pingcap.com/docs/op-guide/ansib
 ### Build the binary
 
 ```
-go get github.com/meitu/titan
-cd $GOPATH/src/github.com/meitu/titan
+go get github.com/distributedio/titan
+cd $GOPATH/src/github.com/distributedio/titan
 make 
 ```
 
@@ -35,7 +35,7 @@ auth = "YOUR_SERVER_KEY"
 Then use ./tools/token/token to generate a client token.
 
 ```
-cd $GOPATH/src/github.com/meitu/titan/tools/token
+cd $GOPATH/src/github.com/distributedio/titan/tools/token
 go build main.go -o titan-gen-client-token
 ./titan-gen-client-token -key YOUR_SERVER_KEY -namespace bbs
 ```
@@ -45,7 +45,7 @@ Then you'll get the token for client auth, for example: bbs-1543999615-1-7a50221
 ### Run
 
 ```
-cd $GOPATH/src/github.com/meitu/titan
+cd $GOPATH/src/github.com/distributedio/titan
 ./titan
 ```
 

@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/metrics"
+	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -63,7 +64,9 @@ func toZTKey(metakey []byte) []byte {
 
 // PutZList should be called after ZList created
 func PutZList(txn *Transaction, metakey []byte) error {
-	zap.L().Debug("[ZT] Zlist recorded in txn", zap.String("key", string(metakey)))
+	if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] Zlist recorded in txn"); logEnv != nil {
+		logEnv.Write(zap.String("key", string(metakey)))
+	}
 	return txn.t.Set(toZTKey(metakey), []byte{0})
 }
 
@@ -116,7 +119,10 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 		} else {
 			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("zlist").Add(float64(batchCount))
 			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("key").Add(float64(sum))
-			zap.L().Debug("[ZT] transfer zlist succeed", zap.Int("count", batchCount), zap.Int("n", sum))
+			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] transfer zlist succeed"); logEnv != nil {
+				logEnv.Write(zap.Int("count", batchCount),
+					zap.Int("n", sum))
+			}
 		}
 		txnstart = false
 		batchCount = 0
@@ -162,7 +168,8 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 		zap.L().Error("[ZT] error in kv begin", zap.Error(err))
 		return toZTKey(nil), nil
 	}
-	iter, err := txn.t.Iter(prefix, nil)
+	endPrefix := kv.Key(prefix).PrefixNext()
+	iter, err := txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[ZT] error in seek", zap.ByteString("prefix", prefix), zap.Error(err))
 		return toZTKey(nil), err
@@ -181,14 +188,17 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 			return iter.Key(), nil
 		}
 	}
-	zap.L().Debug("[ZT] no more ZT item, retrive iterator")
+	if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] no more ZT item, retrive iterator"); logEnv != nil {
+		logEnv.Write(zap.ByteString("prefix", prefix))
+	}
+
 	return toZTKey(nil), txn.Commit(context.Background())
 }
 
 // StartZT start ZT fill in the queue(channel), and start the worker to consume.
 func StartZT(db *DB, conf *conf.ZT) {
 	ztQueue = make(chan []byte, conf.QueueDepth)
-	for i := 0; i < conf.Wrokers; i++ {
+	for i := 0; i < conf.Workers; i++ {
 		go ztWorker(db, conf.BatchCount, conf.Interval)
 	}
 
@@ -198,6 +208,9 @@ func StartZT(db *DB, conf *conf.ZT) {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
+		if !conf.Enable {
+			continue
+		}
 		isLeader, err := isLeader(db, sysZTLeader, id, sysZTLeaderFlushInterval)
 		if err != nil {
 			zap.L().Error("[ZT] check ZT leader failed",
@@ -206,7 +219,15 @@ func StartZT(db *DB, conf *conf.ZT) {
 			continue
 		}
 		if !isLeader {
-			zap.L().Debug("[ZT] not ZT leader")
+			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] not ZT leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("leader", sysZTLeader),
+					zap.ByteString("uuid", id),
+					zap.Int("workers", conf.Workers),
+					zap.Int("batchcount", conf.BatchCount),
+					zap.Int("queue-depth", conf.QueueDepth),
+					zap.Duration("interval", conf.Interval),
+				)
+			}
 			continue
 		}
 

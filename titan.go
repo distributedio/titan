@@ -4,9 +4,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/meitu/titan/command"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/command"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/metrics"
 	"go.uber.org/zap"
 )
 
@@ -54,7 +54,6 @@ func (s *Server) Serve(lis net.Listener) error {
 			s.servCtx.Clients.Delete(cli.cliCtx.ID)
 		}(cli, conn)
 	}
-	return nil
 }
 
 // ListenAndServe serves on a specified address

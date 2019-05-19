@@ -11,9 +11,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/db/store"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/store"
+	"github.com/distributedio/titan/metrics"
 )
 
 var (
@@ -38,6 +38,12 @@ var (
 	// ErrEncodingMismatch object encoding type
 	ErrEncodingMismatch = errors.New("error object encoding type")
 
+	// ErrStorageRetry storage err and try again later
+	ErrStorageRetry = errors.New("Storage err and try again later")
+
+	//ErrSetNilValue means the value corresponding to key is a non-zero value
+	ErrSetNilValue = errors.New("The value corresponding to key is a non-zero value")
+
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
 
@@ -52,6 +58,8 @@ var (
 
 	// sysDatabaseID default db id
 	sysDatabaseID = 0
+
+	NilValue = []byte{0}
 )
 
 // Iterator store.Iterator
@@ -144,12 +152,7 @@ func (db *DB) Begin() (*Transaction, error) {
 
 // Prefix returns the prefix of a DB object
 func (db *DB) Prefix() []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(db.Namespace)...)
-	prefix = append(prefix, ':')
-	prefix = append(prefix, db.ID.Bytes()...)
-	prefix = append(prefix, ':')
-	return prefix
+	return dbPrefix(db.Namespace, db.ID.Bytes())
 }
 
 // Commit a transaction
@@ -227,6 +230,11 @@ func (txn *Transaction) Set(key []byte) (*Set, error) {
 	return GetSet(txn, key)
 }
 
+// ZSet returns a zset object
+func (txn *Transaction) ZSet(key []byte) (*ZSet, error) {
+	return GetZSet(txn, key)
+}
+
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
@@ -267,6 +275,16 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 	return skey
 }
 
+func dbPrefix(ns string, id []byte) []byte {
+	prefix := []byte(ns)
+	prefix = append(prefix, ':')
+	if id != nil {
+		prefix = append(prefix, id...)
+		prefix = append(prefix, ':')
+	}
+	return prefix
+}
+
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
 	databytes := make([]byte, 24)
 	copy(databytes, id)
@@ -290,14 +308,17 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 			return false, err
 		}
 
-		zap.L().Debug("no leader now, create new lease",
-			zap.ByteString("key", key),
-			zap.ByteString("id", id))
+		if env := zap.L().Check(zap.DebugLevel, "no leader now, create new lease"); env != nil {
+			env.Write(zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Duration("interval", interval))
+		}
 
 		if err := flushLease(txn, key, id, interval); err != nil {
 			zap.L().Error("create lease failed",
 				zap.ByteString("key", key),
 				zap.ByteString("id", id),
+				zap.Duration("interval", interval),
 				zap.Error(err))
 			return false, err
 		}
@@ -313,6 +334,7 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 			zap.L().Error("create lease failed",
 				zap.ByteString("key", key),
 				zap.ByteString("id", id),
+				zap.Int64("last_ts", ts),
 				zap.Error(err))
 			return false, err
 		}

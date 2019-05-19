@@ -26,6 +26,9 @@ func ReplyBulkString(w io.Writer, msg string) error {
 	return NewEncoder(w).BulkString(msg)
 }
 
+func ReplyStringArray(w io.Writer, msgs [][]byte) error {
+	return NewEncoder(w).BulkStrings(msgs)
+}
 // ReplyNullBulkString replies a null bulkstring
 func ReplyNullBulkString(w io.Writer) error {
 	return NewEncoder(w).NullBulkString()
@@ -116,6 +119,22 @@ func (r *Encoder) Integer(v int64) error {
 func (r *Encoder) Array(size int) error {
 	s := strconv.Itoa(size)
 	_, err := r.w.Write([]byte("*" + s + "\r\n"))
+	return err
+}
+
+func (r *Encoder) BulkStrings(strs [][]byte) error {
+	var result []byte
+	strsLength := strconv.Itoa(len(strs))
+	result = append(result, []byte("*" + strsLength + "\r\n")...)
+
+	var strLength string
+	var str string
+	for i := range strs {
+		str = string(strs[i])
+		strLength = strconv.Itoa(len(str))
+		result = append(result, []byte("$" + strLength + "\r\n" + str + "\r\n")...)
+	}
+	_, err := r.w.Write(result)
 	return err
 }
 

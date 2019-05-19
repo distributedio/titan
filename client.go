@@ -70,7 +70,7 @@ func (c *client) serve(conn net.Conn) error {
 	c.r = bufio.NewReader(conn)
 
 	var cmd []string
-	//var err error
+	var err error
 	for {
 		select {
 		case <-c.cliCtx.Done:
@@ -100,7 +100,7 @@ func (c *client) serve(conn net.Conn) error {
 			Out:     c,
 			TraceID: GenerateTraceID(),
 		}
-    
+
 		ctx.Context = context.New(c.cliCtx, c.server.servCtx)
 		zap.L().Debug("recv msg", zap.String("command", ctx.Name), zap.Strings("arguments", ctx.Args))
 

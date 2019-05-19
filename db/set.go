@@ -3,6 +3,8 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+
+	"github.com/pingcap/tidb/kv"
 )
 
 // SetNilValue is the value set to a tikv key for tikv do not support a real empty value
@@ -59,7 +61,11 @@ func (set *Set) Iter() (*SetIter, error) {
 	var siter SetIter
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-	iter, _ := set.txn.t.Iter(prefix, nil)
+	endPrefix := kv.Key(prefix).PrefixNext()
+	iter, err := set.txn.t.Iter(prefix, endPrefix)
+	if err != nil {
+		return nil, err
+	}
 	siter.Iter = iter
 	siter.Prefix = prefix
 	return &siter, nil
@@ -178,10 +184,10 @@ func (set *Set) SAdd(members ...[]byte) (int64, error) {
 // RemoveRepByMap filters duplicate elements through the map's unique primary key feature
 func RemoveRepByMap(members [][]byte) [][]byte {
 	result := [][]byte{}
-	// tempMap saves non-repeating primary keys
-	tempMap := map[string]int{}
+	// uniq saves non-repeating primary keys
+	uniq := map[string]struct{}{}
 	for _, m := range members {
-		_, ok := tempMap[string(m)]
+		_, ok := uniq[string(m)]
 		if !ok {
 			result = append(result, m)
 		}
@@ -201,9 +207,10 @@ func (set *Set) SMembers() ([][]byte, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
+	endPrefix := kv.Key(prefix).PrefixNext()
 	count := set.meta.Len
 	members := make([][]byte, 0, count)
-	iter, err := set.txn.t.Iter(prefix, nil)
+	iter, err := set.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -253,39 +260,26 @@ func (set *Set) SPop(count int64) ([][]byte, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-	iter, err := set.txn.t.Iter(prefix, nil)
+	endPrefix := kv.Key(prefix).PrefixNext()
+	iter, err := set.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return nil, err
 	}
 	defer iter.Close()
 	var deleted int64
 	var members [][]byte
-	for iter.Valid() && iter.Key().HasPrefix(prefix) {
-		if count == 0 {
-			members = append(members, iter.Key()[len(prefix):])
-			if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
-				return nil, err
-			}
-			set.meta.Len--
-			break
-		}
+	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
 		members = append(members, iter.Key()[len(prefix):])
 		if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
 			return nil, err
 		}
 		deleted++
 		count--
-		if count == 0 {
-			set.meta.Len -= deleted
-			break
-		}
 		if err := iter.Next(); err != nil {
 			return nil, err
 		}
 	}
-	if count != 0 {
-		set.meta.Len = 0
-	}
+	set.meta.Len -= deleted
 	if err := set.updateMeta(); err != nil {
 		return nil, err
 	}
@@ -336,7 +330,11 @@ func (set *Set) SMove(destination []byte, member []byte) (int64, error) {
 	if res == 0 {
 		return 0, nil
 	}
-	destset, _ := GetSet(set.txn, destination)
+	destset, err := GetSet(set.txn, destination)
+	if err != nil {
+		return 0, nil
+	}
+
 	res, err = destset.SIsmember(member)
 	if err != nil {
 		return 0, err

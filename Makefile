@@ -8,7 +8,7 @@ LDFLAGS += -X "$(PKG)/context.ReleaseVersion=$(shell git tag  --contains)"
 LDFLAGS += -X "$(PKG)/context.BuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
 LDFLAGS += -X "$(PKG)/context.GitHash=$(GITHASH)"
 LDFLAGS += -X "$(PKG)/context.GolangVersion=$(shell go version)"
-LDFLAGS += -X "$(PKG)/context.GitLog=$(shell git log --abbrev-commit --oneline -n 1 | sed 's/$(GITHASH)//g')"
+LDFLAGS += -X "$(PKG)/context.GitLog=$(shell git log --abbrev-commit --oneline -n 1 | sed 's/$(GITHASH)//g' | sed 's/"//g')"
 LDFLAGS += -X "$(PKG)/context.GitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
 
 .PHONY: all build clean test coverage lint proto

@@ -84,16 +84,24 @@ func init() {
 		"hscan":        HScan,
 
 		// sets
-		"sadd":     SAdd,
-		"smembers": SMembers,
+		"sadd":      SAdd,
+		"smembers":  SMembers,
+		"scard":     SCard,
+		"sismember": SIsmember,
+		"spop":      SPop,
+		"srem":      SRem,
+		"sunion":    SUnion,
+		"sinter":    SInter,
+		"sdiff":     SDiff,
+		"smove":     SMove,
 
 		//zsets(sorted sets)
-		"zadd":         ZAdd,
-		"zrange":		ZRange,
-		"zrevrange":    ZRevRange,
-		"ZRem":			ZRem,
-		"zcard":		ZCard,
-		"zscore":		ZScore,
+		"zadd":      ZAdd,
+		"zrange":    ZRange,
+		"zrevrange": ZRevRange,
+		"ZRem":      ZRem,
+		"zcard":     ZCard,
+		"zscore":    ZScore,
 	}
 
 	// commands contains all commands that open to clients
@@ -194,15 +202,23 @@ func init() {
 		"hscan":        Desc{Proc: AutoCommit(HScan), Cons: Constraint{-3, flags("rR"), 0, 0, 0}},
 
 		// sets
-		"sadd":     Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
-		"smembers": Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
+		"sadd":      Desc{Proc: AutoCommit(SAdd), Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"smembers":  Desc{Proc: AutoCommit(SMembers), Cons: Constraint{2, flags("rS"), 1, 1, 1}},
+		"scard":     Desc{Proc: AutoCommit(SCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"sismember": Desc{Proc: AutoCommit(SIsmember), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
+		"spop":      Desc{Proc: AutoCommit(SPop), Cons: Constraint{-2, flags("wRF"), 1, 1, 1}},
+		"srem":      Desc{Proc: AutoCommit(SRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
+		"sunion":    Desc{Proc: AutoCommit(SUnion), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		"sinter":    Desc{Proc: AutoCommit(SInter), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		"sdiff":     Desc{Proc: AutoCommit(SDiff), Cons: Constraint{-2, flags("rS"), 1, -1, 1}},
+		"smove":     Desc{Proc: AutoCommit(SMove), Cons: Constraint{4, flags("wF"), 1, 2, 1}},
 
 		// zsets
-		"zadd":		Desc{Proc: AutoCommit(ZAdd), Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
-		"zrange": Desc{Proc: AutoCommit(ZRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zadd":      Desc{Proc: AutoCommit(ZAdd), Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
+		"zrange":    Desc{Proc: AutoCommit(ZRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
 		"zrevrange": Desc{Proc: AutoCommit(ZRevRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
-		"zrem":         Desc{Proc: AutoCommit(ZRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
-		"zcard":         Desc{Proc: AutoCommit(ZCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
-		"zscore":         Desc{Proc: AutoCommit(ZScore), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
+		"zrem":      Desc{Proc: AutoCommit(ZRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
+		"zcard":     Desc{Proc: AutoCommit(ZCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"zscore":    Desc{Proc: AutoCommit(ZScore), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
 	}
 }

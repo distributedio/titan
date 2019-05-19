@@ -354,7 +354,7 @@ func TestSInter(t *testing.T) {
 	ctx = ContextTest("sinter", key1, key3, key5)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Equal(t, "", lines[0])
+	assert.Equal(t, "*0", lines[0])
 	//case 4
 	ctx = ContextTest("sinter", key1, key2, key4)
 	Call(ctx)

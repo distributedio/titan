@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"container/heap"
 	"errors"
 	"strconv"
 
@@ -130,85 +131,82 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // SUnion returns the members of the set resulting from the union of all the given sets.
 func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	setsIter := make([]*db.SetIter, len(ctx.Args))
-	for i, key := range ctx.Args {
+	var setsIter []*db.SetIter
+	for _, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
+		}
+		if !set.Exists() {
+			continue
 		}
 		siter, err := set.Iter()
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
 		defer siter.Iter.Close()
-		setsIter[i] = siter
+		setsIter = append(setsIter, siter)
 	}
-	sum := getNodeCount(len(setsIter))
-	k := sum - len(setsIter) + 1
-	ls := make([]int, k)
-	idx := CreateLoserTree(ls, setsIter)
-	for {
-		sum := getNodeCount(len(setsIter))
-		k := sum - len(setsIter) + 1
-		ls := make([]int, k)
-		min := adjustMin(ls, setsIter, idx)
-		l := len(setsIter)
-		for i, j := 0, 0; i < l; i, j = i+1, j+1 {
-			if bytes.Equal(setsIter[j].Value(), min) {
-				if err := setsIter[j].Iter.Next(); err != nil {
+	h := MinHeap(setsIter)
+	heap.Init(&h)
+	l := len(setsIter)
+	for len(h) != 0 {
+		min := h[0].Value()
+		for i := 0; i < l; i++ {
+			if bytes.Equal(setsIter[i].Value(), min) {
+				if err := setsIter[i].Iter.Next(); err != nil {
 					return nil, errors.New("ERR " + err.Error())
 				}
+				if setsIter[i].Valid() {
+					heap.Fix(&h, i)
+				} else {
+					heap.Remove(&h, i)
+					l--
+				}
 			}
-			if !setsIter[j].Valid() {
-				setsIter = append(setsIter[:j], setsIter[j+1:]...)
-				j--
-			}
+		}
+		if size := len(members); size > 0 && bytes.Equal(members[size-1], min) {
+			continue
 		}
 		members = append(members, min)
-		if len(setsIter) <= 0 {
-			break
-		}
 	}
 	return BytesArray(ctx.Out, members), nil
 }
 
-// CreateLoserTree creates losertree
-func CreateLoserTree(ls []int, sets []*db.SetIter) int {
-	for i := len(ls) - 1; i >= 0; i-- {
-		adjustMin(ls, sets, i)
-	}
-	return ls[0]
+type MinHeap []*db.SetIter
+
+func (h MinHeap) Len() int           { return len(h) }
+func (h MinHeap) Less(i, j int) bool { return bytes.Compare(h[i].Value(), h[j].Value()) < 0 }
+func (h MinHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) {
+	item := x.(*db.SetIter)
+	*h = append(*h, item)
 }
 
-// getNodeCount calculaties the total number of nodes in a complete binary tree
-func getNodeCount(count int) (sum int) {
-	if count == 2 {
-		sum = 3
-	} else if count%2 == 0 {
-		if count%4 == 0 {
-			sum = count*2 - 1
-		} else {
-			sum = count * 2
-		}
-	} else {
-		sum = count*2 - 1
-	}
-	return
+func (h *MinHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	item := old[n-1]
+	*h = old[0 : n-1]
+	return item
 }
 
-// adjustMin adjusts the loser tree and return the smallest element
-func adjustMin(ls []int, sets []*db.SetIter, s int) []byte {
-	t := (s + len(ls)) / 2
-	for t > 0 {
-		if bytes.Compare(sets[s].Value(), sets[ls[t]].Value()) == 1 {
-			swap := s
-			s = ls[t]
-			ls[t] = swap
-		}
-		t = t / 2
-	}
-	res := sets[s].Value()
-	return res
+type MaxHeap []*db.SetIter
+
+func (h MaxHeap) Len() int           { return len(h) }
+func (h MaxHeap) Less(i, j int) bool { return bytes.Compare(h[i].Value(), h[j].Value()) > 0 }
+func (h MaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *MaxHeap) Push(x interface{}) {
+	item := x.(*db.SetIter)
+	*h = append(*h, item)
+}
+
+func (h *MaxHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	item := old[n-1]
+	*h = old[0 : n-1]
+	return item
 }
 
 // SInter returns the members of the set resulting from the intersection of all the given sets.
@@ -220,13 +218,9 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
-		setlen, err := set.SCard()
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
-		}
 		// If the set corresponding to key does not exist, it is processed as an empty set
-		if !set.Exists() || setlen == 0 {
-			return nil, nil
+		if !set.Exists() {
+			return BytesArray(ctx.Out, members), nil
 		}
 		siter, err := set.Iter()
 		if err != nil {
@@ -235,8 +229,10 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
+	h := MaxHeap(setsIter)
+	heap.Init(&h)
 	for {
-		max := getMaxMember(setsIter)
+		max := h[0].Value()
 		for i := 0; i < len(ctx.Args); i++ {
 			if !bytes.Equal(setsIter[i].Value(), max) {
 				if err := setsIter[i].Iter.Next(); err != nil {
@@ -245,6 +241,8 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 				if !setsIter[i].Valid() {
 					return BytesArray(ctx.Out, members), nil
 				}
+				heap.Fix(&h, i)
+				continue
 			}
 			if i == len(ctx.Args)-1 {
 				members = append(members, max)
@@ -255,6 +253,7 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 					if !setsIter[j].Valid() {
 						return BytesArray(ctx.Out, members), nil
 					}
+					heap.Fix(&h, i)
 				}
 			}
 		}
@@ -262,159 +261,60 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return BytesArray(ctx.Out, members), nil
 }
 
-// getMaxMember gets the maximum value in members
-func getMaxMember(sets []*db.SetIter) []byte {
-	var arr [][]byte
-	for i := 0; i < len(sets); i++ {
-		arr = append(arr, sets[i].Value())
-	}
-	for k := len(arr) / 2; k >= 0; k-- {
-		adjustHeap(arr, k)
-	}
-	res := arr[0]
-	return res
-}
-
-// adjustHeap adjust big root heap
-func adjustHeap(arr [][]byte, k int) {
-	for {
-		i := 2 * k
-		if i > len(arr)-1 { //保证该节点是非叶子节点
-			break
-		}
-		if i+1 < len(arr) && bytes.Compare(arr[i+1], arr[i]) == 1 { //选择较大的子节点
-			i++
-		}
-		if bytes.Compare(arr[k], arr[i]) == 1 || bytes.Equal(arr[k], arr[i]) {
-			break
-		}
-		swap(arr, k, i)
-		k = i
-	}
-}
-
-// swap swaps two values
-func swap(s [][]byte, i int, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
 // SDiff returns the members of the set resulting from the difference between the first set and all the successive sets.
 func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var members [][]byte
-	var err error
-	setsIter := make([]*db.SetIter, len(ctx.Args))
+	var setsIter []*db.SetIter
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
+		}
+		if !set.Exists() && i != 0 {
+			continue
 		}
 		siter, err := set.Iter()
 		if err != nil {
 			return nil, errors.New("ERR " + err.Error())
 		}
 		defer siter.Iter.Close()
-		setsIter[i] = siter
+		setsIter = append(setsIter, siter)
 	}
-	min := setsIter[0].Value()
-	for {
-		// check to see if the same element exists as the current membet for the benchmark key
-		for {
-			match, err := check(setsIter, min, len(ctx.Args))
-			if err != nil {
+	iter := setsIter[0]
+	h := MinHeap(setsIter[1:])
+	heap.Init(&h)
+	for iter.Valid() {
+		member := iter.Value()
+		if len(h) == 0 {
+			members = append(members, member)
+			if err := iter.Iter.Next(); err != nil {
 				return nil, errors.New("ERR " + err.Error())
 			}
-			if match {
-				if err := setsIter[0].Iter.Next(); err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-				if !setsIter[0].Valid() {
-					return BytesArray(ctx.Out, members), nil
-				}
-				min = setsIter[0].Value()
+			continue
+		}
+
+		min := h[0].Value()
+		switch bytes.Compare(member, min) {
+		case -1:
+			members = append(members, member)
+			if err := iter.Iter.Next(); err != nil {
+				return nil, errors.New("ERR " + err.Error())
+			}
+		case 0:
+			if err := iter.Iter.Next(); err != nil {
+				return nil, errors.New("ERR " + err.Error())
+			}
+			fallthrough
+		case 1:
+			if err := h[0].Iter.Next(); err != nil {
+				return nil, errors.New("ERR " + err.Error())
+			}
+			if h[0].Valid() {
+				heap.Fix(&h, 0)
 			} else {
-				break
+				heap.Remove(&h, 0)
 			}
-		}
-		//find min in members
-		for i := 0; i < len(ctx.Args); i++ {
-			if !setsIter[i].Valid() {
-				if i == 0 {
-					return BytesArray(ctx.Out, members), nil
-				}
-				continue
-			}
-			if bytes.Compare(min, setsIter[i].Value()) == 1 {
-				min = setsIter[i].Value()
-			}
-		}
-		members, err = moveMembers(setsIter, min, members)
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
-		}
-
-		if setsIter[0].Valid() {
-			min = setsIter[0].Value()
-		}
-
-		if stopcirculation(setsIter, len(ctx.Args)) == len(ctx.Args) {
-			break
 		}
 	}
 	return BytesArray(ctx.Out, members), nil
-}
-
-// stopcirculation determines when to stop the loop
-func stopcirculation(sets []*db.SetIter, length int) (count int) {
-	for i := 0; i < length; i++ {
-		if !sets[i].Valid() {
-			count++
-		}
-	}
-	return
-}
-
-// check checks to see if the same element exists as the current membet for the benchmark key
-func check(sets []*db.SetIter, min []byte, length int) (bool, error) {
-	for i := 1; i < length; i++ {
-		if !sets[i].Valid() {
-			continue
-		}
-		if bytes.Equal(min, sets[i].Value()) {
-			if err := sets[i].Iter.Next(); err != nil {
-				return false, errors.New("ERR " + err.Error())
-			}
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// moveMembers finds the smallest element in the current member and move the pointer back
-func moveMembers(setsIter []*db.SetIter, min []byte, members [][]byte) ([][]byte, error) {
-	for i := 0; i < len(setsIter); i++ {
-		if !setsIter[i].Valid() {
-			continue
-		}
-		if bytes.Equal(min, setsIter[i].Value()) {
-			if i == 0 {
-				members = append(members, min)
-				if err := setsIter[0].Iter.Next(); err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-				if !setsIter[0].Valid() {
-					continue
-				}
-				for bytes.Equal(min, setsIter[0].Value()) {
-					if err := setsIter[0].Iter.Next(); err != nil {
-						return nil, errors.New("ERR " + err.Error())
-					}
-				}
-			} else if setsIter[i].Valid() {
-				if err := setsIter[i].Iter.Next(); err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-			}
-		}
-	}
-	return members, nil
 }

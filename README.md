@@ -15,7 +15,7 @@ A distributed implementation of Redis compatible layer based on [TiKV](https://g
 * No painful scale out
 * High availability 
 
-Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features 
+Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. The project is developed and open sourced by the Beijing Infrastructure Team at (Meitu)[https://meitu.com] and has been donated to DistributedIO org.
 
 ## Roadmap
 

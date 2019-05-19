@@ -401,6 +401,9 @@ func moveMembers(setsIter []*db.SetIter, min []byte, members [][]byte) ([][]byte
 				if err := setsIter[0].Iter.Next(); err != nil {
 					return nil, errors.New("ERR " + err.Error())
 				}
+				if !setsIter[0].Valid() {
+					continue
+				}
 				for bytes.Equal(min, setsIter[0].Value()) {
 					if err := setsIter[0].Iter.Next(); err != nil {
 						return nil, errors.New("ERR " + err.Error())

@@ -422,7 +422,7 @@ func TestSet_SPop(t *testing.T) {
 			name: "TestSPopZero",
 			key:  testSPopKey,
 			args: args{
-				count: 0,
+				count: 1,
 			},
 			wantMembersCount: 1,
 		},

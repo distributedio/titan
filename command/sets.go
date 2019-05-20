@@ -147,28 +147,27 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter = append(setsIter, siter)
 	}
+
 	h := MinHeap(setsIter)
 	heap.Init(&h)
-	l := len(setsIter)
+	var last []byte
 	for len(h) != 0 {
 		min := h[0].Value()
-		for i := 0; i < l; i++ {
-			if bytes.Equal(setsIter[i].Value(), min) {
-				if err := setsIter[i].Iter.Next(); err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-				if setsIter[i].Valid() {
-					heap.Fix(&h, i)
-				} else {
-					heap.Remove(&h, i)
-					l--
-				}
-			}
+
+		// ignore the duplicated member
+		if last == nil || !bytes.Equal(min, last) {
+			members = append(members, min)
 		}
-		if size := len(members); size > 0 && bytes.Equal(members[size-1], min) {
-			continue
+		last = min
+
+		if err := h[0].Iter.Next(); err != nil {
+			return nil, err
 		}
-		members = append(members, min)
+		if h[0].Valid() {
+			heap.Fix(&h, 0)
+		} else {
+			heap.Remove(&h, 0)
+		}
 	}
 	return BytesArray(ctx.Out, members), nil
 }
@@ -184,24 +183,6 @@ func (h *MinHeap) Push(x interface{}) {
 }
 
 func (h *MinHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	item := old[n-1]
-	*h = old[0 : n-1]
-	return item
-}
-
-type MaxHeap []*db.SetIter
-
-func (h MaxHeap) Len() int           { return len(h) }
-func (h MaxHeap) Less(i, j int) bool { return bytes.Compare(h[i].Value(), h[j].Value()) > 0 }
-func (h MaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *MaxHeap) Push(x interface{}) {
-	item := x.(*db.SetIter)
-	*h = append(*h, item)
-}
-
-func (h *MaxHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	item := old[n-1]
@@ -229,33 +210,33 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		defer siter.Iter.Close()
 		setsIter[i] = siter
 	}
-	h := MaxHeap(setsIter)
+
+	h := MinHeap(setsIter)
 	heap.Init(&h)
-	for {
-		max := h[0].Value()
-		for i := 0; i < len(ctx.Args); i++ {
-			if !bytes.Equal(setsIter[i].Value(), max) {
-				if err := setsIter[i].Iter.Next(); err != nil {
-					return nil, errors.New("ERR " + err.Error())
-				}
-				if !setsIter[i].Valid() {
-					return BytesArray(ctx.Out, members), nil
-				}
-				heap.Fix(&h, i)
-				continue
-			}
-			if i == len(ctx.Args)-1 {
-				members = append(members, max)
-				for j := 0; j < len(ctx.Args); j++ {
-					if err := setsIter[j].Iter.Next(); err != nil {
-						return nil, errors.New("ERR " + err.Error())
-					}
-					if !setsIter[j].Valid() {
-						return BytesArray(ctx.Out, members), nil
-					}
-					heap.Fix(&h, i)
-				}
-			}
+	var last []byte
+	k := len(h) //k-way merge
+	n := k
+	for len(h) != 0 {
+		min := h[0].Value()
+		if last == nil || bytes.Equal(last, min) {
+			n--
+		} else {
+			n = k - 1
+		}
+		last = min
+
+		// it is a member of intersection if there are k equal values continuously
+		if n == 0 {
+			members = append(members, min)
+		}
+
+		if err := h[0].Iter.Next(); err != nil {
+			return nil, err
+		}
+		if h[0].Valid() {
+			heap.Fix(&h, 0)
+		} else {
+			heap.Remove(&h, 0)
 		}
 	}
 	return BytesArray(ctx.Out, members), nil

@@ -47,8 +47,7 @@ redis-cli -p 7369
 
 ## Commands not supported yet
 
-___NOTICE: commands byond this table has already been fully supported___
-
+___NOTICE: commands beyond this table has already been fully supported___
 
 
 |command|type|status|

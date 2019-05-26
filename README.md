@@ -29,17 +29,16 @@ ___Arch about TiKV___
 
 ## Quick start
 
-Can't wait to experiment Titan?
+Can't wait to experiment Titan? Just follow 2 steps:
 
-```
-curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
-docker-compose up
+1. curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
+2. docker-compose up
 
-# Then connect to titan use redis-cli
-redis-cli -p 7369
+Then connect to titan use redis-cli
 
-# Enjoy!
-```
+> redis-cli -p 7369
+
+___Enjoy!___
 
 ## Installation
 
@@ -68,7 +67,9 @@ pd-addrs="tikv://your-pd-addrs:port"
 
 * Run titan
 
-> ./titan
+```
+./titan
+```
 
 For more details about [Deploy Titan](docs/ops/deploy.md), click here.
 

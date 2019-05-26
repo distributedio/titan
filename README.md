@@ -82,18 +82,7 @@ Basic benchmarking result.
 
 ![Set command benchmark](docs/benchmark/set-benchmark.png)
 
-### LPush
-
-![LPush command benchmark](docs/benchmark/lpush-benchmark.png) 
-### LPop
-
-![LPop command benchmark](docs/benchmark/lpop-benchmark.png)
-
-### LRange
-
-![LRange command benchmark](docs/benchmark/lrange-benchmark.png)
-
-[Titan Benchmarks](docs/benchmark/benchmark.md)
+For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
 
 ## Commands not supported yet
 
@@ -180,6 +169,10 @@ ___NOTICE: commands beyond this table has already been fully supported___
 [FAQ](https://github.com/distributedio/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
 
 ## Roadmap
+### Sprint #8
+* Aim 1
+* Aim 2
+* Aim 3
 
 [Roadmap](docs/roadmap.md)
 

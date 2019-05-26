@@ -70,7 +70,7 @@ pd-addrs="tikv://your-pd-addrs:port"
 
 > ./titan
 
-[Deploy Titan](docs/ops/deploy.md)
+For more details about [Deploy Titan](docs/ops/deploy.md), click here.
 
 ## Benchmarks
 

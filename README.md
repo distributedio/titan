@@ -48,7 +48,7 @@ Titan works with 2 tidb components:
 * TiKV
 * Pd
 
-To setup TiKV and PD, please follow official instruction
+To setup TiKV and PD, please follow official [instruction](https://pingcap.com/docs-cn/dev/how-to/deploy/orchestrated/ansible/)
 
 ### Run Titan
 
@@ -67,6 +67,8 @@ pd-addrs="tikv://your-pd-addrs:port"
 ```
 
 * Run titan
+
+> ./titan
 
 [Deploy Titan](docs/ops/deploy.md)
 

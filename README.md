@@ -6,9 +6,9 @@
 [![Coverage Status](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/distributedio/titan/releases)
 [![Discourse status](https://img.shields.io/discourse/https/meta.discourse.org/status.svg)](https://titan-tech-group.slack.com)
 
-A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
-## Features
+A distributed implementation of __Redis compatible layer__  based on [TiKV](https://github.com/tikv/tikv/)
 
+## Why Titan?
 * Completely compatible with redis protocol
 * Full distributed transaction with strong consistency
 * Multi-tenancy support
@@ -17,11 +17,19 @@ A distributed implementation of Redis compatible layer based on [TiKV](https://g
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. The project is developed and open sourced by the Beijing Infrastructure Team at [Meitu](https://www.meitu.com/) and has been donated to [DistributedIO](https://github.com/distributedio) org.
 
-## Roadmap
+## Arch
 
-[Roadmap](docs/roadmap.md)
+___Arch about titan___
 
-## Can't wait to experiment Titan?
+![titan](docs/titan.png)
+
+___Arch about TiKV___
+
+![TiKV softwares](https://github.com/tikv/tikv/blob/master/images/tikv_stack.png)
+
+## Quick start
+
+Can't wait to experiment Titan?
 
 ```
 curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
@@ -33,22 +41,63 @@ redis-cli -p 7369
 # Enjoy!
 ```
 
-## Installing
+## Installation
+
+### SetUp TiKV cluster
+Titan works with 2 tidb components:
+* TiKV
+* Pd
+
+To setup TiKV and PD, please follow official instruction
+
+### Run Titan
+
+* Build the binary
+
+```
+go get github.com/distributedio/titan
+cd $GOPATH/src/github.com/distributedio/titan
+make 
+```
+
+* Edit the configration file
+
+```
+pd-addrs="tikv://your-pd-addrs:port"
+```
+
+* Run titan
 
 [Deploy Titan](docs/ops/deploy.md)
 
 ## Benchmarks
 
+Basic benchmarking result.
+
+### Get
+
+![Get command benchmark](docs/benchmark/get-benchmark.png)
+
+### Set
+
+![Set command benchmark](docs/benchmark/set-benchmark.png)
+
+### LPush
+
+![LPush command benchmark](docs/benchmark/lpush-benchmark.png) 
+### LPop
+
+![LPop command benchmark](docs/benchmark/lpop-benchmark.png)
+
+### LRange
+
+![LRange command benchmark](docs/benchmark/lrange-benchmark.png)
+
 [Titan Benchmarks](docs/benchmark/benchmark.md)
-
-## FAQ
-
-[FAQ](https://github.com/distributedio/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
 
 ## Commands not supported yet
 
 ___NOTICE: commands beyond this table has already been fully supported___
-
 
 |command|type|status|
 |---|---|---|
@@ -125,3 +174,12 @@ ___NOTICE: commands beyond this table has already been fully supported___
 |xread     |Stream| |
 |xpending  |Stream| |
 |xreadgroup|Stream| |
+
+## FAQ
+
+[FAQ](https://github.com/distributedio/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
+
+## Roadmap
+
+[Roadmap](docs/roadmap.md)
+

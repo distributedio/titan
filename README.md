@@ -91,6 +91,8 @@ For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
 
 ___NOTICE: commands beyond this table has already been fully supported___
 
+for fully supported command list vist [here](docs/command_list.md)
+
 |command|type|status|
 |---|---|---|
 |swapdb |Connections| |

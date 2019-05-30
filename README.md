@@ -89,85 +89,24 @@ For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
 
 ## Commands not supported yet
 
-___NOTICE: commands beyond this table has already been fully supported___
+For fully supported command list vist [here](docs/command_list.md)
 
-for fully supported command list vist [here](docs/command_list.md)
-
-|command|type|status|
-|---|---|---|
-|swapdb |Connections| |
-|slowlog |Server | |
-|touch  |Keys | |
-|unlink |Keys | |
-|bitcount|Strings|| 
-|bitfield|Strings||
-|bitop   |Strings||
-|bitpos  |Strings||
-|getbit  |Strings||
-|msetnx  |Strings||
-|setbit  |Strings||
-|setrange|Strings||
-|ltrim     |List||
-|lrem      |List||
-|rpop      |List||
-|rpoplpush |List||
-|rpushhx   |List||
-|blpop     |List||
-|brpop     |List||
-|brpoplpush|List||
-|sinterstore|Sets| |
-|sdiffstore |Sets| |
-|srandmember|Sets| |
-|sunionstore|Sets| |
-|sscan      |Sets| |
-|bzpopmin        |Sorted set| |
-|bzpopmax        |Sorted set| |
-|zcount          |Sorted set| |
-|zincrby         |Sorted set| |
-|zinterstore     |Sorted set| |
-|zlexcount       |Sorted set| |
-|zpopmax         |Sorted set| |
-|zpopmin         |Sorted set| |
-|zrevrank        |Sorted set| |
-|zunionstore     |Sorted set| |
-|zscan           |Sorted set| |
-|zrangebylex     |Sorted set| |
-|zrevrangebylex  |Sorted set| |
-|zrangebyscore   |Sorted set| |
-|zrank           |Sorted set| |
-|zremrangebylex  |Sorted set| |
-|zremrangebyrank |Sorted set| |
-|zremrangebyscore|Sorted set| |
-|zrevrangebyscore|Sorted set| |
-|geoadd           |Geo| |
-|geohash          |Geo| |
-|geopos           |Geo| |
-|geodist          |Geo| |
-|georadius        |Geo| |
-|georadiusbymember|Geo| |
-|pfadd  |Hyperhyperlog| |
-|pfcount|Hyperhyperlog| |
-|pfmerge|Hyperhyperlog| |
-|psubscribe  |Pub/Sub| |
-|pubsub      |Pub/Sub| |
-|publish     |Pub/Sub| |
-|punsubscribe|Pub/Sub| |
-|subscribe   |Pub/Sub| |
-|unsubscribe |Pub/Sub| |
-|eval         |Script| |
-|evalsha      |Script| |
-|script debug |Script| |
-|script flush |Script| |
-|script kill  |Script| |
-|script load  |Script| |
-|script exists|Script| |
-|xadd      |Stream| |
-|xrange    |Stream| |
-|xrevrange |Stream| |
-|xlen      |Stream| |
-|xread     |Stream| |
-|xpending  |Stream| |
-|xreadgroup|Stream| |
+|command|status|
+|---|---|
+|Connections|Won't Fully Supported|
+|Transactions|Supported|
+|Server|Not Fully Supported Yet|
+|Keys|Not Fully Supported Yet|
+|Strings|Not Fully Supported Yet|
+|List|Not Fully Supported Yet|
+|Hashes|Supported|
+|Sets|Not Fully Supported Yet|
+|Sorted Sets|Not Fully Supported Yet|
+|Geo| Not Supported Yet|
+|Hyperloglog| Not Supported Yet|
+|Pub/Sub| Not Supported Yet|
+|Scripting| Not Supported Yet|
+|Streams| Not Supported Yet|
 
 ## FAQ
 

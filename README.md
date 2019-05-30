@@ -17,7 +17,7 @@ A distributed implementation of __Redis compatible layer__  based on [TiKV](http
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. The project is developed and open sourced by the Beijing Infrastructure Team at [Meitu](https://www.meitu.com/) and has been donated to [DistributedIO](https://github.com/distributedio) org.
 
-## Arch
+## Architecture
 
 ___Arch about titan___
 

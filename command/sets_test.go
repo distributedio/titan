@@ -181,6 +181,32 @@ func TestSPop(t *testing.T) {
 		assert.Equal(t, "$1", lines[3])
 		assert.Equal(t, "5", lines[4])
 	*/
+	ctx = ContextTest("spop", key, "m1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "-ERR value is not an integer or out of range", lines[0])
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+    assert.Equal(t, "$1", lines[1])
+    assert.Equal(t, "4", lines[2])
+    assert.Equal(t, "$1", lines[3])
+    assert.Equal(t, "5", lines[4])
+
+	ctx = ContextTest("spop", key, "m1", "m2")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "-ERR value is not an integer or out of range", lines[0])
+	ctx = ContextTest("smembers", key)
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "*2", lines[0])
+	assert.Equal(t, "$1", lines[1])
+	assert.Equal(t, "4", lines[2])
+	assert.Equal(t, "$1", lines[3])
+	assert.Equal(t, "5", lines[4])
+
 	clearSets(t, key)
 }
 func TestSRem(t *testing.T) {

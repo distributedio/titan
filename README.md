@@ -113,10 +113,5 @@ For fully supported command list vist [here](docs/command_list.md)
 [FAQ](https://github.com/distributedio/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
 
 ## Roadmap
-### Sprint #8
-* Aim 1
-* Aim 2
-* Aim 3
 
-[Roadmap](docs/roadmap.md)
-
+View our [Roadmap](https://github.com/distributedio/titan/projects)

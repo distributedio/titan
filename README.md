@@ -6,9 +6,9 @@
 [![Coverage Status](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/distributedio/titan/releases)
 [![Discourse status](https://img.shields.io/discourse/https/meta.discourse.org/status.svg)](https://titan-tech-group.slack.com)
 
-A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
-## Features
+A distributed implementation of __Redis compatible layer__  based on [TiKV](https://github.com/tikv/tikv/)
 
+## Why Titan?
 * Completely compatible with redis protocol
 * Full distributed transaction with strong consistency
 * Multi-tenancy support
@@ -17,237 +17,101 @@ A distributed implementation of Redis compatible layer based on [TiKV](https://g
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. The project is developed and open sourced by the Beijing Infrastructure Team at [Meitu](https://www.meitu.com/) and has been donated to [DistributedIO](https://github.com/distributedio) org.
 
-## Roadmap
+## Architecture
 
-[Roadmap](docs/roadmap.md)
+___Arch about titan___
 
-## Can't wait to experiment Titan?
+![titan](docs/titan.png)
+
+___Arch about TiKV___
+
+![TiKV softwares](https://github.com/tikv/tikv/blob/master/images/tikv_stack.png)
+
+## Quick start
+
+Can't wait to experiment Titan? Just follow 2 steps:
+
+1. curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
+2. docker-compose up
+
+Then connect to titan use redis-cli
+
+> redis-cli -p 7369
+
+___Enjoy!___
+
+## Installation
+
+### SetUp TiKV cluster
+Titan works with 2 tidb components:
+* TiKV
+* Pd
+
+To setup TiKV and PD, please follow official [instruction](https://pingcap.com/docs-cn/dev/how-to/deploy/orchestrated/ansible/)
+
+### Run Titan
+
+* Build the binary
 
 ```
-curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
-docker-compose up
-
-# Then connect to titan use redis-cli
-redis-cli -p 7369
-
-# Enjoy!
+go get github.com/distributedio/titan
+cd $GOPATH/src/github.com/distributedio/titan
+make 
 ```
 
-## Installing
+* Edit the configration file
 
-[Deploy Titan](docs/ops/deploy.md)
+```
+pd-addrs="tikv://your-pd-addrs:port"
+```
+
+* Run titan
+
+```
+./titan
+```
+
+For more details about [Deploy Titan](docs/ops/deploy.md), click here.
 
 ## Benchmarks
 
-[Titan Benchmarks](docs/benchmark/benchmark.md)
+Basic benchmarking result.
+
+### Get
+
+![Get command benchmark](docs/benchmark/get-benchmark.png)
+
+### Set
+
+![Set command benchmark](docs/benchmark/set-benchmark.png)
+
+For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
+
+## Commands supporting status
+
+For fully supported command list vist [here](docs/command_list.md)
+
+|command|status|
+|---|---|
+|Connections|Won't Fully Supported|
+|Transactions|Supported|
+|Server|Not Fully Supported Yet|
+|Keys|Not Fully Supported Yet|
+|Strings|Not Fully Supported Yet|
+|List|Not Fully Supported Yet|
+|Hashes|Supported|
+|Sets|Not Fully Supported Yet|
+|Sorted Sets|Not Fully Supported Yet|
+|Geo| Not Supported Yet|
+|Hyperloglog| Not Supported Yet|
+|Pub/Sub| Not Supported Yet|
+|Scripting| Not Supported Yet|
+|Streams| Not Supported Yet|
 
 ## FAQ
 
 [FAQ](https://github.com/distributedio/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
 
-## Commands
+## Roadmap
 
-### Connections
-- [x] auth 
-- [x] echo 
-- [x] ping
-- [x] quit 
-- [x] select 
-- [ ] swapdb, not supported
-
-### Transactions
-- [x] multi 
-- [x] exec
-- [x] discard
-- [x] watch
-- [x] unwatch
-
-### Server
-- [x] client list
-- [x] client kill
-- [x] client pause
-- [x] client reply 
-- [x] client getname
-- [x] client setname
-- [x] monitor
-- [x] debug object
-- [x] flushdb
-- [x] flushall
-- [x] time
-- [x] command
-- [x] command count
-- [x] command getkeys
-- [x] command info
-- [x] info
-- [ ] slowlog
-
-### Keys
-- [x] del 
-- [x] type
-- [x] exists
-- [x] expire
-- [x] expireat
-- [x] object 
-- [x] pexpire
-- [x] pexpireat
-- [x] ttl
-- [x] pttl
-- [x] randomkey
-- [ ] touch 
-- [x] keys
-- [x] scan
-- [ ] unlink
-
-### Strings
-
-- [x] get 
-- [x] set 
-- [x] mget 
-- [x] mset 
-- [x] strlen
-- [x] incr
-- [x] incrby
-- [x] decr
-- [x] decrby
-- [x] append
-- [ ] bitcount
-- [ ] bitfield
-- [ ] bitop
-- [ ] bitpos
-- [ ] getbit
-- [x] getrange
-- [x] getset
-- [x] incrbyfloat 
-- [ ] msetnx
-- [x] psetex
-- [ ] setbit
-- [x] setex
-- [x] setnx
-- [ ] setrange
-
-### List
-
-- [x] lrange
-- [x] linsert
-- [x] lindex
-- [x] llen
-- [x] lset
-- [x] lpush
-- [x] lpop
-- [x] lpushx
-- [ ] ltrim
-- [ ] lrem
-- [ ] rpop
-- [ ] rpoplpush
-- [x] rpush
-- [ ] rpushhx
-- [ ] blpop
-- [ ] brpop
-- [ ] brpoplpush
-
-### Hashes
-- [x] hset
-- [x] hget
-- [x] hgetall
-- [x] hdel
-- [x] hexists
-- [x] hincrby
-- [x] hincrbyfloat
-- [x] hkeys
-- [x] hlen
-- [x] hmget
-- [x] hmset
-- [x] hscan
-- [x] hsetnx
-- [x] hstrlen
-- [x] hvals
-
-### Sets
-
-- [x] sadd
-- [x] scard
-- [x] sdiff
-- [ ] sdiffstore
-- [x] sinter
-- [ ] sinterstore
-- [x] sismember
-- [x] smembers
-- [x] smove
-- [x] spop
-- [ ] srandmember
-- [x] srem
-- [x] sunion
-- [ ] sunionstore
-- [ ] sscan
-
-### Sorted Sets
-
-- [ ] bzpopmin
-- [ ] bzpopmax
-- [x] zadd
-- [x] zcard
-- [ ] zcount
-- [ ] zincrby
-- [ ] zinterstore
-- [ ] zlexcount
-- [ ] zpopmax
-- [ ] zpopmin
-- [x] zrange
-- [ ] zrangebylex
-- [ ] zrevrangebylex
-- [ ] zrangebyscore
-- [ ] zrank
-- [x] zrem
-- [ ] zremrangebylex
-- [ ] zremrangebyrank
-- [ ] zremrangebyscore
-- [x] zrevrange
-- [ ] zrevrangebyscore
-- [ ] zrevrank
-- [x] zscore
-- [ ] zunionstore
-- [ ] zscan
-
-### Geo
-
-- [ ] geoadd
-- [ ] geohash
-- [ ] geopos
-- [ ] geodist
-- [ ] georadius
-- [ ] georadiusbymember
-
-### hyperloglog
-
-- [ ] pfadd
-- [ ] pfcount
-- [ ] pfmerge
-
-### Pub/Sub
-
-- [ ] psubscribe
-- [ ] pubsub
-- [ ] publish
-- [ ] punsubscribe
-- [ ] subscribe
-- [ ] unsubscribe
-
-### Scripting
-
-- [ ] eval
-- [ ] evalsha
-- [ ] script debug
-- [ ] script exists
-- [ ] script flush
-- [ ] script kill
-- [ ] script load
-
-### Streams
-
-- [ ] xadd
-- [ ] xrange
-- [ ] xrevrange
-- [ ] xlen
-- [ ] xread
-- [ ] xreadgroup
-- [ ] xpending
+View our [Roadmap](https://github.com/distributedio/titan/projects)

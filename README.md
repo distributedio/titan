@@ -87,7 +87,7 @@ Basic benchmarking result.
 
 For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
 
-## Commands not supported yet
+## Commands supporting status
 
 For fully supported command list vist [here](docs/command_list.md)
 

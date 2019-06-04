@@ -22,6 +22,7 @@ coverage:
 
 build:
 	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/
+	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o token ./tools/token/
 
 clean:
 	rm -f ./titan

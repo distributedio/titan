@@ -73,16 +73,18 @@ func SIsmember(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // SPop removes and returns one or more random elements from the set value store at key
 func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	if len(ctx.Args) > 2 {
+		return nil, ErrSyntax
+	}
+
 	count := 1
 	var err error
 	key := []byte(ctx.Args[0])
 	if len(ctx.Args) == 2 {
 		count, err = strconv.Atoi(ctx.Args[1])
 		if err != nil {
-			return nil, ErrSyntax
+			return nil, ErrInteger
 		}
-	} else if len(ctx.Args) > 2 {
-		return nil, ErrSyntax
 	}
 
 	set, err := txn.Set(key)

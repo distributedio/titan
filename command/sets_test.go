@@ -184,7 +184,7 @@ func TestSPop(t *testing.T) {
 	ctx = ContextTest("spop", key, "m1")
 	Call(ctx)
 	lines = ctxLines(ctx.Out)
-	assert.Equal(t, "-ERR syntax error", lines[0])
+	assert.Equal(t, "-ERR value is not an integer or out of range", lines[0])
 	ctx = ContextTest("smembers", key)
 	Call(ctx)
 	lines = ctxLines(ctx.Out)

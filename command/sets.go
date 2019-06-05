@@ -76,12 +76,15 @@ func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	count := 1
 	var err error
 	key := []byte(ctx.Args[0])
-	if len(ctx.Args) >= 2 {
+	if len(ctx.Args) == 2 {
 		count, err = strconv.Atoi(ctx.Args[1])
 		if err != nil {
-			return nil, ErrInteger
+			return nil, ErrSyntax
 		}
+	} else if len(ctx.Args) > 2 {
+		return nil, ErrSyntax
 	}
+
 	set, err := txn.Set(key)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())

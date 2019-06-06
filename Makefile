@@ -12,7 +12,7 @@ LDFLAGS += -X "$(PKG)/context.GitLog=$(shell git log --abbrev-commit --oneline -
 LDFLAGS += -X "$(PKG)/context.GitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
 
 .PHONY: all build clean test coverage lint proto
-all: build
+all: build token
 
 test:
 	env GO111MODULE=on go test -short ${PKG_LIST}
@@ -23,8 +23,12 @@ coverage:
 build:
 	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/
 
+token: tools/token/main.go command/common.go
+	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o token ./tools/token/
+
 clean:
 	rm -f ./titan
+	rm -rf ./token
 
 lint:
 	gometalinter --fast -t --errors --enable-gc ${GO_FILES}

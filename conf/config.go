@@ -26,6 +26,8 @@ type Hash struct {
 type Server struct {
 	Auth             string `cfg:"auth;;;client connetion auth"`
 	Listen           string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
+	TLSCertFile      string `cfg:"tls-cert-file;;;tls certificate file (enables SSL/TLS support)"`
+	TLSKeyFile       string `cfg:"tls-key-file;;;tls private key file (enables SSL/TLS support)"`
 	MaxConnection    int64  `cfg:"max-connection;1000;numeric;client connection count"`
 	ListZipThreshold int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
 }

@@ -15,6 +15,14 @@ auth = ""
 #default:     0.0.0.0:7369
 listen = "0.0.0.0:7369"
 
+#type:        string
+#description: tls certificate file (enables SSL/TLS support)
+tls-cert-file = ""
+
+#type:        string
+#description: tls private key file (enables SSL/TLS support)
+tls-key-file = ""
+
 #type:        int64
 #rules:       numeric
 #description: client connection count

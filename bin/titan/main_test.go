@@ -7,15 +7,22 @@ import (
 )
 
 const (
-	certFile = "testdata/server.crt"
-	keyFile  = "testdata/server.key"
+	brokenFile = "testdata/broken"
+	certFile   = "testdata/server.crt"
+	keyFile    = "testdata/server.key"
 )
 
 func TestGetTLSServerOpts(t *testing.T) {
 	_, err := getTLSServerOpts("notfound", "notfoundeither")
 	assert.Error(t, err)
 
-	opts, err = getTLSServerOpts(certFile, keyFile)
+	_, err = getTLSServerOpts(brokenFile, keyFile)
+	assert.Error(t, err)
+
+	_, err = getTLSServerOpts(certFile, brokenFile)
+	assert.Error(t, err)
+
+	opts, err := getTLSServerOpts(certFile, keyFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, opts)
 }

@@ -76,25 +76,23 @@ func main() {
 	})
 
 	// titan server options
-	servOpts := []continuous.ServerOption{}
+	var servTLSOpts continuous.ServerOption
 	if config.Server.TLSCertFile != "" {
-		tlsOpts, err := server.GetTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
+		servTLSOpts, err = server.GetTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load server TLS config: %s\n", err)
 			os.Exit(1)
 		}
-		servOpts = append(servOpts, tlsOpts)
 	}
 
 	// status server options
-	statusOpts := []continuous.ServerOption{}
+	var statusTLSOpts continuous.ServerOption
 	if config.Status.TLSCertFile != "" {
-		tlsOpts, err := server.GetTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
+		statusTLSOpts, err = server.GetTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load status server TLS config: %s\n", err)
 			os.Exit(1)
 		}
-		statusOpts = append(statusOpts, tlsOpts)
 	}
 
 	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)
@@ -102,11 +100,11 @@ func main() {
 		zap.L().Fatal("create writer for continuous failed", zap.Error(err))
 	}
 	cont := continuous.New(continuous.LoggerOutput(writer), continuous.PidFile(config.PIDFileName))
-	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}, servOpts...); err != nil {
+	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}, servTLSOpts); err != nil {
 		zap.L().Fatal("add titan server failed:", zap.Error(err))
 	}
 
-	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}, statusOpts...); err != nil {
+	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}, statusTLSOpts); err != nil {
 		zap.L().Fatal("add statues server failed:", zap.Error(err))
 	}
 

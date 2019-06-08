@@ -16,7 +16,7 @@ auth = ""
 listen = "0.0.0.0:7369"
 
 #type:        string
-#description: server TLS certificate file (enables SSL/TLS support)
+#description: server TLS certificate file (enables TLS support)
 tls-cert-file = ""
 
 #type:        string
@@ -45,7 +45,7 @@ list-zip-threshold = 100
 #listen = "0.0.0.0:7345"
 
 #type:        string
-#description: status server TLS certificate file (enables SSL/TLS support)
+#description: status server TLS certificate file (enables TLS support)
 tls-cert-file = ""
 
 #type:        string

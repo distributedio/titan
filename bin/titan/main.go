@@ -100,7 +100,7 @@ func main() {
 	if config.Server.TLSCertFile != "" {
 		tlsOpts, err := getTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
 		if err != nil {
-			fmt.Printf("failed to load server SSL/TLS config: %s\n", err)
+			fmt.Printf("failed to load server TLS config: %s\n", err)
 			os.Exit(1)
 		}
 		servOpts = append(servOpts, tlsOpts)
@@ -111,7 +111,7 @@ func main() {
 	if config.Status.TLSCertFile != "" {
 		tlsOpts, err := getTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
-			fmt.Printf("failed to load status server SSL/TLS config: %s\n", err)
+			fmt.Printf("failed to load status server TLS config: %s\n", err)
 			os.Exit(1)
 		}
 		statusOpts = append(statusOpts, tlsOpts)

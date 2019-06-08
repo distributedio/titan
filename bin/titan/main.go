@@ -94,24 +94,26 @@ func main() {
 		ListZipThreshold: config.Server.ListZipThreshold,
 	})
 
+	// titan server options
 	servOpts := []continuous.ServerOption{}
 	if config.Server.TLSCertFile != "" {
-		tlsServerOpts, err := getTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
+		tlsOpts, err := getTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load server SSL/TLS config: %s\n", err)
 			os.Exit(1)
 		}
-		servOpts = append(servOpts, tlsServerOpts)
+		servOpts = append(servOpts, tlsOpts)
 	}
 
+	// status server options
 	statusOpts := []continuous.ServerOption{}
 	if config.Status.TLSCertFile != "" {
-		tlsStatusOpts, err := getTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
+		tlsOpts, err := getTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load status server SSL/TLS config: %s\n", err)
 			os.Exit(1)
 		}
-		statusOpts = append(statusOpts, tlsStatusOpts)
+		statusOpts = append(statusOpts, tlsOpts)
 	}
 
 	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)

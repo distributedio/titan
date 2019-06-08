@@ -44,6 +44,14 @@ list-zip-threshold = 100
 #default:     0.0.0.0:7345
 #listen = "0.0.0.0:7345"
 
+#type:        string
+#description: tls certificate file (enables SSL/TLS support)
+tls-cert-file = ""
+
+#type:        string
+#description: tls private key file (enables SSL/TLS support)
+tls-key-file = ""
+
 
 [tikv]
 
@@ -215,7 +223,7 @@ pd-addrs = "mocktikv://"
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-#level = "info"
+level = "debug"
 
 #type:        bool
 #rules:       boolean

@@ -95,5 +95,7 @@ type TikvLogger struct {
 
 // Status config is the config of exported server
 type Status struct {
-	Listen string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
+	Listen      string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
+	TLSCertFile string `cfg:"tls-cert-file;;;tls certificate file (enables SSL/TLS support)"`
+	TLSKeyFile  string `cfg:"tls-key-file;;;tls private key file (enables SSL/TLS support)"`
 }

@@ -29,16 +29,10 @@ import (
 // getTLSServerOpts loads the TLS certificate and key files, returning a
 // continuous.ServerOption struct configured for TLS.
 func getTLSServerOpts(certFile, keyFile string) (continuous.ServerOption, error) {
-	// support PEM format (cert+key in single certificate file)
-	if keyFile == "" {
-		keyFile = certFile
-	}
-
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, err
 	}
-
 	return continuous.TLSConfig(&tls.Config{
 		Certificates: []tls.Certificate{cert},
 		Rand:         rand.Reader,

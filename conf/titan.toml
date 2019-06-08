@@ -20,7 +20,7 @@ listen = "0.0.0.0:7369"
 tls-cert-file = ""
 
 #type:        string
-#description: server TLS key file (enables SSL/TLS support)
+#description: server TLS key file
 tls-key-file = ""
 
 #type:        int64
@@ -49,7 +49,7 @@ list-zip-threshold = 100
 tls-cert-file = ""
 
 #type:        string
-#description: status server TLS key file (enables SSL/TLS support)
+#description: status server TLS key file
 tls-key-file = ""
 
 

@@ -14,23 +14,23 @@ const (
 
 func TestGetTLSServerOpts(t *testing.T) {
 	// not found
-	_, err := getTLSServerOpts("notfound", keyFile)
+	_, err := GetTLSServerOpts("notfound", keyFile)
 	assert.Error(t, err)
 
 	// not found #2
-	_, err = getTLSServerOpts(certFile, "notfound")
+	_, err = GetTLSServerOpts(certFile, "notfound")
 	assert.Error(t, err)
 
 	// broken file #1
-	_, err = getTLSServerOpts(brokenFile, keyFile)
+	_, err = GetTLSServerOpts(brokenFile, keyFile)
 	assert.Error(t, err)
 
 	// broken file #2
-	_, err = getTLSServerOpts(certFile, brokenFile)
+	_, err = GetTLSServerOpts(certFile, brokenFile)
 	assert.Error(t, err)
 
 	// success
-	opts, err := getTLSServerOpts(certFile, keyFile)
+	opts, err := GetTLSServerOpts(certFile, keyFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, opts)
 }

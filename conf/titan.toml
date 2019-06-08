@@ -223,7 +223,7 @@ pd-addrs = "mocktikv://"
 #type:        string
 #description: log level(debug, info, warn, error, panic, fatal)
 #default:     info
-level = "debug"
+#level = "info"
 
 #type:        bool
 #rules:       boolean

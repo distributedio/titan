@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -24,20 +22,8 @@ import (
 	"github.com/distributedio/titan/context"
 	"github.com/distributedio/titan/db"
 	"github.com/distributedio/titan/metrics"
+	"github.com/distributedio/titan/server"
 )
-
-// getTLSServerOpts loads the TLS certificate and key files, returning a
-// continuous.ServerOption struct configured for TLS.
-func getTLSServerOpts(certFile, keyFile string) (continuous.ServerOption, error) {
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, err
-	}
-	return continuous.TLSConfig(&tls.Config{
-		Certificates: []tls.Certificate{cert},
-		Rand:         rand.Reader,
-	}), nil
-}
 
 func main() {
 	var showVersion bool
@@ -92,7 +78,7 @@ func main() {
 	// titan server options
 	servOpts := []continuous.ServerOption{}
 	if config.Server.TLSCertFile != "" {
-		tlsOpts, err := getTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
+		tlsOpts, err := server.GetTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load server TLS config: %s\n", err)
 			os.Exit(1)
@@ -103,7 +89,7 @@ func main() {
 	// status server options
 	statusOpts := []continuous.ServerOption{}
 	if config.Status.TLSCertFile != "" {
-		tlsOpts, err := getTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
+		tlsOpts, err := server.GetTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load status server TLS config: %s\n", err)
 			os.Exit(1)

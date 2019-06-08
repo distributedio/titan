@@ -13,12 +13,12 @@ const (
 )
 
 func TestGetTLSServerOpts(t *testing.T) {
-	// not found
-	_, err := GetTLSServerOpts("notfound", keyFile)
+	// not found file #1
+	_, err := GetTLSServerOpts("/not/found", keyFile)
 	assert.Error(t, err)
 
-	// not found #2
-	_, err = GetTLSServerOpts(certFile, "notfound")
+	// not found file #2
+	_, err = GetTLSServerOpts(certFile, "/not/found")
 	assert.Error(t, err)
 
 	// broken file #1

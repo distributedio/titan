@@ -87,7 +87,7 @@ func main() {
 
 	// status server options
 	var statusTLSOpts continuous.ServerOption
-	if config.Status.TLSCertFile != "" && config.Status.TLSCertFile != "" {
+	if config.Status.TLSCertFile != "" && config.Status.TLSKeyFile != "" {
 		statusTLSOpts, err = server.GetTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load status server TLS config: %s\n", err)

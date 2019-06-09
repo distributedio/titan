@@ -78,21 +78,23 @@ func main() {
 	// titan server tls options
 	var servTLSOpts continuous.ServerOption
 	if config.Server.TLSCertFile != "" && config.Server.TLSKeyFile != "" {
-		servTLSOpts, err = server.GetTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
+		tlsConfig, err := server.TLSConfig(config.Server.TLSCertFile, config.Server.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load server TLS config: %s\n", err)
 			os.Exit(1)
 		}
+		servTLSOpts = continuous.TLSConfig(tlsConfig)
 	}
 
 	// status server tls options
 	var statusTLSOpts continuous.ServerOption
 	if config.Status.TLSCertFile != "" && config.Status.TLSKeyFile != "" {
-		statusTLSOpts, err = server.GetTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)
+		tlsConfig, err := server.TLSConfig(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
 			fmt.Printf("failed to load status server TLS config: %s\n", err)
 			os.Exit(1)
 		}
+		statusTLSOpts = continuous.TLSConfig(tlsConfig)
 	}
 
 	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)

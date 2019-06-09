@@ -75,7 +75,7 @@ func main() {
 		ListZipThreshold: config.Server.ListZipThreshold,
 	})
 
-	// titan server options
+	// titan server tls options
 	var servTLSOpts continuous.ServerOption
 	if config.Server.TLSCertFile != "" && config.Server.TLSKeyFile != "" {
 		servTLSOpts, err = server.GetTLSServerOpts(config.Server.TLSCertFile, config.Server.TLSKeyFile)
@@ -85,7 +85,7 @@ func main() {
 		}
 	}
 
-	// status server options
+	// status server tls options
 	var statusTLSOpts continuous.ServerOption
 	if config.Status.TLSCertFile != "" && config.Status.TLSKeyFile != "" {
 		statusTLSOpts, err = server.GetTLSServerOpts(config.Status.TLSCertFile, config.Status.TLSKeyFile)

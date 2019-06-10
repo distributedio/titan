@@ -80,8 +80,7 @@ func main() {
 	if config.Server.TLSCertFile != "" && config.Server.TLSKeyFile != "" {
 		tlsConfig, err := server.TLSConfig(config.Server.TLSCertFile, config.Server.TLSKeyFile)
 		if err != nil {
-			fmt.Printf("failed to load server TLS config: %s\n", err)
-			os.Exit(1)
+			zap.L().Fatal("failed to load server TLS config", zap.Error(err))
 		}
 		servTLSOpts = continuous.TLSConfig(tlsConfig)
 	}
@@ -91,8 +90,7 @@ func main() {
 	if config.Status.TLSCertFile != "" && config.Status.TLSKeyFile != "" {
 		tlsConfig, err := server.TLSConfig(config.Status.TLSCertFile, config.Status.TLSKeyFile)
 		if err != nil {
-			fmt.Printf("failed to load status server TLS config: %s\n", err)
-			os.Exit(1)
+			zap.L().Fatal("failed to load status server TLS config", zap.Error(err))
 		}
 		statusTLSOpts = continuous.TLSConfig(tlsConfig)
 	}

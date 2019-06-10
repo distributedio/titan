@@ -11,8 +11,8 @@ import (
 	"time"
 
 	rolling "github.com/arthurkiller/rollingWriter"
+	"github.com/distributedio/continuous"
 	"github.com/shafreeck/configo"
-	"github.com/shafreeck/continuous"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

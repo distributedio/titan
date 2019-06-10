@@ -8,6 +8,7 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548 // indirect
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8 // indirect
+	github.com/distributedio/continuous v0.0.0-20190527021358-1768e41f22b9
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
 	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9 // indirect
@@ -41,7 +42,6 @@ require (
 	github.com/robfig/cron v0.0.0-20180505203441-b41be1df6967 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/shafreeck/configo v0.0.0-20170612223031-a52cd6b0688a
-	github.com/shafreeck/continuous v0.0.0-20181107093210-119a324e6bc5
 	github.com/shafreeck/retry v0.0.0-20180827080527-71c8c3fbf8f8
 	github.com/shafreeck/toml v0.0.0-20160718194341-4ad33e231a16 // indirect
 	github.com/sirupsen/logrus v1.3.0

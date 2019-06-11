@@ -16,12 +16,12 @@ auth = ""
 listen = "0.0.0.0:7369"
 
 #type:        string
-#description: server TLS certificate file (enables TLS support)
-tls-cert-file = ""
+#description: server SSL certificate file (enables SSL support)
+ssl-cert-file = ""
 
 #type:        string
-#description: server TLS key file
-tls-key-file = ""
+#description: server SSL key file
+ssl-key-file = ""
 
 #type:        int64
 #rules:       numeric
@@ -45,12 +45,12 @@ list-zip-threshold = 100
 #listen = "0.0.0.0:7345"
 
 #type:        string
-#description: status server TLS certificate file (enables TLS support)
-tls-cert-file = ""
+#description: status server SSL certificate file (enables SSL support)
+ssl-cert-file = ""
 
 #type:        string
-#description: status server TLS key file
-tls-key-file = ""
+#description: status server SSL key file
+ssl-key-file = ""
 
 
 [tikv]

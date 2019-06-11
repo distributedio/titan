@@ -31,7 +31,7 @@ clean:
 	rm -rf ./token
 
 lint:
-	golangci-lint run
+	golangci-lint run -D gochecknoglobals gochecknoinits $(GOPATH)/src/github.com/distributedio/titan/...
 
 proto:
 	cd ./db/zlistproto && protoc --gofast_out=plugins=grpc:. ./zlist.proto

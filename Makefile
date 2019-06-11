@@ -31,7 +31,7 @@ clean:
 	rm -rf ./token
 
 lint:
-	cd $(GOPATH)/src/$(PKG) && golangci-lint run -p=bugs,complexity,format,performance,style,unused
+	cd $(GOPATH)/src/$(PKG) && golangci-lint run -p=bugs,complexity,format,performance,style,unused ./...
 
 proto:
 	cd ./db/zlistproto && protoc --gofast_out=plugins=grpc:. ./zlist.proto

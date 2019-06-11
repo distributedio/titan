@@ -5,9 +5,11 @@ go:
     - "1.11.4"
 
 before_install:
+    - wget -O - -q https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s vX.Y.Z
     - go get golang.org/x/tools/cmd/cover
     - go get github.com/mattn/goveralls
 
 script: 
+    - make lint
     - make coverage
     - $HOME/gopath/bin/goveralls -coverprofile=cover.cov -service=travis-ci

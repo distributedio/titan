@@ -31,7 +31,7 @@ clean:
 	rm -rf ./token
 
 lint:
-	gometalinter --fast -t --errors --enable-gc ${GO_FILES}
+	golangci-lint run
 
 proto:
 	cd ./db/zlistproto && protoc --gofast_out=plugins=grpc:. ./zlist.proto

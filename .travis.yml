@@ -4,8 +4,11 @@ go_import_path: github.com/distributedio/titan
 go:
     - "1.11.4"
 
-before_install:
-    - go mod download
+cache:
+  directories:
+    - $GOPATH/pkg/mod
+
+before_script:
     - wget -O - -q https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.17.1
     - go get golang.org/x/tools/cmd/cover
     - go get github.com/mattn/goveralls

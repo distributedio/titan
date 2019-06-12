@@ -15,6 +15,14 @@ auth = ""
 #default:     0.0.0.0:7369
 listen = "0.0.0.0:7369"
 
+#type:        string
+#description: server SSL certificate file (enables SSL support)
+ssl-cert-file = ""
+
+#type:        string
+#description: server SSL key file
+ssl-key-file = ""
+
 #type:        int64
 #rules:       numeric
 #description: client connection count
@@ -35,6 +43,14 @@ list-zip-threshold = 100
 #description: listen address of http server
 #default:     0.0.0.0:7345
 #listen = "0.0.0.0:7345"
+
+#type:        string
+#description: status server SSL certificate file (enables SSL support)
+ssl-cert-file = ""
+
+#type:        string
+#description: status server SSL key file
+ssl-key-file = ""
 
 
 [tikv]

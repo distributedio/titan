@@ -26,6 +26,8 @@ type Hash struct {
 type Server struct {
 	Auth             string `cfg:"auth;;;client connetion auth"`
 	Listen           string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
+	SSLCertFile      string `cfg:"ssl-cert-file;;;server SSL certificate file (enables SSL support)"`
+	SSLKeyFile       string `cfg:"ssl-key-file;;;server SSL key file"`
 	MaxConnection    int64  `cfg:"max-connection;1000;numeric;client connection count"`
 	ListZipThreshold int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
 }
@@ -93,5 +95,7 @@ type TikvLogger struct {
 
 // Status config is the config of exported server
 type Status struct {
-	Listen string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
+	Listen      string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
+	SSLCertFile string `cfg:"ssl-cert-file;;;status server SSL certificate file (enables SSL support)"`
+	SSLKeyFile  string `cfg:"ssl-key-file;;;status server SSL key file"`
 }

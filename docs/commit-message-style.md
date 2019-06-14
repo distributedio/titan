@@ -46,8 +46,9 @@ This describes the kind of change that this commit is providing.
 * context
 * conf
 * metric
+* ...
 
-You can use * if there isn't a more fitting scope.
+You can define scope yourself which is not listed here, and you can use * if there isn't a more fitting scope.
 
 ### `<subject>` text
 

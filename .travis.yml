@@ -2,7 +2,7 @@ language: go
 go_import_path: github.com/distributedio/titan
 
 go:
-    - "1.11.4"
+    - "1.13"
 
 cache:
   directories:
@@ -14,6 +14,5 @@ before_script:
     - go get github.com/mattn/goveralls
 
 script: 
-    - make lint
     - make coverage
     - $HOME/gopath/bin/goveralls -coverprofile=cover.cov -service=travis-ci

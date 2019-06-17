@@ -243,6 +243,12 @@ func TestSet_SAdd(t *testing.T) {
 			members: [][]byte{[]byte("value4"), []byte("value4"), []byte("value4"), []byte("value5"), []byte("value6")},
 			want:    0,
 		},
+		{
+			name:    "set_duplicate_some",
+			key:     testSetSAddKey,
+			members: [][]byte{[]byte("value7"), []byte("value7"), []byte("value8")},
+			want:    2,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -529,7 +535,28 @@ func TestRemoveRepByMap(t *testing.T) {
 		args args
 		want [][]byte
 	}{
-		// TODO: Add test cases.
+		{
+			name:  "single member",
+			args:  args{
+				members : [][]byte{[]byte("value1")},
+			},
+			want:  [][]byte{[]byte("value1")},
+		},
+		{
+			name:  "multi members",
+			args:  args{
+				members : [][]byte{[]byte("value1"),[]byte("value2"),[]byte("value3")},
+			},
+			want:  [][]byte{[]byte("value1"),[]byte("value2"),[]byte("value3")},
+		},
+		{
+			name:  "with duplicate members",
+			args:  args{
+				members : [][]byte{[]byte("value1"),[]byte("value2"),[]byte("value1")},
+			},
+			want:  [][]byte{[]byte("value1"),[]byte("value2")},
+		},
+
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

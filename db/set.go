@@ -187,9 +187,11 @@ func RemoveRepByMap(members [][]byte) [][]byte {
 	// uniq saves non-repeating primary keys
 	uniq := map[string]struct{}{}
 	for _, m := range members {
-		_, ok := uniq[string(m)]
+		mStr := string(m)
+		_, ok := uniq[mStr]
 		if !ok {
 			result = append(result, m)
+			uniq[mStr] = struct{}{}
 		}
 	}
 	return result

@@ -93,7 +93,7 @@
 - [ ] rpop
 - [ ] rpoplpush
 - [x] rpush
-- [ ] rpushhx
+- [x] rpushx
 - [ ] blpop
 - [ ] brpop
 - [ ] brpoplpush
@@ -226,7 +226,6 @@ ___NOTICE: commands beyond this table has already been fully supported___
 |lrem      |List||
 |rpop      |List||
 |rpoplpush |List||
-|rpushhx   |List||
 |blpop     |List||
 |brpop     |List||
 |brpoplpush|List||

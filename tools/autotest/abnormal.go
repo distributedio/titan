@@ -128,7 +128,8 @@ func (an *Abnormal) ZSetCase(t *testing.T) {
 	an.ez.ZAddEqualErr(t, "ERR wrong number of arguments for 'zadd' command", "set", "v")
 	an.ez.ZAddEqualErr(t, "ERR wrong number of arguments for 'zadd' command", "set", "v", "m1", "v2")
 	an.ez.ZAddEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "1", "m1")
-	an.ez.ZAddEqualErr(t, "ERR strconv.ParseFloat: parsing \"v\": invalid syntax", "key-zset-abnormal", "v", "m1")
+	an.ez.ZAddEqualErr(t, "ERR value is not a valid float", "key-zset-abnormal", "v", "m1")
+	an.ez.ZAddEqualErr(t, "ERR value is not a valid float", "key-zset-abnormal", "nan", "m1")
 
 	an.ez.ZRangeEqualErr(t, "ERR wrong number of arguments for 'zrange' command", "set")
 	an.ez.ZRangeEqualErr(t, "ERR wrong number of arguments for 'zrange' command", "set", "0")

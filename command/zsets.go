@@ -3,6 +3,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/distributedio/titan/db"
@@ -31,8 +32,8 @@ func ZAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 		members = append(members, []byte(member))
 		score, err := strconv.ParseFloat(kvs[i], 64)
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+		if err != nil || math.IsNaN(score) {
+			return nil, ErrFloat
 		}
 		scores = append(scores, score)
 

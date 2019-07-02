@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/distributedio/titan/db"
 )
@@ -76,7 +77,7 @@ func zAnyOrderRange(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCo
 	}
 	withScore := bool(false)
 	if len(ctx.Args) >= 4 {
-		if ctx.Args[3] == "WITHSCORES" {
+		if strings.ToUpper(ctx.Args[3]) == "WITHSCORES" {
 			withScore = true
 		}
 	}

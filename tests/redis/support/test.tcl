@@ -5,6 +5,8 @@ set ::num_skipped 0
 set ::num_aborted 0
 set ::tests_failed {}
 
+source support/test_common.tcl
+
 proc fail {msg} {
     error "assertion:$msg"
 }
@@ -67,6 +69,9 @@ proc wait_for_condition {maxtries delay e _else_ elsescript} {
 }
 
 proc test {name code {okpattern undefined}} {
+    if { ![info exists ::toTestCase($name)] } {
+        return
+    }
     # abort if tagged with a tag to deny
     foreach tag $::denytags {
         if {[lsearch $::tags $tag] >= 0} {

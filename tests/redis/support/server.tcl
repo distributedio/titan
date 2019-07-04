@@ -147,6 +147,7 @@ proc start_server {options {code undefined}} {
             dict set srv "port" $::port
             set client [redis $::host $::port]
             dict set srv "client" $client
+            $client auth $::auth
             $client select 9
 
             # append the server to the stack

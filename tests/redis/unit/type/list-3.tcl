@@ -39,8 +39,6 @@ start_server {
             switch $op {
                 0 {r lpush key $ele}
                 1 {r rpush key $ele}
-                2 {r lpop key}
-                3 {r rpop key}
                 4 {
                     catch {r lset key $small_signed_count $ele}
                 }

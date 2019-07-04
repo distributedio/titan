@@ -111,7 +111,7 @@ start_server {
         r srem myset 1 2 3 4 5 6 7 8
     } {3}
 
-    foreach {type} {hashtable intset} {
+    foreach {type} {hashtable} {
         for {set i 1} {$i <= 5} {incr i} {
             r del [format "set%d" $i]
         }
@@ -285,7 +285,7 @@ start_server {
         assert_equal 0 [r exists setres]
     }
 
-    foreach {type contents} {hashtable {a b c} intset {1 2 3}} {
+    foreach {type contents} {hashtable {a b c}} {
         test "SPOP basics - $type" {
             create_set myset $contents
             assert_encoding $type myset
@@ -312,8 +312,8 @@ start_server {
     }
 
     foreach {type contents} {
-        hashtable {a b c d e f g h i j k l m n o p q r s t u v w x y z} 
-        intset {1 10 11 12 13 14 15 16 17 18 19 2 20 21 22 23 24 25 26 3 4 5 6 7 8 9}
+        hashtable {a b c d e f g h i j k l m n o p q r s t u v w x y z}
+        hashtable {1 10 11 12 13 14 15 16 17 18 19 2 20 21 22 23 24 25 26 3 4 5 6 7 8 9}
     } {
         test "SPOP with <count>" {
             create_set myset $contents

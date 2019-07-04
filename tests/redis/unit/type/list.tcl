@@ -4,7 +4,7 @@ start_server {
         "list-max-ziplist-size" 5
     }
 } {
-    source "tests/unit/type/list-common.tcl"
+    source "unit/type/list-common.tcl"
 
     test {LPUSH, RPUSH, LLENGTH, LINDEX, LPOP - ziplist} {
         # first lpush then rpush
@@ -37,7 +37,7 @@ start_server {
     test {LPUSH, RPUSH, LLENGTH, LINDEX, LPOP - regular list} {
         # first lpush then rpush
         assert_equal 1 [r lpush mylist1 $largevalue(linkedlist)]
-        assert_encoding quicklist mylist1
+        assert_encoding linkedlist mylist1
         assert_equal 2 [r rpush mylist1 b]
         assert_equal 3 [r rpush mylist1 c]
         assert_equal 3 [r llen mylist1]
@@ -45,12 +45,11 @@ start_server {
         assert_equal b [r lindex mylist1 1]
         assert_equal c [r lindex mylist1 2]
         assert_equal {} [r lindex mylist1 3]
-        assert_equal c [r rpop mylist1]
         assert_equal $largevalue(linkedlist) [r lpop mylist1]
 
         # first rpush then lpush
         assert_equal 1 [r rpush mylist2 $largevalue(linkedlist)]
-        assert_encoding quicklist mylist2
+        assert_encoding linkedlist mylist2
         assert_equal 2 [r lpush mylist2 b]
         assert_equal 3 [r lpush mylist2 c]
         assert_equal 3 [r llen mylist2]
@@ -58,7 +57,6 @@ start_server {
         assert_equal b [r lindex mylist2 1]
         assert_equal $largevalue(linkedlist) [r lindex mylist2 2]
         assert_equal {} [r lindex mylist2 3]
-        assert_equal $largevalue(linkedlist) [r rpop mylist2]
         assert_equal c [r lpop mylist2]
     }
 
@@ -82,7 +80,7 @@ start_server {
     proc create_list {key entries} {
         r del $key
         foreach entry $entries { r rpush $key $entry }
-        assert_encoding quicklist $key
+        assert_encoding linkedlist $key
     }
 
     foreach {type large} [array get largevalue] {

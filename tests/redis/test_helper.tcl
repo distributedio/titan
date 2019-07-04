@@ -5,11 +5,11 @@
 package require Tcl 8.5
 
 set tcl_precision 17
-source tests/support/redis.tcl
-source tests/support/server.tcl
-source tests/support/tmpfile.tcl
-source tests/support/test.tcl
-source tests/support/util.tcl
+source support/redis.tcl
+source support/server.tcl
+source support/tmpfile.tcl
+source support/test.tcl
+source support/util.tcl
 
 set ::all_tests {
     unit/printver
@@ -68,6 +68,7 @@ set ::next_test 0
 
 set ::host 127.0.0.1
 set ::port 21111
+set ::auth ""
 set ::traceleaks 0
 set ::valgrind 0
 set ::stack_logging 0
@@ -101,7 +102,7 @@ set ::client 0
 set ::numclients 16
 
 proc execute_tests name {
-    set path "tests/$name.tcl"
+    set path "$name.tcl"
     set ::curfile $path
     source $path
     send_data_packet $::test_server_fd done "$name"
@@ -207,13 +208,12 @@ proc test_server_main {} {
 
     # Start the client instances
     set ::clients_pids {}
-    set start_port [expr {$::port+100}]
+    set start_port $::port
+
     for {set j 0} {$j < $::numclients} {incr j} {
-        set start_port [find_available_port $start_port]
         set p [exec $tclsh [info script] {*}$::argv \
             --client $port --port $start_port &]
         lappend ::clients_pids $p
-        incr start_port 10
     }
 
     # Setup global state for the test server
@@ -432,6 +432,7 @@ proc send_data_packet {fd status data} {
 
 proc print_help_screen {} {
     puts [join {
+        "--auth            Specify the AUTH."
         "--valgrind         Run the test over valgrind."
         "--stack-logging    Enable OSX leaks/malloc stack logging."
         "--accurate         Run slow randomized tests for more iterations."
@@ -465,6 +466,9 @@ for {set j 0} {$j < [llength $argv]} {incr j} {
                 lappend ::allowtags $tag
             }
         }
+        incr j
+    } elseif {$opt eq {--auth}} {
+        set ::auth $arg
         incr j
     } elseif {$opt eq {--config}} {
         set arg2 [lindex $argv [expr $j+2]]
@@ -561,6 +565,7 @@ if {$::skip_till != ""} {
 # in case there was some filter, that is --single or --skip-till options.
 if {[llength $::single_tests] > 0} {
     set ::all_tests $::single_tests
+    set ::numclients 1
 }
 
 proc attach_to_replication_stream {} {

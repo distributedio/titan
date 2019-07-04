@@ -150,6 +150,10 @@ func (ac *AutoClient) ZSetCase(t *testing.T) {
 	time.Sleep(time.Second *10)
 	ac.ek.ExistsEqual(t, 1, "key-zset")
 	ac.ek.DelEqual(t, 1, "key-zset")
+
+	ac.ez.ZAddEqual(t, "key-zset-short-key", "2.0", "a", "2.05", "b")
+	ac.ez.ZRemEqual(t, "key-zset-short-key", "a", "e")
+	ac.ek.DelEqual(t, 1, "key-zset-short-key")
 }
 
 //KeyCase check key case

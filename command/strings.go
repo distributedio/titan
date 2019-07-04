@@ -79,7 +79,7 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if err != nil {
 			return nil, ErrInteger
 		}
-		if ui == 0 {
+		if ui <= 0 {
 			return nil, ErrExpire
 		}
 		unit = ui * unit

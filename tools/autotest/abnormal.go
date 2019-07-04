@@ -53,6 +53,7 @@ func (an *Abnormal) StringCase(t *testing.T) {
 	//set
 	an.es.SetEqualErr(t, "ERR wrong number of arguments for 'set' command", "fuck")
 	an.es.SetEqualErr(t, "ERR value is not an integer or out of range", "key", "v", "ex", "second")
+	an.es.SetEqualErr(t, "ERR invalid expire time in set", "key", "v", "ex", -10)
 	an.es.SetEqualErr(t, "ERR syntax error", "key", "v", "nx", "second")
 
 	an.es.GetEqualErr(t, "ERR wrong number of arguments for 'get' command", "hello", "fuck")

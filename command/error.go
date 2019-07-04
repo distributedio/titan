@@ -40,6 +40,9 @@ var (
 	//ErrExpire expire time in set
 	ErrExpire = errors.New("ERR invalid expire time in set")
 
+	//ErrExpire expire time in setex
+	ErrExpireSetEx = errors.New("ERR invalid expire time in setex")
+
 	// ErrInteger value is not an integer or out of range
 	ErrInteger = errors.New("ERR value is not an integer or out of range")
 

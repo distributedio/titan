@@ -305,8 +305,8 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	s := db.NewString(txn, key)
 	ui, err := strconv.ParseInt(ctx.Args[1], 10, 64)
-	if err != nil {
-		return nil, ErrInteger
+	if err != nil || ui <= 0 {
+		return nil, ErrExpireSetEx
 	}
 	unit := ui * int64(time.Second)
 	if err := s.Set([]byte(ctx.Args[2]), unit); err != nil {

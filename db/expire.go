@@ -159,7 +159,7 @@ func runExpire(db *DB, batchLimit int) {
 		ts := DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
 		if ts > now {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not need to expire key"); logEnv != nil {
-				logEnv.Write(zap.Int64("last timestamp", ts))
+				logEnv.Write( zap.String("raw key", string(rawKey)), zap.Int64("last timestamp", ts))
 			}
 			break
 		}

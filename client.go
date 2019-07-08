@@ -2,6 +2,7 @@ package titan
 
 import (
 	"bufio"
+	"io"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -53,13 +54,19 @@ func (c *client) Write(p []byte) (int, error) {
 	zap.L().Debug("write to client", zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
-		zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
-			zap.Int64("clientid", c.cliCtx.ID),
-			zap.String("namespace", c.cliCtx.Namespace),
-			zap.Bool("multi", c.cliCtx.Multi),
-			zap.Bool("watching", c.cliCtx.Txn != nil),
-			zap.String("command", c.cliCtx.LastCmd),
-			zap.String("error", err.Error()))
+		if err == io.EOF {
+			zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID))
+			err = nil
+		} else {
+			zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID),
+				zap.String("namespace", c.cliCtx.Namespace),
+				zap.Bool("multi", c.cliCtx.Multi),
+				zap.Bool("watching", c.cliCtx.Txn != nil),
+				zap.String("command", c.cliCtx.LastCmd),
+				zap.String("error", err.Error()))
+		}
 		c.conn.Close()
 	}
 	return n, err
@@ -78,8 +85,14 @@ func (c *client) serve(conn net.Conn) error {
 		default:
 			cmd, err = c.readCommand()
 			if err != nil {
-				zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
-					zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+				if err == io.EOF {
+					zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
+						zap.Int64("clientid", c.cliCtx.ID))
+					err = nil
+				} else {
+					zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+						zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+				}
 				c.conn.Close()
 				return err
 			}

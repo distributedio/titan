@@ -85,15 +85,14 @@ func (c *client) serve(conn net.Conn) error {
 		default:
 			cmd, err = c.readCommand()
 			if err != nil {
+				c.conn.Close()
 				if err == io.EOF {
 					zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
 						zap.Int64("clientid", c.cliCtx.ID))
-					err = nil
-				} else {
-					zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
-						zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+					return nil
 				}
-				c.conn.Close()
+				zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
+					zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
 				return err
 			}
 		}

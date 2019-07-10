@@ -54,10 +54,10 @@ func (c *client) Write(p []byte) (int, error) {
 	zap.L().Debug("write to client", zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
+		c.conn.Close()
 		if err == io.EOF {
 			zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID))
-			err = nil
 		} else {
 			zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID),
@@ -66,10 +66,10 @@ func (c *client) Write(p []byte) (int, error) {
 				zap.Bool("watching", c.cliCtx.Txn != nil),
 				zap.String("command", c.cliCtx.LastCmd),
 				zap.String("error", err.Error()))
+			return 0, err
 		}
-		c.conn.Close()
 	}
-	return n, err
+	return n, nil
 }
 
 func (c *client) serve(conn net.Conn) error {

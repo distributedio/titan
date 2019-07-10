@@ -11,8 +11,8 @@ import (
 	"time"
 
 	rolling "github.com/arthurkiller/rollingWriter"
-	"github.com/shafreeck/configo"
-	"github.com/shafreeck/continuous"
+	"github.com/distributedio/configo"
+	"github.com/distributedio/continuous"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -22,6 +22,7 @@ import (
 	"github.com/distributedio/titan/context"
 	"github.com/distributedio/titan/db"
 	"github.com/distributedio/titan/metrics"
+	"github.com/distributedio/titan/server"
 )
 
 func main() {
@@ -74,16 +75,36 @@ func main() {
 		ListZipThreshold: config.Server.ListZipThreshold,
 	})
 
+	var servOpts, statusOpts []continuous.ServerOption
+
+	// titan server tls options
+	if config.Server.SSLCertFile != "" && config.Server.SSLKeyFile != "" {
+		tlsConfig, err := server.TLSConfig(config.Server.SSLCertFile, config.Server.SSLKeyFile)
+		if err != nil {
+			zap.L().Fatal("failed to load server TLS config", zap.Error(err))
+		}
+		servOpts = append(servOpts, continuous.TLSConfig(tlsConfig))
+	}
+
+	// status server tls options
+	if config.Status.SSLCertFile != "" && config.Status.SSLKeyFile != "" {
+		tlsConfig, err := server.TLSConfig(config.Status.SSLCertFile, config.Status.SSLKeyFile)
+		if err != nil {
+			zap.L().Fatal("failed to load status server TLS config", zap.Error(err))
+		}
+		statusOpts = append(statusOpts, continuous.TLSConfig(tlsConfig))
+	}
+
 	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)
 	if err != nil {
 		zap.L().Fatal("create writer for continuous failed", zap.Error(err))
 	}
 	cont := continuous.New(continuous.LoggerOutput(writer), continuous.PidFile(config.PIDFileName))
-	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}); err != nil {
+	if err := cont.AddServer(serv, &continuous.ListenOn{Network: "tcp", Address: config.Server.Listen}, servOpts...); err != nil {
 		zap.L().Fatal("add titan server failed:", zap.Error(err))
 	}
 
-	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}); err != nil {
+	if err := cont.AddServer(svr, &continuous.ListenOn{Network: "tcp", Address: config.Status.Listen}, statusOpts...); err != nil {
 		zap.L().Fatal("add statues server failed:", zap.Error(err))
 	}
 

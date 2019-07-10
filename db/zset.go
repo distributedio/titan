@@ -338,8 +338,11 @@ func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
 }
 
 func zsetMemberKey(dkey []byte, member []byte) []byte {
-	dkey = append(dkey, ':')
-	return append(dkey, member...)
+	var memberKey []byte
+	memberKey = append(memberKey, dkey...)
+	memberKey = append(memberKey, ':')
+	memberKey = append(memberKey, member...)
+	return memberKey
 }
 
 // ZSetScorePrefix builds a score key prefix from a redis key
@@ -354,7 +357,8 @@ func ZSetScorePrefix(db *DB, key []byte) []byte {
 }
 
 func zsetScoreKey(scorePrefix []byte, score []byte, member []byte) []byte {
-	scoreKey := append(scorePrefix, ':')
+	var scoreKey []byte
+	scoreKey = append(scorePrefix, ':')
 	scoreKey = append(scoreKey, score...)
 	scoreKey = append(scoreKey, ':')
 	scoreKey = append(scoreKey, member...)

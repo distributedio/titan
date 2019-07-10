@@ -3,7 +3,9 @@ package command
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
+	"strings"
 
 	"github.com/distributedio/titan/db"
 )
@@ -31,8 +33,8 @@ func ZAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 		members = append(members, []byte(member))
 		score, err := strconv.ParseFloat(kvs[i], 64)
-		if err != nil {
-			return nil, errors.New("ERR " + err.Error())
+		if err != nil || math.IsNaN(score) {
+			return nil, ErrFloat
 		}
 		scores = append(scores, score)
 
@@ -75,7 +77,7 @@ func zAnyOrderRange(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCo
 	}
 	withScore := bool(false)
 	if len(ctx.Args) >= 4 {
-		if ctx.Args[3] == "WITHSCORES" {
+		if strings.ToUpper(ctx.Args[3]) == "WITHSCORES" {
 			withScore = true
 		}
 	}

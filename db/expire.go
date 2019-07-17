@@ -204,10 +204,11 @@ func runExpire(db *DB, batchLimit int) {
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
 }
 
-func doExpire(txn *Transaction, mkey, id []byte) error {
+func doExpire(txn *Transaction, mkey, idAndType []byte) error {
 	namespace, dbid, key := splitMetaKey(mkey)
 	obj, err := getObject(txn, mkey)
 
+	id := idAndType[:len(idAndType)-1]
 	// Check for dirty data due to copying or flushdb/flushall
 	if err == ErrKeyNotFound || !bytes.Equal(obj.ID, id) {
 		return nil

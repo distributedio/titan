@@ -49,10 +49,7 @@ func expireAt(txn store.Transaction, mkey []byte, objID []byte, objType ObjectTy
 	}
 
 	if newAt > 0 {
-		idAndType := make([]byte, len(objID), len(objID)+1)
-		copy(idAndType, objID)
-		idAndType = append(idAndType, byte(objType))
-		if err := txn.Set(newKey, idAndType); err != nil {
+		if err := txn.Set(newKey, objID); err != nil {
 			return err
 		}
 	}

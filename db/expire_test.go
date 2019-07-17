@@ -145,7 +145,6 @@ func Test_doExpire(t *testing.T) {
 	type args struct {
 		mkey []byte
 		id   []byte
-		tp   byte
 	}
 	type want struct {
 		gckey bool
@@ -161,7 +160,6 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredHash")),
 				id:   hashId,
-				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: true,
@@ -172,7 +170,6 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash")),
 				id:   []byte("nil"),
-				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: false,
@@ -183,7 +180,6 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("test")),
 				id:   []byte("not exists"),
-				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: false,
@@ -193,8 +189,7 @@ func Test_doExpire(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			txn := getTxn(t)
-			idAndType := append(tt.args.id, tt.args.tp)
-			err := doExpire(txn, tt.args.mkey, idAndType)
+			err := doExpire(txn, tt.args.mkey, tt.args.id)
 			txn.Commit(context.TODO())
 			assert.NoError(t, err)
 

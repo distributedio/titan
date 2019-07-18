@@ -141,10 +141,14 @@ func Test_doExpire(t *testing.T) {
 	}
 	hashId := initHash(t, []byte("TestExpiredHash"))
 	_ = initHash(t, []byte("TestExpiredRewriteHash"))
+
+	dirtyDataHashId := initHash(t, []byte("TestExpiredHash_dirty_data"))
+	_ = initHash(t, []byte("TestExpiredRewriteHash_dirty_data"))
 	txn := getTxn(t)
 	type args struct {
 		mkey []byte
 		id   []byte
+		tp   byte
 	}
 	type want struct {
 		gckey bool
@@ -185,11 +189,37 @@ func Test_doExpire(t *testing.T) {
 				gckey: false,
 			},
 		},
+		{
+			name: "TestExpiredHash_dirty_data",
+			args: args{
+				mkey: MetaKey(txn.db, []byte("TestExpiredHash_dirty_data")),
+				id:   dirtyDataHashId,
+				tp: byte(ObjectHash),
+			},
+			want: want{
+				gckey: true,
+			},
+		},
+		{
+			name: "TestExpiredRewriteHash_dirty_data",
+			args: args{
+				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash_dirty_data")),
+				id:   []byte("nil"),
+				tp: byte(ObjectHash),
+			},
+			want: want{
+				gckey: false,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			txn := getTxn(t)
-			err := doExpire(txn, tt.args.mkey, tt.args.id)
+			id := tt.args.id
+			if tt.args.tp == byte(ObjectHash) {
+				id = append(id, tt.args.tp)
+			}
+			err := doExpire(txn, tt.args.mkey, id)
 			txn.Commit(context.TODO())
 			assert.NoError(t, err)
 

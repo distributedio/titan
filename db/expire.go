@@ -212,9 +212,9 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 	if err != nil {
 		return err
 	}
-	idLen := len(id)
-	if idLen > len(obj.ID) {
-		id = id[:idLen-1]
+	idLen := len(obj.ID)
+	if len(id) > idLen {
+		id = id[:idLen]
 	}
 	if !bytes.Equal(obj.ID, id) {
 		return nil

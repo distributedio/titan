@@ -142,7 +142,7 @@ func Test_doExpire(t *testing.T) {
 	hashId := initHash(t, []byte("TestExpiredHash"))
 	_ = initHash(t, []byte("TestExpiredRewriteHash"))
 
-	dirtyDataHashId := initHash(t, []byte("TestExpiredHash_dirty_data"))
+	dirtyDataHashID := initHash(t, []byte("TestExpiredHash_dirty_data"))
 	_ = initHash(t, []byte("TestExpiredRewriteHash_dirty_data"))
 	txn := getTxn(t)
 	type args struct {
@@ -193,7 +193,7 @@ func Test_doExpire(t *testing.T) {
 			name: "TestExpiredHash_dirty_data",
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredHash_dirty_data")),
-				id:   dirtyDataHashId,
+				id:   dirtyDataHashID,
 				tp: byte(ObjectHash),
 			},
 			want: want{

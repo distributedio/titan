@@ -49,10 +49,7 @@ func expireAt(txn store.Transaction, mkey []byte, objID []byte, objType ObjectTy
 	}
 
 	if newAt > 0 {
-		idAndType := make([]byte, len(objID), len(objID)+1)
-		copy(idAndType, objID)
-		idAndType = append(idAndType, byte(objType))
-		if err := txn.Set(newKey, idAndType); err != nil {
+		if err := txn.Set(newKey, objID); err != nil {
 			return err
 		}
 	}
@@ -209,12 +206,18 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 	obj, err := getObject(txn, mkey)
 
 	// Check for dirty data due to copying or flushdb/flushall
-	if err == ErrKeyNotFound || !bytes.Equal(obj.ID, id) {
+	if err == ErrKeyNotFound {
 		return nil
 	}
-
 	if err != nil {
 		return err
+	}
+	idLen := len(obj.ID)
+	if len(id) > idLen {
+		id = id[:idLen]
+	}
+	if !bytes.Equal(obj.ID, id) {
+		return nil
 	}
 
 	// Delete object meta

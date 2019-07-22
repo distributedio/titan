@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"time"
 
 	"github.com/distributedio/titan/db"
 	"github.com/pingcap/tidb/kv"
@@ -13,9 +14,11 @@ import (
 var log, _ = zap.NewDevelopment()
 
 type option struct {
-	db        int
-	namespace string
-	batch     int
+	db         int
+	namespace  string
+	batch      int
+	dry        bool
+	toleration time.Duration
 }
 
 func deletePrefix(txn kv.Transaction, prefix kv.Key) error {
@@ -25,6 +28,7 @@ func deletePrefix(txn kv.Transaction, prefix kv.Key) error {
 		return err
 	}
 	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		log.Debug("delete", zap.String("key", string(iter.Key())))
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
 		}
@@ -54,7 +58,7 @@ func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 }
 
 func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
-	start kv.Key, limit int) (kv.Key, error) {
+	start kv.Key, opt *option) (kv.Key, error) {
 	txn, err := s.Begin()
 	if err != nil {
 		return nil, err
@@ -63,16 +67,17 @@ func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
 	if err != nil {
 		return nil, err
 	}
-	// tolerate 5mins
-	now := db.Now() - 300
+	// tolerate certain times
+	now := db.Now() - int64(opt.toleration)
 	// scan the whole database
 	var end kv.Key
+	limit := opt.batch
 	for iter.Valid() && iter.Key().HasPrefix(prefix) && limit != 0 {
 		obj, err := db.DecodeObject(iter.Value())
 		if err != nil {
 			return nil, err
 		}
-		if obj.ExpireAt < now {
+		if obj.ExpireAt > 0 && obj.ExpireAt < now {
 			log.Debug("expire", zap.String("key", string(iter.Key())))
 			if err := cleanUp(txn, iter.Key(), database, obj); err != nil {
 				return nil, err
@@ -82,8 +87,15 @@ func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
 		end = iter.Key()
 		iter.Next()
 	}
-	if err := txn.Commit(context.Background()); err != nil {
-		return nil, err
+	if opt.dry {
+		log.Debug("rollback by dry option")
+		if err := txn.Rollback(); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := txn.Commit(context.Background()); err != nil {
+			return nil, err
+		}
 	}
 	// scan done
 	if limit > 0 {
@@ -105,7 +117,7 @@ func expire(opt *option, addr string) error {
 	start := db.MetaKey(database, nil)
 	prefix := start
 	for {
-		next, err := doExpire(store, database, prefix, start, opt.batch)
+		next, err := doExpire(store, database, prefix, start, opt)
 		if err != nil {
 			return err
 		}
@@ -118,15 +130,20 @@ func expire(opt *option, addr string) error {
 		zap.String("namespace", opt.namespace))
 	return nil
 }
+
 func main() {
 	opt := &option{}
 	flag.IntVar(&opt.db, "db", 0, "db slot")
 	flag.IntVar(&opt.batch, "batch", 10000, "number of objects to check in one txn")
 	flag.StringVar(&opt.namespace, "namespace", "default", "namespace")
+	flag.BoolVar(&opt.dry, "dry", false, "do not affect the database")
+	flag.DurationVar(&opt.toleration, "toleration", 300*time.Second, "tolerate certain time to expire")
 	flag.Parse()
 
 	addr := flag.Arg(0)
-	log.Info(addr)
+	log.Debug("options", zap.Reflect("dry", opt.dry),
+		zap.Int("batch", opt.batch), zap.String("addr", addr),
+		zap.Duration("toleration", opt.toleration))
 	if err := expire(opt, addr); err != nil {
 		log.Fatal("expire failed", zap.Error(err))
 	}

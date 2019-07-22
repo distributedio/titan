@@ -208,7 +208,7 @@ func StartZT(db *DB, conf *conf.ZT) {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
-		if !conf.Enable {
+		if conf.Disable {
 			continue
 		}
 		isLeader, err := isLeader(db, sysZTLeader, id, sysZTLeaderFlushInterval)

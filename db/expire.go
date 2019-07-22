@@ -49,10 +49,7 @@ func expireAt(txn store.Transaction, mkey []byte, objID []byte, objType ObjectTy
 	}
 
 	if newAt > 0 {
-		idAndType := make([]byte, len(objID), len(objID)+1)
-		copy(idAndType, objID)
-		idAndType = append(idAndType, byte(objType))
-		if err := txn.Set(newKey, idAndType); err != nil {
+		if err := txn.Set(newKey, objID); err != nil {
 			return err
 		}
 	}
@@ -88,7 +85,7 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
-		if !conf.Enable {
+		if conf.Disable {
 			continue
 		}
 		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
@@ -159,7 +156,7 @@ func runExpire(db *DB, batchLimit int) {
 		ts := DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
 		if ts > now {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not need to expire key"); logEnv != nil {
-				logEnv.Write( zap.String("raw-key", string(rawKey)), zap.Int64("last-timestamp", ts))
+				logEnv.Write(zap.String("raw-key", string(rawKey)), zap.Int64("last-timestamp", ts))
 			}
 			break
 		}
@@ -204,18 +201,23 @@ func runExpire(db *DB, batchLimit int) {
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
 }
 
-func doExpire(txn *Transaction, mkey, idAndType []byte) error {
+func doExpire(txn *Transaction, mkey, id []byte) error {
 	namespace, dbid, key := splitMetaKey(mkey)
 	obj, err := getObject(txn, mkey)
 
-	id := idAndType[:len(idAndType)-1]
 	// Check for dirty data due to copying or flushdb/flushall
-	if err == ErrKeyNotFound || !bytes.Equal(obj.ID, id) {
+	if err == ErrKeyNotFound {
 		return nil
 	}
-
 	if err != nil {
 		return err
+	}
+	idLen := len(obj.ID)
+	if len(id) > idLen {
+		id = id[:idLen]
+	}
+	if !bytes.Equal(obj.ID, id) {
+		return nil
 	}
 
 	// Delete object meta

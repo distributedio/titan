@@ -85,7 +85,7 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 	defer ticker.Stop()
 	id := UUID()
 	for range ticker.C {
-		if !conf.Enable {
+		if conf.Disable {
 			continue
 		}
 		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
@@ -156,7 +156,7 @@ func runExpire(db *DB, batchLimit int) {
 		ts := DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
 		if ts > now {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not need to expire key"); logEnv != nil {
-				logEnv.Write( zap.String("raw-key", string(rawKey)), zap.Int64("last-timestamp", ts))
+				logEnv.Write(zap.String("raw-key", string(rawKey)), zap.Int64("last-timestamp", ts))
 			}
 			break
 		}

@@ -13,7 +13,7 @@ auth = ""
 #rules:       netaddr
 #description: address to listen
 #default:     0.0.0.0:7369
-listen = "0.0.0.0:7369"
+#listen = "0.0.0.0:7369"
 
 #type:        string
 #description: server SSL certificate file (enables SSL support)
@@ -27,13 +27,13 @@ ssl-key-file = ""
 #rules:       numeric
 #description: client connection count
 #default:     1000
-max-connection = 1000
+#max-connection = 1000
 
 #type:        int
 #rules:       numeric
 #description: the max limit length of elements in list
 #default:     100
-list-zip-threshold = 100
+#list-zip-threshold = 100
 
 
 [status]
@@ -58,7 +58,7 @@ ssl-key-file = ""
 #type:        string
 #description: pd address in tidb
 #required
-#mocktikv是内存模式
+##mocktikv是内存模式
 pd-addrs = "mocktikv://"
 
 [tikv.db]
@@ -76,9 +76,9 @@ pd-addrs = "mocktikv://"
 
 #type:        bool
 #rules:       boolean
-#description: true for enabling gc
-#default:     true
-#enable = true
+#description: false is used to disable gc
+#default:     false
+#disable = false
 
 #type:        time.Duration
 #description: gc work tick interval
@@ -101,9 +101,9 @@ pd-addrs = "mocktikv://"
 
 #type:        bool
 #rules:       boolean
-#description: true for enabling expire
-#default:     true
-#enable = true
+#description: false is used to disable expire
+#default:     false
+#disable = false
 
 #type:        time.Duration
 #description: expire work tick interval
@@ -126,9 +126,9 @@ pd-addrs = "mocktikv://"
 
 #type:        bool
 #rules:       boolean
-#description: true for enabling zt
-#default:     true
-#enable = true
+#description: false is used to disable  zt
+#default:     false
+#disable = false
 
 #type:        int
 #rules:       numeric
@@ -158,9 +158,9 @@ pd-addrs = "mocktikv://"
 
 #type:        bool
 #rules:       boolean
-#description: true for enabling tikv gc
-#default:     true
-#enable = true
+#description: false is used to disable tikvgc
+#default:     false
+#disable = false
 
 #type:        time.Duration
 #description: gc work tick interval

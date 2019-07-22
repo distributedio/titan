@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var log = zap.L()
+var log, _ = zap.NewDevelopment()
 
 type option struct {
 	db        int
@@ -36,9 +36,12 @@ func deletePrefix(txn kv.Transaction, prefix kv.Key) error {
 }
 func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 	obj *db.Object) error {
+	if err := txn.Delete(mkey); err != nil {
+		return err
+	}
 	switch obj.Type {
 	case db.ObjectString:
-		return txn.Delete(mkey)
+		return nil
 	case db.ObjectZSet:
 		dkey := db.DataKey(database, obj.ID)
 		skey := db.ZSetScorePrefix(database, obj.ID)
@@ -46,12 +49,12 @@ func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 		return deletePrefix(txn, skey)
 	default:
 		dkey := db.DataKey(database, obj.ID)
-		return txn.Delete(dkey)
+		return deletePrefix(txn, dkey)
 	}
-	return nil
 }
 
-func doExpire(s kv.Storage, database *db.DB, start kv.Key, limit int) (kv.Key, error) {
+func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
+	start kv.Key, limit int) (kv.Key, error) {
 	txn, err := s.Begin()
 	if err != nil {
 		return nil, err
@@ -64,7 +67,7 @@ func doExpire(s kv.Storage, database *db.DB, start kv.Key, limit int) (kv.Key, e
 	now := db.Now() - 300
 	// scan the whole database
 	var end kv.Key
-	for iter.Valid() && limit != 0 {
+	for iter.Valid() && iter.Key().HasPrefix(prefix) && limit != 0 {
 		obj, err := db.DecodeObject(iter.Value())
 		if err != nil {
 			return nil, err
@@ -99,8 +102,9 @@ func expire(opt *option, addr string) error {
 	}
 
 	start := db.MetaKey(database, nil)
+	prefix := start
 	for {
-		next, err := doExpire(store, database, start, opt.batch)
+		next, err := doExpire(store, database, prefix, start, opt.batch)
 		if err != nil {
 			return err
 		}
@@ -121,6 +125,7 @@ func main() {
 	flag.Parse()
 
 	addr := flag.Arg(0)
+	log.Info(addr)
 	if err := expire(opt, addr); err != nil {
 		log.Fatal("expire failed", zap.Error(err))
 	}

@@ -18,6 +18,22 @@ type option struct {
 	batch     int
 }
 
+func deletePrefix(txn kv.Transaction, prefix kv.Key) error {
+	end := prefix.PrefixNext()
+	iter, err := txn.Iter(prefix, end)
+	if err != nil {
+		return err
+	}
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		if err := txn.Delete(iter.Key()); err != nil {
+			return err
+		}
+		if err := iter.Next(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 	obj *db.Object) error {
 	switch obj.Type {
@@ -26,8 +42,8 @@ func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 	case db.ObjectZSet:
 		dkey := db.DataKey(database, obj.ID)
 		skey := db.ZSetScorePrefix(database, obj.ID)
-		txn.Delete(dkey) // ignore its error for simplicity
-		return txn.Delete(skey)
+		deletePrefix(txn, dkey) // ignore its error for simplicity
+		return deletePrefix(txn, skey)
 	default:
 		dkey := db.DataKey(database, obj.ID)
 		return txn.Delete(dkey)

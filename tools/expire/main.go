@@ -73,6 +73,7 @@ func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
 			return nil, err
 		}
 		if obj.ExpireAt < now {
+			log.Debug("expire", zap.String("key", string(iter.Key())))
 			if err := cleanUp(txn, iter.Key(), database, obj); err != nil {
 				return nil, err
 			}

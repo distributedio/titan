@@ -26,6 +26,7 @@ func Exec(ctx *Context) {
 		resp.ReplyArray(ctx.Out, 0)
 		return
 	}
+	ctx.Client.Commands = nil
 
 	// Has watch command been issued
 	watching := ctx.Client.Txn != nil
@@ -122,7 +123,6 @@ func Exec(ctx *Context) {
 		return
 	}
 
-	ctx.Client.Commands = nil
 
 	resp.ReplyArray(ctx.Out, size)
 	// run OnCommit that fill reply to outputs

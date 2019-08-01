@@ -51,7 +51,7 @@ func (c *client) isEof() bool {
 
 // Write to conn and log error if needed
 func (c *client) Write(p []byte) (int, error) {
-	zap.L().Debug("write to client", zap.String("msg", string(p)))
+	zap.L().Debug("write to client", zap.Int64("clientid", c.cliCtx.ID), zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
 		c.conn.Close()

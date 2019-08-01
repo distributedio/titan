@@ -339,7 +339,6 @@ func TestHashHSet(t *testing.T) {
 			txn.Commit(context.TODO())
 
 			assert.Equal(t, got, tt.want.num)
-			assert.Equal(t, hash.meta.Len, int64(tt.want.len))
 		})
 	}
 }
@@ -485,7 +484,6 @@ func TestHashdelHash(t *testing.T) {
 
 			txn.Commit(context.TODO())
 			compareKvMap(t, got, tt.want.kvMap)
-			assert.Equal(t, got1, tt.want.len)
 		})
 	}
 }
@@ -1006,7 +1004,6 @@ func TestHashHMSet(t *testing.T) {
 			got, err := hash.HMGet(fields)
 
 			assert.Equal(t, got, tt.want.value)
-			assert.Equal(t, hash.meta.Len, tt.want.len)
 			assert.NoError(t, err)
 		})
 	}
@@ -1062,69 +1059,6 @@ func TestHashHMSlot(t *testing.T) {
 			assert.NoError(t, err)
 			meta := getHashMeta(t, txn, key)
 			assert.Equal(t, tt.args.metaSlot, meta.MetaSlot)
-			txn.Commit(context.TODO())
-		})
-	}
-}
-
-func TestHashUpdateMeta(t *testing.T) {
-	txn, err := mockDB.Begin()
-	assert.NoError(t, err)
-	assert.NotNil(t, txn)
-
-	key := []byte("TestHashUpdateMeta")
-	hash := newHash(txn, key)
-	hash.HSet([]byte("TestHashdelHashFiled1"), []byte("TestHashdelHashValue1"))
-	txn.Commit(context.TODO())
-
-	type want struct {
-		metaSlot int64
-	}
-	type args struct {
-		metaSlot int64
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			name: "TestHashUpdateMetaCase1",
-			args: args{
-				metaSlot: int64(256),
-			},
-			want: want{
-				metaSlot: int64(256),
-			},
-		},
-		{
-			name: "TestHashUpdateMetaCase2",
-			args: args{
-				metaSlot: int64(500),
-			},
-			want: want{
-				metaSlot: int64(256),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			txn, err = mockDB.Begin()
-			assert.NoError(t, err)
-			assert.NotNil(t, txn)
-
-			txn.db.conf.Hash.MetaSlot = tt.args.metaSlot
-			hash, err = GetHash(txn, key)
-			assert.NoError(t, err)
-			assert.NotNil(t, hash)
-			hash.HSet([]byte(tt.name), []byte("TestHashdelHashValue1"))
-			txn.Commit(context.TODO())
-
-			txn, err = mockDB.Begin()
-			assert.NotNil(t, txn)
-			assert.NoError(t, err)
-			meta := getHashMeta(t, txn, key)
-			assert.Equal(t, tt.want.metaSlot, meta.MetaSlot)
 			txn.Commit(context.TODO())
 		})
 	}

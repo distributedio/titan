@@ -13,13 +13,19 @@ auth = ""
 #rules:       netaddr
 #description: address to listen
 #default:     0.0.0.0:7369
-#listen = "0.0.0.0:7369"
+listen = "0.0.0.0:7369"
 
 #type:        int64
 #rules:       numeric
 #description: client connection count
 #default:     1000
-#max-connection = 1000
+max-connection = 1000
+
+#type:        int
+#rules:       numeric
+#description: the max limit length of elements in list
+#default:     100
+list-zip-threshold = 100
 
 
 [status]
@@ -36,7 +42,8 @@ auth = ""
 #type:        string
 #description: pd address in tidb
 #required
-pd-addrs = ""
+#mocktikv是内存模式
+pd-addrs = "mocktikv://"
 
 [tikv.db]
 
@@ -50,6 +57,12 @@ pd-addrs = ""
 
 
 [tikv.gc]
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling gc
+#default:     true
+#enable = true
 
 #type:        time.Duration
 #description: gc work tick interval
@@ -70,6 +83,12 @@ pd-addrs = ""
 
 [tikv.expire]
 
+#type:        bool
+#rules:       boolean
+#description: true for enabling expire
+#default:     true
+#enable = true
+
 #type:        time.Duration
 #description: expire work tick interval
 #default:     1s
@@ -88,6 +107,12 @@ pd-addrs = ""
 
 
 [tikv.zt]
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling zt
+#default:     true
+#enable = true
 
 #type:        int
 #rules:       numeric
@@ -114,6 +139,12 @@ pd-addrs = ""
 
 
 [tikv.tikv-gc]
+
+#type:        bool
+#rules:       boolean
+#description: true for enabling tikv gc
+#default:     true
+#enable = true
 
 #type:        time.Duration
 #description: gc work tick interval

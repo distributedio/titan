@@ -5,9 +5,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
 )
 
 var cfg = &conf.MockConf().Tikv
@@ -22,8 +22,9 @@ func ContextTest(name string, args ...string) *Context {
 		DB: mockdb.DB("defalut", 1),
 	}
 	servCtx := &context.ServerContext{
-		RequirePass: "",
-		Store:       mockdb,
+		RequirePass:      "",
+		ListZipThreshold: 100,
+		Store:            mockdb,
 	}
 	rootCtx, _ := context.WithCancel(context.New(cliCtx, servCtx))
 	return &Context{

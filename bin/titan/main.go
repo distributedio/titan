@@ -17,11 +17,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/meitu/titan"
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
+	"github.com/distributedio/titan/metrics"
 )
 
 func main() {
@@ -69,8 +69,9 @@ func main() {
 	svr := metrics.NewServer(&config.Status)
 
 	serv := titan.New(&context.ServerContext{
-		RequirePass: config.Server.Auth,
-		Store:       store,
+		RequirePass:      config.Server.Auth,
+		Store:            store,
+		ListZipThreshold: config.Server.ListZipThreshold,
 	})
 
 	writer, err := Writer(config.Logger.Path, config.Logger.TimeRotate, config.Logger.Compress)

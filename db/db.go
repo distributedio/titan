@@ -11,9 +11,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/db/store"
-	"github.com/meitu/titan/metrics"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/store"
+	"github.com/distributedio/titan/metrics"
 )
 
 var (
@@ -55,6 +55,9 @@ var (
 
 	// sysDatabaseID default db id
 	sysDatabaseID = 0
+
+	NilValue = []byte{0}
+
 )
 
 // Iterator store.Iterator
@@ -225,6 +228,11 @@ func (txn *Transaction) Set(key []byte) (*Set, error) {
 	return GetSet(txn, key)
 }
 
+// ZSet returns a zset object
+func (txn *Transaction) ZSet(key []byte) (*ZSet, error) {
+	return GetZSet(txn, key)
+}
+
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
 	return store.LockKeys(txn.t, keys)
@@ -266,19 +274,13 @@ func MetaSlotKey(db *DB, objID, slotID []byte) []byte {
 }
 
 func dbPrefix(ns string, id []byte) []byte {
-	var prefix []byte
-	prefix = append(prefix, []byte(ns)...)
+	prefix := []byte(ns)
 	prefix = append(prefix, ':')
-	prefix = append(prefix, id...)
-	prefix = append(prefix, ':')
+	if id != nil {
+		prefix = append(prefix, id...)
+		prefix = append(prefix, ':')
+	}
 	return prefix
-}
-
-func sysPrefix(ns string, id byte) []byte {
-	b := []byte{}
-	b = append(b, sysNamespace...)
-	b = append(b, ':', id, ':')
-	return b
 }
 
 func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
@@ -304,14 +306,17 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 			return false, err
 		}
 
-		zap.L().Debug("no leader now, create new lease",
-			zap.ByteString("key", key),
-			zap.ByteString("id", id))
+		if env := zap.L().Check(zap.DebugLevel, "no leader now, create new lease"); env != nil {
+			env.Write(zap.ByteString("key", key),
+				zap.ByteString("id", id),
+				zap.Duration("interval", interval))
+		}
 
 		if err := flushLease(txn, key, id, interval); err != nil {
 			zap.L().Error("create lease failed",
 				zap.ByteString("key", key),
 				zap.ByteString("id", id),
+				zap.Duration("interval", interval),
 				zap.Error(err))
 			return false, err
 		}
@@ -327,6 +332,7 @@ func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) 
 			zap.L().Error("create lease failed",
 				zap.ByteString("key", key),
 				zap.ByteString("id", id),
+				zap.Int64("last_ts", ts),
 				zap.Error(err))
 			return false, err
 		}

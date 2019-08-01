@@ -1,22 +1,12 @@
 # Titan
 
-[![Build Status](https://travis-ci.org/meitu/titan.svg?branch=master)](https://travis-ci.org/meitu/titan)
-[![Go Report Card](https://goreportcard.com/badge/github.com/meitu/titan)](https://goreportcard.com/report/github.com/meitu/titan)
-[![Coverage Status](https://coveralls.io/repos/github/meitu/titan/badge.svg?branch=master)](https://coveralls.io/github/meitu/titan?branch=master)
-[![Coverage Status](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/meitu/titan/releases)
+[![Build Status](https://travis-ci.org/distributedio/titan.svg?branch=master)](https://travis-ci.org/distributedio/titan)
+[![Go Report Card](https://goreportcard.com/badge/github.com/distributedio/titan)](https://goreportcard.com/report/github.com/distributedio/titan)
+[![Coverage Status](https://coveralls.io/repos/github/distributedio/titan/badge.svg?branch=master)](https://coveralls.io/github/distributedio/titan?branch=master)
+[![Coverage Status](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/distributedio/titan/releases)
 [![Discourse status](https://img.shields.io/discourse/https/meta.discourse.org/status.svg)](https://titan-tech-group.slack.com)
 
-
 A distributed implementation of Redis compatible layer based on [TiKV](https://github.com/tikv/tikv/)
-
-## Status
-
-Active development, not ready for production. We welcome any form of contributions!
-
-Our goal is to build a solid NoSQL database aiming to run in the production environment. 
-We are using Titan in production inside Meitu now. If you cannot wait to experiment it in 
-the production environment, feel free to contact us for technical supporting.
-
 ## Features
 
 * Completely compatible with redis protocol
@@ -34,7 +24,7 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features
 ## Can't wait to experiment Titan?
 
 ```
-curl -s -O https://raw.githubusercontent.com/meitu/titan/master/docker-compose.yml
+curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
 docker-compose up
 
 # Then connect to titan use redis-cli
@@ -53,7 +43,7 @@ redis-cli -p 7369
 
 ## FAQ
 
-[FAQ](https://github.com/meitu/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
+[FAQ](https://github.com/distributedio/titan/issues?utf8=%E2%9C%93&q=+label%3A%22good+first+issue%22)
 
 ## Commands
 
@@ -194,27 +184,27 @@ redis-cli -p 7369
 
 - [ ] bzpopmin
 - [ ] bzpopmax
-- [ ] zadd
-- [ ] zcard
+- [x] zadd
+- [x] zcard
 - [ ] zcount
 - [ ] zincrby
 - [ ] zinterstore
 - [ ] zlexcount
 - [ ] zpopmax
 - [ ] zpopmin
-- [ ] zrange
+- [x] zrange
 - [ ] zrangebylex
 - [ ] zrevrangebylex
 - [ ] zrangebyscore
 - [ ] zrank
-- [ ] zrem
+- [x] zrem
 - [ ] zremrangebylex
 - [ ] zremrangebyrank
 - [ ] zremrangebyscore
-- [ ] zrevrange
+- [x] zrevrange
 - [ ] zrevrangebyscore
 - [ ] zrevrank
-- [ ] zscore
+- [x] zscore
 - [ ] zunionstore
 - [ ] zscan
 

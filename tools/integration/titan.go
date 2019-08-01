@@ -7,10 +7,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/meitu/titan"
-	"github.com/meitu/titan/conf"
-	"github.com/meitu/titan/context"
-	"github.com/meitu/titan/db"
+	"github.com/distributedio/titan"
+	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/context"
+	"github.com/distributedio/titan/db"
 )
 
 var (
@@ -32,6 +32,11 @@ func SetAuth(auth string) {
 	cfg.Auth = auth
 }
 
+// SetAddr set server listen addr
+func SetAddr(addr string) {
+	cfg.Listen = addr
+}
+
 //Start start server
 //1.open db
 //2.start server fd
@@ -46,6 +51,7 @@ func Start() {
 	svr = titan.New(&context.ServerContext{
 		RequirePass: cfg.Auth,
 		Store:       store,
+		ListZipThreshold: 100,
 	})
 	err = svr.ListenAndServe(cfg.Listen)
 	if err != nil {

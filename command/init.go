@@ -28,12 +28,16 @@ func init() {
 		"getset":   GetSet,
 		"getrange": GetRange,
 		// "msetnx":   MSetNx,
-		"setnx":       SetNx,
-		"setex":       SetEx,
-		"psetex":      PSetEx,
-		"setrange":    SetRange,
-		"setbit":      SetBit,
+		"setnx":    SetNx,
+		"setex":    SetEx,
+		"psetex":   PSetEx,
+		"setrange": SetRange,
+		"setbit":   SetBit,
+		// "bitop":       BitOp,
+		// "bitfield":    BitField,
 		"getbit":      GetBit,
+		"bitpos":      BitPos,
+		"bitcount":    BitCount,
 		"incr":        Incr,
 		"incrby":      IncrBy,
 		"decr":        Decr,
@@ -82,6 +86,14 @@ func init() {
 		// sets
 		"sadd":     SAdd,
 		"smembers": SMembers,
+
+		//zsets(sorted sets)
+		"zadd":         ZAdd,
+		"zrange":		ZRange,
+		"zrevrange":    ZRevRange,
+		"ZRem":			ZRem,
+		"zcard":		ZCard,
+		"zscore":		ZScore,
 	}
 
 	// commands contains all commands that open to clients
@@ -131,7 +143,11 @@ func init() {
 		"decrby":      Desc{Proc: AutoCommit(DecrBy), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
 		"incrbyfloat": Desc{Proc: AutoCommit(IncrByFloat), Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
 		"setbit":      Desc{Proc: AutoCommit(SetBit), Cons: Constraint{4, flags("wm"), 1, 1, 1}},
-		"getbit":      Desc{Proc: AutoCommit(GetBit), Cons: Constraint{3, flags("r"), 1, 1, 1}},
+		// "bitop":       Desc{Proc: AutoCommit(BitOp), Cons: Constraint{-4, flags("wm"), 2, -1, 1}},
+		// "bitfield":    Desc{Proc: AutoCommit(BitField), Cons: Constraint{-2, flags("wm"), 1, 1, 1}},
+		"getbit":   Desc{Proc: AutoCommit(GetBit), Cons: Constraint{3, flags("r"), 1, 1, 1}},
+		"bitcount": Desc{Proc: AutoCommit(BitCount), Cons: Constraint{-2, flags("r"), 1, 1, 1}},
+		"bitpos":   Desc{Proc: AutoCommit(BitPos), Cons: Constraint{-3, flags("r"), 1, 1, 1}},
 
 		// keys
 		"type":      Desc{Proc: AutoCommit(Type), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
@@ -183,5 +199,13 @@ func init() {
 
 		// scripting
 		"eval": Desc{Proc: Eval, Cons: Constraint{0, flags("rF"), 1, 1, 1}},
+
+    // zsets
+		"zadd":		Desc{Proc: AutoCommit(ZAdd), Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
+		"zrange": Desc{Proc: AutoCommit(ZRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrevrange": Desc{Proc: AutoCommit(ZRevRange), Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrem":         Desc{Proc: AutoCommit(ZRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
+		"zcard":         Desc{Proc: AutoCommit(ZCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"zscore":         Desc{Proc: AutoCommit(ZScore), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
 	}
 }

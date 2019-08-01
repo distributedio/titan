@@ -3,8 +3,8 @@ package db
 import (
 	"bytes"
 
+	pb "github.com/distributedio/titan/db/zlistproto"
 	"github.com/golang/protobuf/proto"
-	pb "github.com/meitu/titan/db/zlistproto"
 )
 
 // GetZList generate List objectm with auto reation, if zip is true, zipped list will be choose

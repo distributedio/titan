@@ -36,6 +36,8 @@ services:
 
   titan:
     image: distributedio/titan
+    volumes:
+      - ./logs:/titan/logs
     ports:
       - "7369:7369"
     command:

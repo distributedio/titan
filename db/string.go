@@ -276,8 +276,7 @@ func (s *String) decode(b []byte) error {
 		return err
 	}
 
-	timestamp := Now()
-	if obj.ExpireAt != 0 && obj.ExpireAt < timestamp {
+	if IsExpired(obj, Now()) {
 		return ErrKeyNotFound
 	}
 

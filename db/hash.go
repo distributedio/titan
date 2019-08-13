@@ -50,11 +50,11 @@ func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	if err != nil {
 		return nil, err
 	}
-	if hmeta.Type != ObjectHash {
-		return nil, ErrTypeMismatch
-	}
 	if IsExpired(&hmeta.Object, Now()) {
 		return hash, nil
+	}
+	if hmeta.Type != ObjectHash {
+		return nil, ErrTypeMismatch
 	}
 	hash.meta = hmeta
 	hash.exists = true

@@ -10,11 +10,11 @@ import (
 	"github.com/distributedio/titan/db"
 )
 
-var cfg = &conf.MockConf().Tikv
+var Cfg = &conf.MockConf().Tikv
 var mockdb *db.RedisStore
 
 func init() {
-	mockdb, _ = db.Open(cfg)
+	mockdb, _ = db.Open(Cfg)
 }
 
 func ContextTest(name string, args ...string) *Context {

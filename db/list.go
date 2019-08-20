@@ -47,9 +47,6 @@ func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
 		return nil, err
 	}
 	if IsExpired(obj, Now()) {
-		if err := txn.Destory(obj, key); err != nil {
-			return nil, err
-		}
 		return list(txn, key), nil
 	}
 

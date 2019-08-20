@@ -35,17 +35,24 @@ func GetSet(txn *Transaction, key []byte) (*Set, error) {
 		}
 		return nil, err
 	}
-	smeta, err := DecodeSetMeta(meta)
+
+	obj, err := DecodeObject(meta)
 	if err != nil {
 		return nil, err
 	}
-	if smeta.Type != ObjectSet {
-		return nil, ErrTypeMismatch
-	}
-	if IsExpired(&set.meta.Object, Now()) {
+	if IsExpired(obj, Now()) {
 		return set, nil
 	}
-	set.meta = smeta
+	if obj.Type != ObjectSet {
+		return nil, ErrTypeMismatch
+	}
+
+	m := meta[ObjectEncodingLength:]
+	if len(m) != 8 {
+		return nil, ErrInvalidLength
+	}
+	set.meta.Object = *obj
+    set.meta.Len    = int64(binary.BigEndian.Uint64(m[:8]))
 	set.exists = true
 	return set, nil
 }
@@ -103,21 +110,6 @@ func newSet(txn *Transaction, key []byte) *Set {
 			Len: 0,
 		},
 	}
-}
-
-// DecodeSetMeta decode meta data into meta field
-func DecodeSetMeta(b []byte) (*SetMeta, error) {
-	if b != nil && len(b[ObjectEncodingLength:]) != 8 {
-		return nil, ErrInvalidLength
-	}
-	obj, err := DecodeObject(b)
-	if err != nil {
-		return nil, err
-	}
-	smeta := &SetMeta{Object: *obj}
-	m := b[ObjectEncodingLength:]
-	smeta.Len = int64(binary.BigEndian.Uint64(m[:8]))
-	return smeta, nil
 }
 
 //encodeSetMeta encodes meta data into byte slice

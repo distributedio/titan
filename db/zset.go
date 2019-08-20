@@ -24,10 +24,27 @@ type MemberScore struct {
 	Member string
 	Score  float64
 }
-
+func newZSet(txn *Transaction, key []byte) *ZSet {
+	now := Now()
+	return &ZSet{
+		txn: txn,
+		key: key,
+		meta: ZSetMeta{
+			Object : Object{
+				ID: UUID(),
+				CreatedAt: now,
+				UpdatedAt: now,
+				ExpireAt:  0,
+				Type:      ObjectZSet,
+				Encoding:  ObjectEncodingHT,
+			},
+			Len: 0,
+		},
+	}
+}
 // GetZSet returns a sorted set, create new one if don't exists
 func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
-	zset := &ZSet{txn: txn, key: key}
+	zset := newZSet(txn, key)
 
 	mkey := MetaKey(txn.db, key)
 	start := time.Now()
@@ -35,22 +52,29 @@ func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
 	zap.L().Debug("zset get metaKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 	if err != nil {
 		if IsErrNotFound(err) {
-			now := Now()
-			zset.meta.CreatedAt = now
-			zset.meta.UpdatedAt = now
-			zset.meta.ExpireAt = 0
-			zset.meta.ID = UUID()
-			zset.meta.Type = ObjectZSet
-			zset.meta.Encoding = ObjectEncodingHT
-			zset.meta.Len = 0
 			return zset, nil
 		}
 		return nil, err
 	}
 
-	if err := zset.decodeMeta(meta); err != nil {
+	obj, err := DecodeObject(meta)
+	if err != nil {
 		return nil, err
 	}
+	if IsExpired(obj, Now()) {
+		return zset, nil
+	}
+	if obj.Type != ObjectZSet {
+		return nil, ErrTypeMismatch
+	}
+
+	m := meta[ObjectEncodingLength:]
+	if len(m) != 8 {
+		return nil, ErrInvalidLength
+	}
+	zset.meta.Object = *obj
+	zset.meta.Len = int64(binary.BigEndian.Uint64(m[:8]))
+
 	return zset, nil
 }
 
@@ -144,26 +168,6 @@ func (zset *ZSet) encodeMeta(meta ZSetMeta) []byte {
 	m := make([]byte, 8)
 	binary.BigEndian.PutUint64(m[:8], uint64(meta.Len))
 	return append(b, m...)
-}
-
-//decodeMeta if obj has been existed , stop parse
-func (zset *ZSet) decodeMeta(b []byte) error {
-	obj, err := DecodeObject(b)
-	if err != nil {
-		return err
-	}
-
-	if obj.Type != ObjectZSet {
-		return ErrTypeMismatch
-	}
-
-	m := b[ObjectEncodingLength:]
-	if len(m) != 8 {
-		return ErrInvalidLength
-	}
-	zset.meta.Object = *obj
-	zset.meta.Len = int64(binary.BigEndian.Uint64(m[:8]))
-	return nil
 }
 
 func (zset *ZSet) Exist() bool {

@@ -83,6 +83,7 @@ const (
 	ObjectSet
 	ObjectZSet
 	ObjectHash
+	ObjectNone   = ObjectType(255)
 )
 
 // Object meta schema

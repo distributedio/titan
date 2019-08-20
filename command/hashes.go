@@ -14,6 +14,9 @@ import (
 func HDel(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	hash, err := txn.Hash([]byte(ctx.Args[0]))
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -36,6 +39,9 @@ func HSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -54,6 +60,9 @@ func HSetNX(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -71,6 +80,9 @@ func HGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	val, err := hash.HGet(field)
@@ -88,6 +100,9 @@ func HGetAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	fields, vals, err := hash.HGetAll()
@@ -110,6 +125,9 @@ func HExists(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	exist, err := hash.HExists(field)
@@ -133,6 +151,9 @@ func HIncrBy(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -155,6 +176,9 @@ func HIncrByFloat(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -170,6 +194,9 @@ func HKeys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	fields, _, err := hash.HGetAll()
@@ -184,6 +211,9 @@ func HVals(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	_, vals, err := hash.HGetAll()
@@ -200,6 +230,9 @@ func HLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	size, err = hash.HLen()
@@ -215,6 +248,9 @@ func HStrLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	field := []byte(ctx.Args[1])
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	val, err := hash.HGet(field)
@@ -234,6 +270,9 @@ func HMGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -272,6 +311,9 @@ func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 
@@ -310,6 +352,9 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	hash, err := txn.Hash(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 

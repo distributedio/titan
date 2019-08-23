@@ -93,7 +93,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 	}
 
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
+	scorePrefix := ZSetScorePrefix(dkey)
 	var found bool
 	var start time.Time
 	costDel, costSetMem, costSetScore := int64(0), int64(0), int64(0)
@@ -194,8 +194,8 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 	if start > stop || start >= zset.meta.Len {
 		return [][]byte{}, nil
 	}
-
-	scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	scorePrefix := ZSetScorePrefix(dkey)
 	var iter Iterator
 	var err error
 	startTime := time.Now()
@@ -268,7 +268,7 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 	}
 
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
+	scorePrefix := ZSetScorePrefix(dkey)
 	costDelMem, costDelScore := int64(0), int64(0)
 	for i := range members {
 		if scores[i] == nil {
@@ -344,24 +344,22 @@ func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
 func zsetMemberKey(dkey []byte, member []byte) []byte {
 	var memberKey []byte
 	memberKey = append(memberKey, dkey...)
-	memberKey = append(memberKey, ':')
+	memberKey = append(memberKey, ':', 'M', ':')
 	memberKey = append(memberKey, member...)
 	return memberKey
 }
 
 // ZSetScorePrefix builds a score key prefix from a redis key
-func ZSetScorePrefix(db *DB, key []byte) []byte {
+func ZSetScorePrefix(dkey []byte) []byte {
 	var sPrefix []byte
-	sPrefix = append(sPrefix, []byte(db.Namespace)...)
-	sPrefix = append(sPrefix, ':')
-	sPrefix = append(sPrefix, db.ID.Bytes()...)
-	sPrefix = append(sPrefix, ':', 'S', ':')
-	sPrefix = append(sPrefix, key...)
+	sPrefix = append(sPrefix, dkey...)
+	sPrefix = append(sPrefix, ':', 'S')
 	return sPrefix
 }
 
 func zsetScoreKey(scorePrefix []byte, score []byte, member []byte) []byte {
 	var scoreKey []byte
+	scoreKey = append(scoreKey, scorePrefix...)
 	scoreKey = append(scorePrefix, ':')
 	scoreKey = append(scoreKey, score...)
 	scoreKey = append(scoreKey, ':')

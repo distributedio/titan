@@ -83,7 +83,6 @@ const (
 	ObjectSet
 	ObjectZSet
 	ObjectHash
-	ObjectNone   = ObjectType(255)
 )
 
 // Object meta schema
@@ -131,12 +130,8 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 	if err := txn.t.Delete(mkey); err != nil {
 		return err
 	}
-	deleted := [][]byte{dkey}
 	if obj.Type != ObjectString {
-		if obj.Type == ObjectZSet {
-			deleted = append(deleted, ZSetScorePrefix(txn.db, obj.ID))
-		}
-		if err := gc(txn.t, deleted...); err != nil {
+		if err := gc(txn.t, dkey); err != nil {
 			return err
 		}
 	}

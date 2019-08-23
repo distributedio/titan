@@ -93,7 +93,6 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 	}
 
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	scorePrefix := ZSetScorePrefix(dkey)
 	var found bool
 	var start time.Time
 	costDel, costSetMem, costSetScore := int64(0), int64(0), int64(0)
@@ -105,7 +104,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			if scores[i] == oldScore {
 				continue
 			}
-			oldScoreKey := zsetScoreKey(scorePrefix, oldValues[i], members[i])
+			oldScoreKey := zsetScoreKey(dkey, oldValues[i], members[i])
 			start = time.Now()
 			err = zset.txn.t.Delete(oldScoreKey)
 			costDel += time.Since(start).Nanoseconds()
@@ -122,7 +121,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			return added, err
 		}
 
-		scoreKey := zsetScoreKey(scorePrefix, bytesScore, members[i])
+		scoreKey := zsetScoreKey(dkey, bytesScore, members[i])
 		start = time.Now()
 		err = zset.txn.t.Set(scoreKey, NilValue)
 		costSetScore += time.Since(start).Nanoseconds()
@@ -268,14 +267,13 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 	}
 
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	scorePrefix := ZSetScorePrefix(dkey)
 	costDelMem, costDelScore := int64(0), int64(0)
 	for i := range members {
 		if scores[i] == nil {
 			continue
 		}
 
-		scoreKey := zsetScoreKey(scorePrefix, scores[i], members[i])
+		scoreKey := zsetScoreKey(dkey, scores[i], members[i])
 		start = time.Now()
 		err = zset.txn.t.Delete(scoreKey)
 		costDelScore += time.Since(start).Nanoseconds()
@@ -357,10 +355,10 @@ func ZSetScorePrefix(dkey []byte) []byte {
 	return sPrefix
 }
 
-func zsetScoreKey(scorePrefix []byte, score []byte, member []byte) []byte {
+func zsetScoreKey(dkey []byte, score []byte, member []byte) []byte {
 	var scoreKey []byte
-	scoreKey = append(scoreKey, scorePrefix...)
-	scoreKey = append(scorePrefix, ':')
+	scoreKey = append(scoreKey, dkey...)
+	scoreKey = append(scoreKey, ':', 'S', ':')
 	scoreKey = append(scoreKey, score...)
 	scoreKey = append(scoreKey, ':')
 	scoreKey = append(scoreKey, member...)

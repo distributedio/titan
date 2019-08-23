@@ -93,7 +93,7 @@ func Test_runExpire(t *testing.T) {
 				call: hashCall,
 			},
 			want: want{
-				gckey: false,
+				gckey: true,
 			},
 		},
 		{
@@ -103,7 +103,7 @@ func Test_runExpire(t *testing.T) {
 				call: stringCall,
 			},
 			want: want{
-				gckey: false,
+				gckey: true,
 			},
 		},
 	}
@@ -139,11 +139,39 @@ func Test_doExpire(t *testing.T) {
 		txn.Commit(context.TODO())
 		return hash.meta.ID
 	}
+
+	expireAt := (time.Now().Unix() - 30) * int64(time.Second)
+	hashCall := func(t *testing.T, key []byte) ([]byte, []byte) {
+		hash, txn, err := getHash(t, []byte(key))
+		oldID := hash.meta.ID
+		assert.NoError(t, err)
+		assert.NotNil(t, txn)
+		assert.NotNil(t, hash)
+		hash.HSet([]byte("field1"), []byte("val"))
+		kv := GetKv(txn)
+		err = kv.ExpireAt([]byte(key), expireAt)
+		assert.NoError(t, err)
+		txn.Commit(context.TODO())
+
+		hash, txn, err = getHash(t, []byte(key))
+		newID := hash.meta.ID
+		if bytes.Equal(oldID, newID) {
+			assert.Fail(t, "old hash is not expired")
+			return nil, nil
+		}
+		assert.NoError(t, err)
+		assert.NotNil(t, txn)
+		assert.NotNil(t, hash)
+		hash.HSet([]byte("field1"), []byte("val"))
+		txn.Commit(context.TODO())
+		return oldID, newID
+	}
+
 	hashId := initHash(t, []byte("TestExpiredHash"))
-	_ = initHash(t, []byte("TestExpiredRewriteHash"))
+	rHashId, nmateHashId := hashCall(t, []byte("TestExpiredRewriteHash"))
 
 	dirtyDataHashID := initHash(t, []byte("TestExpiredHash_dirty_data"))
-	_ = initHash(t, []byte("TestExpiredRewriteHash_dirty_data"))
+	rDHashId, _ := hashCall(t, []byte("TestExpiredRewriteHash_dirty_data"))
 	txn := getTxn(t)
 	type args struct {
 		mkey []byte
@@ -173,20 +201,20 @@ func Test_doExpire(t *testing.T) {
 			name: "TestExpiredRewriteHash",
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash")),
-				id:   []byte("nil"),
+				id:   rHashId,
 			},
 			want: want{
-				gckey: false,
+				gckey: true,
 			},
 		},
 		{
 			name: "TestExpiredNotExistsMeta",
 			args: args{
-				mkey: MetaKey(txn.db, []byte("test")),
-				id:   []byte("not exists"),
+				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash")),
+				id:  nmateHashId,
 			},
 			want: want{
-				gckey: false,
+				gckey: true,
 			},
 		},
 		{
@@ -204,11 +232,11 @@ func Test_doExpire(t *testing.T) {
 			name: "TestExpiredRewriteHash_dirty_data",
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash_dirty_data")),
-				id:   []byte("nil"),
+				id:   rDHashId,
 				tp: byte(ObjectHash),
 			},
 			want: want{
-				gckey: false,
+				gckey: true,
 			},
 		},
 	}

@@ -18,6 +18,9 @@ func SAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	added, err := set.SAdd(members...)
@@ -32,6 +35,9 @@ func SMembers(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	members, err := set.SMembers()
@@ -46,6 +52,9 @@ func SCard(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	count, err := set.SCard()
@@ -61,6 +70,9 @@ func SIsmember(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	member := []byte(ctx.Args[1])
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	count, err := set.SIsmember(member)
@@ -89,6 +101,9 @@ func SPop(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	members, err := set.SPop(int64(count))
@@ -107,6 +122,9 @@ func SRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	count, err := set.SRem(members)
@@ -124,6 +142,9 @@ func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	member = []byte(ctx.Args[2])
 	set, err := txn.Set(key)
 	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
 		return nil, errors.New("ERR " + err.Error())
 	}
 	count, err := set.SMove(destkey, member)
@@ -140,6 +161,9 @@ func SUnion(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	for _, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
+			if err == db.ErrTypeMismatch {
+				return nil, ErrTypeMismatch
+			}
 			return nil, errors.New("ERR " + err.Error())
 		}
 		if !set.Exists() {
@@ -202,6 +226,9 @@ func SInter(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
+			if err == db.ErrTypeMismatch {
+				return nil, ErrTypeMismatch
+			}
 			return nil, errors.New("ERR " + err.Error())
 		}
 		// If the set corresponding to key does not exist, it is processed as an empty set
@@ -254,6 +281,9 @@ func SDiff(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	for i, key := range ctx.Args {
 		set, err := txn.Set([]byte(key))
 		if err != nil {
+			if err == db.ErrTypeMismatch {
+				return nil, ErrTypeMismatch
+			}
 			return nil, errors.New("ERR " + err.Error())
 		}
 		if !set.Exists() && i != 0 {

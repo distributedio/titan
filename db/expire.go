@@ -201,13 +201,35 @@ func runExpire(db *DB, batchLimit int) {
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
 }
 
+func gcDataKey(txn *Transaction, tType ObjectType, namespace []byte, dbid DBID, key, id []byte)error{
+	if tType == ObjectString {
+		return nil
+	}
+	dkey := toTikvDataKey(namespace, dbid, id)
+	deleted := [][]byte{dkey}
+	if tType == ObjectZSet {
+		deleted = append(deleted, toTikvScorePrefix(namespace, dbid, id))
+	}
+	if err := gc(txn.t, deleted...); err != nil {
+		zap.L().Error("[Expire] gc failed",
+			zap.ByteString("key", key),
+			zap.ByteString("namepace", namespace),
+			zap.Int64("db_id", int64(dbid)),
+			zap.ByteString("obj_id", id),
+			zap.Error(err))
+		return err
+	}
+	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] gc data key"); logEnv != nil {
+		logEnv.Write(zap.String("type", tType.String()), zap.ByteString("obj_id", id))
+	}
+	return nil
+}
 func doExpire(txn *Transaction, mkey, id []byte) error {
 	namespace, dbid, key := splitMetaKey(mkey)
 	obj, err := getObject(txn, mkey)
-
 	// Check for dirty data due to copying or flushdb/flushall
 	if err == ErrKeyNotFound {
-		return nil
+		return gcDataKey(txn, ObjectNone, namespace, dbid, key, id)
 	}
 	if err != nil {
 		return err
@@ -217,7 +239,7 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 		id = id[:idLen]
 	}
 	if !bytes.Equal(obj.ID, id) {
-		return nil
+		return gcDataKey(txn, ObjectNone, namespace, dbid, key, id)
 	}
 
 	// Delete object meta
@@ -232,24 +254,6 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 		logEnv.Write(zap.ByteString("mkey", mkey))
 	}
 
-	if obj.Type != ObjectString {
-		dkey := toTikvDataKey(namespace, dbid, id)
-		deleted := [][]byte{dkey}
-		if obj.Type == ObjectZSet {
-			deleted = append(deleted, toTikvScorePrefix(namespace, dbid, id))
-		}
-		if err := gc(txn.t, deleted...); err != nil {
-			zap.L().Error("[Expire] gc failed",
-				zap.ByteString("key", key),
-				zap.ByteString("namepace", namespace),
-				zap.Int64("db_id", int64(dbid)),
-				zap.ByteString("obj_id", id),
-				zap.Error(err))
-			return err
-		}
-		if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] gc data key"); logEnv != nil {
-			logEnv.Write(zap.String("type", obj.Type.String()), zap.ByteString("obj_id", id))
-		}
-	}
-	return nil
+	return gcDataKey(txn, obj.Type, namespace, dbid, key, id)
 }
+

@@ -93,7 +93,6 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 	}
 
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
 	var found bool
 	var start time.Time
 	costDel, costSetMem, costSetScore := int64(0), int64(0), int64(0)
@@ -105,7 +104,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			if scores[i] == oldScore {
 				continue
 			}
-			oldScoreKey := zsetScoreKey(scorePrefix, oldValues[i], members[i])
+			oldScoreKey := zsetScoreKey(dkey, oldValues[i], members[i])
 			start = time.Now()
 			err = zset.txn.t.Delete(oldScoreKey)
 			costDel += time.Since(start).Nanoseconds()
@@ -122,7 +121,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			return added, err
 		}
 
-		scoreKey := zsetScoreKey(scorePrefix, bytesScore, members[i])
+		scoreKey := zsetScoreKey(dkey, bytesScore, members[i])
 		start = time.Now()
 		err = zset.txn.t.Set(scoreKey, NilValue)
 		costSetScore += time.Since(start).Nanoseconds()
@@ -194,8 +193,8 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 	if start > stop || start >= zset.meta.Len {
 		return [][]byte{}, nil
 	}
-
-	scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	scorePrefix := ZSetScorePrefix(dkey)
 	var iter Iterator
 	var err error
 	startTime := time.Now()
@@ -268,14 +267,13 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 	}
 
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	scorePrefix := ZSetScorePrefix(zset.txn.db, zset.meta.ID)
 	costDelMem, costDelScore := int64(0), int64(0)
 	for i := range members {
 		if scores[i] == nil {
 			continue
 		}
 
-		scoreKey := zsetScoreKey(scorePrefix, scores[i], members[i])
+		scoreKey := zsetScoreKey(dkey, scores[i], members[i])
 		start = time.Now()
 		err = zset.txn.t.Delete(scoreKey)
 		costDelScore += time.Since(start).Nanoseconds()
@@ -344,25 +342,23 @@ func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
 func zsetMemberKey(dkey []byte, member []byte) []byte {
 	var memberKey []byte
 	memberKey = append(memberKey, dkey...)
-	memberKey = append(memberKey, ':')
+	memberKey = append(memberKey, ':', 'M', ':')
 	memberKey = append(memberKey, member...)
 	return memberKey
 }
 
 // ZSetScorePrefix builds a score key prefix from a redis key
-func ZSetScorePrefix(db *DB, key []byte) []byte {
+func ZSetScorePrefix(dkey []byte) []byte {
 	var sPrefix []byte
-	sPrefix = append(sPrefix, []byte(db.Namespace)...)
-	sPrefix = append(sPrefix, ':')
-	sPrefix = append(sPrefix, db.ID.Bytes()...)
-	sPrefix = append(sPrefix, ':', 'S', ':')
-	sPrefix = append(sPrefix, key...)
+	sPrefix = append(sPrefix, dkey...)
+	sPrefix = append(sPrefix, ':', 'S')
 	return sPrefix
 }
 
-func zsetScoreKey(scorePrefix []byte, score []byte, member []byte) []byte {
+func zsetScoreKey(dkey []byte, score []byte, member []byte) []byte {
 	var scoreKey []byte
-	scoreKey = append(scorePrefix, ':')
+	scoreKey = append(scoreKey, dkey...)
+	scoreKey = append(scoreKey, ':', 'S', ':')
 	scoreKey = append(scoreKey, score...)
 	scoreKey = append(scoreKey, ':')
 	scoreKey = append(scoreKey, member...)

@@ -46,11 +46,6 @@ func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 	switch obj.Type {
 	case db.ObjectString:
 		return nil
-	case db.ObjectZSet:
-		dkey := db.DataKey(database, obj.ID)
-		skey := db.ZSetScorePrefix(database, obj.ID)
-		deletePrefix(txn, dkey) // ignore its error for simplicity
-		return deletePrefix(txn, skey)
 	default:
 		dkey := db.DataKey(database, obj.ID)
 		return deletePrefix(txn, dkey)

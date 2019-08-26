@@ -10,4 +10,4 @@ before_install:
 
 script: 
     - make coverage
-    - $HOME/gopath/bin/goveralls -coverprofile=cover.cov -service=travis-ci
+    - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci

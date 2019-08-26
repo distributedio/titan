@@ -18,7 +18,7 @@ test:
 	env GO111MODULE=on go test -short ${PKG_LIST}
 
 coverage:
-	env GO111MODULE=on go test -covermode=count -v -coverprofile cover.cov ${PKG_LIST}
+	env GO111MODULE=on go test -v -covermode=count -coverprofile=coverage.out ${PKG_LIST}
 
 build:
 	env GO111MODULE=on go build -ldflags '$(LDFLAGS)' -o titan ./bin/titan/

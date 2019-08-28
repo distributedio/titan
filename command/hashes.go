@@ -20,9 +20,9 @@ func HDel(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	var fields [][]byte
-	for _, field := range ctx.Args[1:] {
-		fields = append(fields, []byte(field))
+	fields := make([][]byte, len(ctx.Args[1:]))
+	for i, field := range ctx.Args[1:] {
+		fields[i] = []byte(field)
 	}
 	c, err := hash.HDel(fields)
 	if err != nil {
@@ -110,10 +110,10 @@ func HGetAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
-	var results [][]byte
+	results := make([][]byte, len(fields)*2)
 	for i := range fields {
-		results = append(results, fields[i])
-		results = append(results, vals[i])
+		results[i*2] = fields[i]
+		results[i*2+1] = vals[i]
 	}
 
 	return BytesArray(ctx.Out, results), nil
@@ -263,9 +263,9 @@ func HStrLen(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // HMGet returns the values associated with the specified fields in the hash stored at key
 func HMGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-	var fields [][]byte
-	for _, field := range ctx.Args[1:] {
-		fields = append(fields, []byte(field))
+	fields := make([][]byte, len(ctx.Args[1:]))
+	for i, field := range ctx.Args[1:] {
+		fields[i] = []byte(field)
 	}
 
 	hash, err := txn.Hash(key)
@@ -285,14 +285,10 @@ func HMGet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // HMSet sets the specified fields to their respective values in the hash stored at key
 func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	kvs := ctx.Args[1:]
+	mapping := make(map[string][]byte)
 
-	var (
-		key     = []byte(ctx.Args[0])
-		kvs     = ctx.Args[1:]
-		mapping = make(map[string][]byte)
-		fields  [][]byte
-		values  [][]byte
-	)
 	if len(kvs)%2 != 0 {
 		return nil, errors.New("ERR wrong number of arguments for HMSET")
 	}
@@ -303,6 +299,8 @@ func HMSet(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		mapping[kvs[i]] = []byte(kvs[i+1])
 	}
 
+	fields := make([][]byte, 0, len(mapping))
+	values := make([][]byte, 0, len(mapping))
 	// Iterate mapping to get the field and value after de-duplication
 	for field, val := range mapping {
 		fields = append(fields, []byte(field))
@@ -343,9 +341,13 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	// define return result
 	result := func() {
-		resp.ReplyArray(ctx.Out, 2)
+		if _, err := resp.ReplyArray(ctx.Out, 2); err != nil {
+			return
+		}
 		resp.ReplyBulkString(ctx.Out, string(lastCursor))
-		resp.ReplyArray(ctx.Out, len(kvs))
+		if _, err := resp.ReplyArray(ctx.Out, len(kvs)); err != nil {
+			return
+		}
 		for i := range kvs {
 			resp.ReplyBulkString(ctx.Out, string(kvs[i]))
 		}

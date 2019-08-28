@@ -25,7 +25,7 @@ func clearHashes(t *testing.T, key string) {
 	assert.Equal(t, ":1", lines[0])
 }
 
-func setHashes(t *testing.T, args ...string) []string {
+func setHashes(args ...string) []string {
 	ctx := ContextTest("hmset", args...)
 	Call(ctx)
 	return ctxLines(ctx.Out)
@@ -33,7 +33,7 @@ func setHashes(t *testing.T, args ...string) []string {
 
 func TestHLen(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-len"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -43,7 +43,7 @@ func TestHLen(t *testing.T) {
 	assert.Equal(t, ":3", lines[0])
 
 	// case 2
-	lines = setHashes(t, key, "a", "a", "b", "b")
+	lines = setHashes(key, "a", "a", "b", "b")
 	assert.Equal(t, "+OK", lines[0])
 	ctx = ContextTest("hlen", key)
 	Call(ctx)
@@ -51,7 +51,7 @@ func TestHLen(t *testing.T) {
 	assert.Equal(t, ":5", lines[0])
 
 	// case 3
-	lines = setHashes(t, key, "c", "c", "c", "d")
+	lines = setHashes(key, "c", "c", "c", "d")
 	assert.Equal(t, "+OK", lines[0])
 	ctx = ContextTest("hlen", key)
 	Call(ctx)
@@ -64,7 +64,7 @@ func TestHLen(t *testing.T) {
 
 func TestHDel(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-del"
 	initHashes(t, key, 5)
 
 	// case 1
@@ -97,7 +97,7 @@ func TestHDel(t *testing.T) {
 	lines = ctxLines(ctx.Out)
 	assert.Equal(t, ":0", lines[0])
 	// then re-insert into hash
-	lines = setHashes(t, key, "a", "a", "b", "b")
+	lines = setHashes(key, "a", "a", "b", "b")
 	assert.Equal(t, "+OK", lines[0])
 	ctx = ContextTest("hlen", key)
 	Call(ctx)
@@ -128,7 +128,7 @@ func TestHGet(t *testing.T) {
 }
 func TestHMGet(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-mget"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -171,7 +171,7 @@ func TestHMGet(t *testing.T) {
 }
 func TestHMSet(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-mset"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -210,7 +210,7 @@ func TestHMSet(t *testing.T) {
 
 func TestHSetNX(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-setnx"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -252,7 +252,7 @@ func TestHSetNX(t *testing.T) {
 
 func TestHSet(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-set"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -294,7 +294,7 @@ func TestHSet(t *testing.T) {
 
 func TestHGetAll(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-getall"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -348,7 +348,7 @@ func TestHGetAll(t *testing.T) {
 
 func TestHExists(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-exists"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -415,7 +415,7 @@ func TestHIncrByFloat(t *testing.T) {
 
 func TestHKeys(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-keys"
 	initHashes(t, key, 3)
 
 	// case 1
@@ -460,7 +460,7 @@ func TestHStrLen(t *testing.T) {
 }
 func TestHVals(t *testing.T) {
 	// init
-	key := "hash-key"
+	key := "hash-key-val"
 	initHashes(t, key, 3)
 
 	// case 1

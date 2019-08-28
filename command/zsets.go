@@ -18,7 +18,7 @@ func ZAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	kvs := ctx.Args[1:]
 	if len(kvs)%2 != 0 {
-		return nil, errors.New("ERR wrong number of arguments for 'zadd' command")
+		return nil, errors.New("ERR syntax error")
 	}
 
 	uniqueMembers := make(map[string]bool)

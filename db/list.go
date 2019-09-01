@@ -36,7 +36,7 @@ func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
 	val, err := txn.t.Get(metaKey)
 	if err != nil {
 		if IsErrNotFound(err) { // error NotFound
-			return list(txn, key), nil
+			return list(txn, key)
 		}
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
 		return nil, err
 	}
 	if IsExpired(obj, Now()) {
-		return list(txn, key), nil
+		return list(txn, key)
 	}
 
 	if obj.Type != ObjectList {

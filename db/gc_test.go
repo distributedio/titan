@@ -15,7 +15,8 @@ func TestGC(t *testing.T) {
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
 		for count > 0 {
-			hash.HSet(EncodeInt64(count), []byte("val"))
+			encode, _ := EncodeInt64(count)
+			hash.HSet(encode, []byte("val"))
 			count--
 		}
 		kv := GetKv(txn)

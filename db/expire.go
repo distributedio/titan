@@ -29,18 +29,29 @@ func IsExpired(obj *Object, now int64) bool {
 	return true
 }
 
-func expireKey(key []byte, ts int64) []byte {
+func expireKey(key []byte, ts int64) ([]byte, error) {
 	var buf []byte
 	buf = append(buf, expireKeyPrefix...)
-	buf = append(buf, EncodeInt64(ts)...)
+	encode, err := EncodeInt64(ts)
+	if err != nil {
+		return nil, err
+	}
+	buf = append(buf, encode...)
 	buf = append(buf, ':')
 	buf = append(buf, key...)
-	return buf
+	return buf, nil
 }
 
 func expireAt(txn store.Transaction, mkey []byte, objID []byte, objType ObjectType, oldAt int64, newAt int64) error {
-	oldKey := expireKey(mkey, oldAt)
-	newKey := expireKey(mkey, newAt)
+	oldKey, err := expireKey(mkey, oldAt)
+	if err != nil {
+		return err
+	}
+
+	newKey, err := expireKey(mkey, newAt)
+	if err != nil {
+		return err
+	}
 
 	if oldAt > 0 {
 		if err := txn.Delete(oldKey); err != nil {
@@ -71,7 +82,12 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 	if expireAt == 0 {
 		return nil
 	}
-	oldKey := expireKey(mkey, expireAt)
+
+	oldKey, err := expireKey(mkey, expireAt)
+	if err != nil {
+		return err
+	}
+
 	if err := txn.Delete(oldKey); err != nil {
 		return err
 	}
@@ -80,7 +96,7 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 }
 
 // StartExpire get leader from db
-func StartExpire(db *DB, conf *conf.Expire) error {
+func StartExpire(db *DB, conf *conf.Expire) {
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
@@ -103,7 +119,6 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 		}
 		runExpire(db, conf.BatchLimit)
 	}
-	return nil
 }
 
 // split a meta key with format: {namespace}:{id}:M:{key}
@@ -125,6 +140,7 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
+/*
 func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
 	var b []byte
 	b = append(b, namespace...)
@@ -134,6 +150,7 @@ func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
 	b = append(b, key...)
 	return b
 }
+*/
 
 func runExpire(db *DB, batchLimit int) {
 	txn, err := db.Begin()
@@ -145,7 +162,9 @@ func runExpire(db *DB, batchLimit int) {
 	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
-		txn.Rollback()
+		if err := txn.Rollback(); err != nil {
+			zap.L().Error("[Expire] seek rollback failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
+		}
 		return
 	}
 	limit := batchLimit
@@ -162,7 +181,9 @@ func runExpire(db *DB, batchLimit int) {
 		}
 		mkey := rawKey[expireMetakeyOffset:]
 		if err := doExpire(txn, mkey, iter.Value()); err != nil {
-			txn.Rollback()
+			if err := txn.Rollback(); err != nil {
+				zap.L().Error("[Expire] seek rollback failed", zap.ByteString("prefix", mkey), zap.Error(err))
+			}
 			return
 		}
 
@@ -171,7 +192,9 @@ func runExpire(db *DB, batchLimit int) {
 			zap.L().Error("[Expire] delete failed",
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
-			txn.Rollback()
+			if err := txn.Rollback(); err != nil {
+				zap.L().Error("[Expire] seek rollback failed", zap.ByteString("prefix", rawKey), zap.Error(err))
+			}
 			return
 		}
 
@@ -183,14 +206,18 @@ func runExpire(db *DB, batchLimit int) {
 			zap.L().Error("[Expire] next failed",
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
-			txn.Rollback()
+			if err := txn.Rollback(); err != nil {
+				zap.L().Error("[Expire] seek rollback failed", zap.ByteString("prefix", mkey), zap.Error(err))
+			}
 			return
 		}
 		limit--
 	}
 
 	if err := txn.Commit(context.Background()); err != nil {
-		txn.Rollback()
+		if err := txn.Rollback(); err != nil {
+			zap.L().Error("[Expire] seek rollback failed", zap.Error(err))
+		}
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}
 
@@ -201,7 +228,7 @@ func runExpire(db *DB, batchLimit int) {
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
 }
 
-func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte)error{
+func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) error {
 	dkey := toTikvDataKey(namespace, dbid, id)
 	if err := gc(txn.t, dkey); err != nil {
 		zap.L().Error("[Expire] gc failed",
@@ -251,4 +278,3 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 	}
 	return gcDataKey(txn, namespace, dbid, key, id)
 }
-

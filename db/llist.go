@@ -48,7 +48,7 @@ func GetLList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (List, 
 }
 
 //NewLList creates a new list
-func NewLList(txn *Transaction, key []byte) List {
+func NewLList(txn *Transaction, key []byte) (List, error) {
 	now := Now()
 	metaKey := MetaKey(txn.db, key)
 	obj := Object{
@@ -71,7 +71,7 @@ func NewLList(txn *Transaction, key []byte) List {
 	}
 	l.rawDataKeyPrefix = DataKey(txn.db, l.Object.ID)
 	l.rawDataKeyPrefix = append(l.rawDataKeyPrefix, []byte(Separator)...)
-	return l
+	return l, nil
 
 }
 
@@ -108,7 +108,11 @@ func (l *LList) Length() int64 { return l.LListMeta.Len }
 func (l *LList) LPush(data ...[]byte) (err error) {
 	for i := range data {
 		l.Lindex--
-		if err = l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(l.Lindex)...), data[i]); err != nil {
+		encode, err := EncodeFloat64(l.Lindex)
+		if err != nil {
+			return err
+		}
+		if err = l.txn.t.Set(append(l.rawDataKeyPrefix, encode...), data[i]); err != nil {
 			return err
 		}
 		l.Len++
@@ -123,7 +127,12 @@ func (l *LList) LPush(data ...[]byte) (err error) {
 func (l *LList) RPush(data ...[]byte) (err error) {
 	for i := range data {
 		l.Rindex++
-		if err = l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(l.Rindex)...), data[i]); err != nil {
+		encode, err := EncodeFloat64(l.Rindex)
+		if err != nil {
+			return err
+		}
+
+		if err = l.txn.t.Set(append(l.rawDataKeyPrefix, encode...), data[i]); err != nil {
 			return err
 		}
 		l.Len++
@@ -146,7 +155,12 @@ func (l *LList) Set(n int64, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(realidx)...), data)
+
+	encode, err := EncodeFloat64(realidx)
+	if err != nil {
+		return err
+	}
+	return l.txn.t.Set(append(l.rawDataKeyPrefix, encode...), data)
 }
 
 // Insert value in the list stored at key either before or after the reference value pivot
@@ -174,7 +188,12 @@ func (l *LList) Insert(pivot, v []byte, before bool) error {
 		}
 	}
 	l.Len++
-	if err = l.txn.t.Set(append(l.rawDataKeyPrefix, EncodeFloat64(idx)...), v); err != nil {
+
+	encode, err := EncodeFloat64(idx)
+	if err != nil {
+		return err
+	}
+	if err = l.txn.t.Set(append(l.rawDataKeyPrefix, encode...), v); err != nil {
 		return err
 	}
 	return l.txn.t.Set(l.rawMetaKey, l.LListMeta.Marshal())
@@ -205,7 +224,12 @@ func (l *LList) LPop() (data []byte, err error) {
 		// XXX should delete this?
 		return nil, ErrKeyNotFound
 	}
-	leftKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...)
+
+	encode, err := EncodeFloat64(l.LListMeta.Lindex)
+	if err != nil {
+		return nil, err
+	}
+	leftKey := append(l.rawDataKeyPrefix, encode...)
 
 	// find the left object
 	iter, err := l.txn.t.Iter(leftKey, nil)
@@ -243,8 +267,13 @@ func (l *LList) RPop() ([]byte, error) {
 	if l.Len == 0 {
 		return nil, ErrKeyNotFound
 	}
+
+	encode, err := EncodeFloat64(l.LListMeta.Rindex)
+	if err != nil {
+		return nil, err
+	}
 	// rightKey: {DB.ns}:{DB.id}:D:{linedx}
-	rightKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)
+	rightKey := append(l.rawDataKeyPrefix, encode...)
 
 	// find the left object
 	iter, err := l.txn.t.IterReverse(rightKey)
@@ -325,10 +354,13 @@ func (l *LList) LTrim(start int64, stop int64) error {
 		}
 	}
 	if stop+1 < l.Len {
-		rIndex, _, err = l.index(stop) // stop is included to reserve
-		if err != nil {
-			return err
-		}
+		/*
+			TODO bug
+			rIndex, _, err = l.index(stop) // stop is included to reserve
+			if err != nil {
+				return err
+			}
+		*/
 		iter, err := l.seekIndex(stop)
 		if err != nil {
 			return err
@@ -356,7 +388,11 @@ func (l *LList) LTrim(start int64, stop int64) error {
 
 // seekIndex will return till we get the last element not larger than index
 func (l *LList) seekIndex(index int64) (Iterator, error) {
-	key := append(l.rawDataKeyPrefix, EncodeFloat64(l.Lindex)...)
+	encode, err := EncodeFloat64(l.Lindex)
+	if err != nil {
+		return nil, err
+	}
+	key := append(l.rawDataKeyPrefix, encode...)
 	iter, err := l.txn.t.Iter(key, nil)
 	if err != nil {
 		return nil, err
@@ -372,7 +408,11 @@ func (l *LList) seekIndex(index int64) (Iterator, error) {
 
 // remove n elements from start, return next index after delete
 func (l *LList) remove(start float64, n int64) (float64, error) {
-	startKey := append(l.rawDataKeyPrefix, EncodeFloat64(start)...)
+	encode, err := EncodeFloat64(start)
+	if err != nil {
+		return 0, err
+	}
+	startKey := append(l.rawDataKeyPrefix, encode...)
 	iter, err := l.txn.t.Iter(startKey, nil)
 	if err != nil {
 		return 0, err
@@ -408,10 +448,14 @@ func (l *LList) index(n int64) (realindex float64, value []byte, err error) {
 	if n < 0 || n >= l.Len {
 		return 0, nil, ErrOutOfRange
 	}
+	encode, err := EncodeFloat64(l.LListMeta.Lindex)
+	if err != nil {
+		return 0, nil, err
+	}
 
 	// case1: only 1 object in list
 	if l.Len == 1 {
-		val, err := l.txn.t.Get(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...))
+		val, err := l.txn.t.Get(append(l.rawDataKeyPrefix, encode...))
 		if err != nil {
 			return 0, nil, err
 		}
@@ -424,8 +468,12 @@ func (l *LList) index(n int64) (realindex float64, value []byte, err error) {
 		if n == 0 {
 			idx = l.LListMeta.Lindex
 		}
+		encode, err := EncodeFloat64(idx)
+		if err != nil {
+			return 0, nil, err
+		}
 
-		val, err := l.txn.t.Get(append(l.rawDataKeyPrefix, EncodeFloat64(idx)...))
+		val, err := l.txn.t.Get(append(l.rawDataKeyPrefix, encode...))
 		if err != nil {
 			return 0, nil, err
 		}
@@ -447,7 +495,12 @@ func (l *LList) LRem(v []byte, n int64) (int, error) {
 	}
 
 	for i := range idxs {
-		if err = l.txn.t.Delete(append(l.rawDataKeyPrefix, EncodeFloat64(idxs[i])...)); err != nil {
+		encode, err := EncodeFloat64(idxs[i])
+		if err != nil {
+			return 0, err
+		}
+
+		if err = l.txn.t.Delete(append(l.rawDataKeyPrefix, encode...)); err != nil {
 			return 0, err
 		}
 	}
@@ -459,7 +512,12 @@ func (l *LList) LRem(v []byte, n int64) (int, error) {
 
 	// TODO maybe we can find a new way to avoid these seek
 	// update list index and left right index
-	rightKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)
+	encode, err := EncodeFloat64(l.LListMeta.Rindex)
+	if err != nil {
+		return 0, err
+	}
+
+	rightKey := append(l.rawDataKeyPrefix, encode...)
 	iter, err := l.txn.t.IterReverse(rightKey)
 	if err != nil {
 		return 0, err
@@ -469,7 +527,12 @@ func (l *LList) LRem(v []byte, n int64) (int, error) {
 	}
 	l.LListMeta.Rindex = DecodeFloat64(iter.Key()[len(l.rawDataKeyPrefix):]) // trim prefix with list data key
 
-	leftKey := append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...)
+	encode, err = EncodeFloat64(l.LListMeta.Lindex)
+	if err != nil {
+		return 0, err
+	}
+
+	leftKey := append(l.rawDataKeyPrefix, encode...)
 	iter, err = l.txn.t.Iter(leftKey, nil)
 	if err != nil {
 		return 0, err
@@ -487,11 +550,19 @@ func (l *LList) indexValueN(v []byte, n int64) (realidxs []float64, err error) {
 	var iter kv.Iterator
 	if n < 0 {
 		n = -n
-		if iter, err = l.txn.t.IterReverse(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Rindex)...)); err != nil {
+		encode, err := EncodeFloat64(l.LListMeta.Rindex)
+		if err != nil {
+			return nil, err
+		}
+		if iter, err = l.txn.t.IterReverse(append(l.rawDataKeyPrefix, encode...)); err != nil {
 			return nil, err
 		}
 	} else if n > 0 {
-		if iter, err = l.txn.t.Iter(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...), nil); err != nil {
+		encode, err := EncodeFloat64(l.LListMeta.Lindex)
+		if err != nil {
+			return nil, err
+		}
+		if iter, err = l.txn.t.Iter(append(l.rawDataKeyPrefix, encode...), nil); err != nil {
 			return nil, err
 		}
 	} else {
@@ -512,7 +583,12 @@ func (l *LList) indexValueN(v []byte, n int64) (realidxs []float64, err error) {
 // indexValue return the [befor, real, after] index and value of the given list data value.
 func (l *LList) indexValue(v []byte) (realidxs []float64, err error) {
 	realidxs = []float64{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64}
-	iter, err := l.txn.t.Iter(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...), nil)
+	encode, err := EncodeFloat64(l.LListMeta.Lindex)
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := l.txn.t.Iter(append(l.rawDataKeyPrefix, encode...), nil)
 	if err != nil { // dup
 		return nil, err
 	}
@@ -561,8 +637,12 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 	values = make([][]byte, 0, right-left)
 
 	// seek start indecate the seek first key start time.
+	encode, err := EncodeFloat64(l.LListMeta.Lindex)
+	if err != nil {
+		return nil, nil, err
+	}
 	start := time.Now()
-	iter, err := l.txn.t.Iter(append(l.rawDataKeyPrefix, EncodeFloat64(l.LListMeta.Lindex)...), nil)
+	iter, err := l.txn.t.Iter(append(l.rawDataKeyPrefix, encode...), nil)
 
 	var idx int64
 	// for loop iterate all objects to get the next data object and check if valid
@@ -595,16 +675,15 @@ func (l *LList) scan(left, right int64) (realidxs []float64, values [][]byte, er
 
 // Exist checks if a list exists
 func (l *LList) Exist() bool {
-	if l.Len == 0 {
-		return false
-	}
-	return true
+	return l.Len != 0
 }
 
 // Destory the list
 func (l *LList) Destory() error {
 	// delete the meta data
-	l.txn.t.Delete(l.rawMetaKey)
+	if err := l.txn.t.Delete(l.rawMetaKey); err != nil {
+		return err
+	}
 	// leaving the data to gc
 	return gc(l.txn.t, l.rawDataKeyPrefix)
 }

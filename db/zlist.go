@@ -20,7 +20,7 @@ func GetZList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (*ZList
 }
 
 //NewZList create new list object ,the key is not checked for presence
-func NewZList(txn *Transaction, key []byte) List {
+func NewZList(txn *Transaction, key []byte) (List, error) {
 	metaKey := MetaKey(txn.db, key)
 	ts := Now()
 	obj := Object{
@@ -37,8 +37,10 @@ func NewZList(txn *Transaction, key []byte) List {
 		rawMetaKey: metaKey,
 		txn:        txn,
 	}
-	PutZList(txn, metaKey)
-	return l
+	if err := PutZList(txn, metaKey); err != nil {
+		return nil, err
+	}
+	return l, nil
 }
 
 // ZList ZListMeta defined zip list, with only objectMeta info.
@@ -51,10 +53,7 @@ type ZList struct {
 
 //Exist if zlist is  effective return true ,otherwise return false
 func (l *ZList) Exist() bool {
-	if l.value.V == nil {
-		return false
-	}
-	return true
+	return l.value.V != nil
 }
 
 // Marshal encode zlist into byte slice
@@ -137,7 +136,7 @@ func (l *ZList) Insert(pivot, v []byte, before bool) error {
 		index++
 	}
 
-	cv := make([][]byte, len(l.value.V)+1, len(l.value.V)+1)
+	cv := make([][]byte, len(l.value.V)+1)
 	copy(cv[:index], l.value.V[:index])
 	cv[index] = v
 	copy(cv[index+1:], l.value.V[index:])
@@ -226,7 +225,7 @@ func (l *ZList) LTrim(start int64, stop int64) error {
 
 // LRem begin delete the count of n key from v
 func (l *ZList) LRem(v []byte, n int64) (int, error) {
-	cv := make([][]byte, len(l.value.V), len(l.value.V))
+	cv := make([][]byte, len(l.value.V))
 	count := 0
 	if n < 0 { // delete from tail to head, then trim the cv
 		j := len(l.value.V) - 1

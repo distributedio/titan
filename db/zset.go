@@ -2,9 +2,10 @@ package db
 
 import (
 	"encoding/binary"
-	"go.uber.org/zap"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // ZSetMeta is the meta data of the sorted set
@@ -24,14 +25,15 @@ type MemberScore struct {
 	Member string
 	Score  float64
 }
+
 func newZSet(txn *Transaction, key []byte) *ZSet {
 	now := Now()
 	return &ZSet{
 		txn: txn,
 		key: key,
 		meta: ZSetMeta{
-			Object : Object{
-				ID: UUID(),
+			Object: Object{
+				ID:        UUID(),
 				CreatedAt: now,
 				UpdatedAt: now,
 				ExpireAt:  0,
@@ -42,6 +44,7 @@ func newZSet(txn *Transaction, key []byte) *ZSet {
 		},
 	}
 }
+
 // GetZSet returns a sorted set, create new one if don't exists
 func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
 	zset := newZSet(txn, key)
@@ -113,7 +116,7 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			}
 		}
 		memberKey := zsetMemberKey(dkey, members[i])
-		bytesScore := EncodeFloat64(scores[i])
+		bytesScore, _ := EncodeFloat64(scores[i])
 		start = time.Now()
 		err = zset.txn.t.Set(memberKey, bytesScore)
 		costSetMem += time.Since(start).Nanoseconds()
@@ -170,10 +173,7 @@ func (zset *ZSet) encodeMeta(meta ZSetMeta) []byte {
 }
 
 func (zset *ZSet) Exist() bool {
-	if zset.meta.Len == 0 {
-		return false
-	}
-	return true
+	return zset.meta.Len != 0
 }
 
 func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positiveOrder bool) ([][]byte, error) {

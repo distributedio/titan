@@ -132,7 +132,7 @@ func (rds *RedisStore) DB(namesapce string, id int) *DB {
 
 // Close the storage instance
 func (rds *RedisStore) Close() error {
-	return rds.Close()
+	return rds.Storage.Close()
 }
 
 // Transaction supplies transaction for data structures
@@ -376,7 +376,9 @@ func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, e
 		}
 
 		if err != nil {
-			txn.Rollback()
+			if err := txn.Rollback(); err != nil {
+				return isLeader, err
+			}
 			if IsRetryableError(err) {
 				count++
 				if count < 3 {
@@ -388,7 +390,9 @@ func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, e
 		}
 
 		if err := txn.Commit(context.Background()); err != nil {
-			txn.Rollback()
+			if err := txn.Rollback(); err != nil {
+				return isLeader, err
+			}
 			if IsRetryableError(err) {
 				count++
 				if count < 3 {

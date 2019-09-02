@@ -1,8 +1,7 @@
 module github.com/distributedio/titan
 
 require (
-	github.com/arthurkiller/rollingWriter v1.0.1
-	github.com/cockroachdb/cmux v0.0.0-20170110192607-30d10be49292 // indirect
+	github.com/arthurkiller/rollingwriter v1.1.1
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142 // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548 // indirect
@@ -10,7 +9,6 @@ require (
 	github.com/distributedio/configo v0.0.0-20190610140513-0d38d0d8590a
 	github.com/distributedio/continuous v0.0.0-20190527021358-1768e41f22b9
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a // indirect
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
 	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9 // indirect
 	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434 // indirect
@@ -35,7 +33,6 @@ require (
 	github.com/pingcap/tipb v0.0.0-20190107072121-abbec73437b7 // indirect
 	github.com/prometheus/client_golang v0.9.2
 	github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446 // indirect
-	github.com/robfig/cron v0.0.0-20180505203441-b41be1df6967 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/shafreeck/retry v0.0.0-20180827080527-71c8c3fbf8f8
 	github.com/sirupsen/logrus v1.3.0
@@ -45,7 +42,6 @@ require (
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
 	github.com/uber/jaeger-lib v1.5.0 // indirect
-	github.com/ugorji/go v1.1.1 // indirect
 	github.com/unrolled/render v0.0.0-20180914162206-b9786414de4d // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect

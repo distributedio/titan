@@ -122,9 +122,11 @@ func (an *Abnormal) ZSetCase(t *testing.T) {
 	an.es.SetEqual(t, "set", "v")
 	an.ez.ZAddEqual(t, "key-zset-abnormal", "1.2", "member1")
 
+	an.ez.ZCardEqualErr(t, "ERR wrong number of arguments for 'zcard' command")
 	an.ez.ZCardEqualErr(t, "ERR wrong number of arguments for 'zcard' command", "set", "v")
 	an.ez.ZCardEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set")
 
+	an.ez.ZAddEqualErr(t, "ERR wrong number of arguments for 'zadd' command")
 	an.ez.ZAddEqualErr(t, "ERR wrong number of arguments for 'zadd' command", "set")
 	an.ez.ZAddEqualErr(t, "ERR wrong number of arguments for 'zadd' command", "set", "v")
 	an.ez.ZAddEqualErr(t, "ERR syntax error", "set", "v", "m1", "v2")
@@ -132,6 +134,7 @@ func (an *Abnormal) ZSetCase(t *testing.T) {
 	an.ez.ZAddEqualErr(t, "ERR value is not a valid float", "key-zset-abnormal", "v", "m1")
 	an.ez.ZAddEqualErr(t, "ERR value is not a valid float", "key-zset-abnormal", "nan", "m1")
 
+	an.ez.ZRangeEqualErr(t, "ERR wrong number of arguments for 'zrange' command")
 	an.ez.ZRangeEqualErr(t, "ERR wrong number of arguments for 'zrange' command", "set")
 	an.ez.ZRangeEqualErr(t, "ERR wrong number of arguments for 'zrange' command", "set", "0")
 	an.ez.ZRangeEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "0", "1")
@@ -140,6 +143,7 @@ func (an *Abnormal) ZSetCase(t *testing.T) {
 	an.ez.ZRangeEqualErr(t, "ERR value is not an integer or out of range", "key-zset-abnormal", "0", "9223372036854775808")
 	an.ez.ZRangeEqualErr(t, "ERR value is not an integer or out of range", "key-zset-abnormal", "9223372036854775808", "0")
 
+	an.ez.ZRevRangeEqualErr(t, "ERR wrong number of arguments for 'zrevrange' command")
 	an.ez.ZRevRangeEqualErr(t, "ERR wrong number of arguments for 'zrevrange' command", "set")
 	an.ez.ZRevRangeEqualErr(t, "ERR wrong number of arguments for 'zrevrange' command", "set", "0")
 	an.ez.ZRevRangeEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "0", "1")
@@ -148,10 +152,29 @@ func (an *Abnormal) ZSetCase(t *testing.T) {
 	an.ez.ZRevRangeEqualErr(t, "ERR value is not an integer or out of range", "key-zset-abnormal", "0", "9223372036854775808")
 	an.ez.ZRevRangeEqualErr(t, "ERR value is not an integer or out of range", "key-zset-abnormal", "9223372036854775808", "0")
 
+	an.ez.ZRangeByScoreEqualErr(t, "ERR wrong number of arguments for 'zrangebyscore' command")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR wrong number of arguments for 'zrangebyscore' command", "set")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR wrong number of arguments for 'zrangebyscore' command", "set", "0")
+	an.ez.ZRangeByScoreEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "0", "1")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR min or max is not a float", "key-zset-abnormal", "0", "a")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR min or max is not a float", "key-zset-abnormal", "a", "0")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR min or max is not a float", "key-zset-abnormal", "--3", "3")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR min or max is not a float", "key-zset-abnormal", "-3", "++3")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR min or max is not a float", "key-zset-abnormal", ")-3", "3")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR min or max is not a float", "key-zset-abnormal", "-3", ")3")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR syntax error", "key-zset-abnormal", "-3", "3", "WITHSCORE")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR syntax error", "key-zset-abnormal", "-3", "3", "LIMIT")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR syntax error", "key-zset-abnormal", "-3", "3", "LIMIT", "0")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR syntax error", "key-zset-abnormal", "-3", "3", "LIMI", "0", "3")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR value is not an integer or out of range", "key-zset-abnormal", "-3", "3", "LIMIT", "0", "a")
+	an.ez.ZRangeByScoreEqualErr(t, "ERR value is not an integer or out of range", "key-zset-abnormal", "-3", "3", "LIMIT", "a", "0")
+
+	an.ez.ZScoreEqualErr(t, "ERR wrong number of arguments for 'zscore' command")
 	an.ez.ZScoreEqualErr(t, "ERR wrong number of arguments for 'zscore' command", "set")
 	an.ez.ZScoreEqualErr(t, "ERR wrong number of arguments for 'zscore' command", "set", "m1", "m2")
 	an.ez.ZScoreEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "m1")
 
+	an.ez.ZRemEqualErr(t, "ERR wrong number of arguments for 'zrem' command")
 	an.ez.ZRemEqualErr(t, "ERR wrong number of arguments for 'zrem' command", "set")
 	an.ez.ZRemEqualErr(t, "WRONGTYPE Operation against a key holding the wrong kind of value", "set", "m1")
 

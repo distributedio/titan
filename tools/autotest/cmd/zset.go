@@ -3,6 +3,7 @@ package cmd
 import (
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gomodule/redigo/redis"
@@ -170,6 +171,57 @@ func (ez *ExampleZSet) ZRevRangeEqual(t *testing.T, key string, start int, stop 
 
 func (ez *ExampleZSet) ZRevRangeEqualErr(t *testing.T, errValue string, args ...interface{}) {
 	_, err := ez.conn.Do("zrevrange", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+func (ez *ExampleZSet) ZRangeByScoreEqual(t *testing.T, key string, start string, stop string, withScores bool, limit string, expected string) {
+	ez.ZAnyOrderRangeByScoreEqual(t, key, start, stop, withScores, true, limit, expected)
+}
+
+func (ez *ExampleZSet) ZRevRangeByScoreEqual(t *testing.T, key string, start string, stop string, withScores bool, limit string, expected string) {
+	ez.ZAnyOrderRangeByScoreEqual(t, key, start, stop, withScores, false, limit, expected)
+}
+
+func (ez *ExampleZSet) ZAnyOrderRangeByScoreEqual(t *testing.T, key string, start string, stop string, withScores bool, positiveOrder bool, limit string, expected string) {
+	cmd := "zrangebyscore"
+	if !positiveOrder {
+		cmd = "zrevrangebyscore"
+	}
+
+	var reply []string
+	var err error
+	req := make([]interface{}, 0)
+	req = append(req, key)
+	req = append(req, start)
+	req = append(req, stop)
+	if withScores {
+		req = append(req, "WITHSCORES")
+	}
+	if limit != "" {
+		limitArgs := strings.Split(limit, " ")
+		for _, limitArg := range limitArgs {
+			req = append(req, limitArg)
+		}
+	}
+
+	reply, err = redis.Strings(ez.conn.Do(cmd, req...))
+	if expected != "" {
+		expectedStrs := strings.Split(expected, " ")
+		assert.Equal(t, expectedStrs, reply)
+	} else {
+		assert.Equal(t, []string{}, reply)
+	}
+
+	assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZRangeByScoreEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zrangebyscore", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+func (ez *ExampleZSet) ZRevRangeByScoreEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zrevrangebyscore", args...)
 	assert.EqualError(t, err, errValue)
 }
 

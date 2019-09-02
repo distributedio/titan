@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/binary"
+	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 	"strconv"
 	"time"
@@ -24,14 +25,17 @@ type MemberScore struct {
 	Member string
 	Score  float64
 }
+
+const byteScoreLen = 8
+
 func newZSet(txn *Transaction, key []byte) *ZSet {
 	now := Now()
 	return &ZSet{
 		txn: txn,
 		key: key,
 		meta: ZSetMeta{
-			Object : Object{
-				ID: UUID(),
+			Object: Object{
+				ID:        UUID(),
 				CreatedAt: now,
 				UpdatedAt: now,
 				ExpireAt:  0,
@@ -42,6 +46,7 @@ func newZSet(txn *Transaction, key []byte) *ZSet {
 		},
 	}
 }
+
 // GetZSet returns a sorted set, create new one if don't exists
 func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
 	zset := newZSet(txn, key)
@@ -218,17 +223,20 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 
 	var items [][]byte
 	cost := int64(0)
-	for i := int64(0); i <= stop && iter.Valid() && iter.Key().HasPrefix(scorePrefix); {
+	for i := int64(0); err == nil && i <= stop && iter.Valid() && iter.Key().HasPrefix(scorePrefix); i++ {
 		if i >= start {
-			if len(iter.Key()) < len(scorePrefix)+len(":")+8+len(":") {
+			if len(iter.Key()) <= len(scorePrefix)+byteScoreLen+len(":") {
 				zap.L().Error("score&member's length isn't enough to be decoded",
 					zap.ByteString("meta key", zset.key), zap.ByteString("data key", iter.Key()))
+				startTime = time.Now()
+				err = iter.Next()
+				cost += time.Since(startTime).Nanoseconds()
 				continue
 			}
 
-			scoreAndMember := iter.Key()[len(scorePrefix)+len(":"):]
-			score := scoreAndMember[0:8]
-			member := scoreAndMember[8+len(":"):]
+			scoreAndMember := iter.Key()[len(scorePrefix):]
+			score := scoreAndMember[0:byteScoreLen]
+			member := scoreAndMember[byteScoreLen+len(":"):]
 			items = append(items, member)
 			if withScore {
 				val := []byte(strconv.FormatFloat(DecodeFloat64(score), 'f', -1, 64))
@@ -238,13 +246,10 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 				}
 			}
 		}
-		i++
+
 		startTime = time.Now()
 		err = iter.Next()
 		cost += time.Since(startTime).Nanoseconds()
-		if err != nil {
-			break
-		}
 	}
 	zap.L().Debug("zset all next", zap.Int64("cost(us)", cost/1000))
 
@@ -256,6 +261,99 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 
 	return items, nil
 }
+
+func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
+	stopScore float64, stopInclude bool,
+	withScore bool,
+	offset int64, count int64,
+	positiveOrder bool) ([][]byte, error) {
+	if positiveOrder && startScore > stopScore {
+		return nil, nil
+	}
+	if !positiveOrder && startScore < stopScore {
+		return nil, nil
+	}
+	if startScore == stopScore && (!startInclude || !stopInclude) {
+		return nil, nil
+	}
+	if offset < 0 || count == 0 {
+		return nil, nil
+	}
+
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	scorePrefix := ZSetScorePrefix(dkey)
+
+	startPrefix := make([]byte, len(scorePrefix)+byteScoreLen)
+	copy(startPrefix, scorePrefix)
+	byteStartScore := EncodeFloat64(startScore)
+	copy(startPrefix[len(scorePrefix):], byteStartScore)
+
+	stopPrefix := make([]byte, len(scorePrefix)+byteScoreLen)
+	copy(stopPrefix, scorePrefix)
+	byteStopScore := EncodeFloat64(stopScore)
+	copy(stopPrefix[len(scorePrefix):], byteStopScore)
+
+	var iter Iterator
+	var err error
+	if positiveOrder {
+		upperBoundKey := kv.Key(stopPrefix).PrefixNext()
+		iter, err = zset.txn.t.Iter(startPrefix, upperBoundKey)
+	} else {
+		iter, err = zset.txn.t.IterReverse(startPrefix)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var items [][]byte
+	countN := int64(0)
+	startComFinished := false
+	for i := int64(0); err == nil && iter.Valid() && iter.Key().HasPrefix(scorePrefix); i, err = i+1, iter.Next() {
+		key := iter.Key()
+		if len(key) <= len(scorePrefix)+byteScoreLen+len(":") {
+			zap.L().Error("score&member's length isn't enough to be decoded",
+				zap.ByteString("meta key", zset.key), zap.ByteString("data key", iter.Key()))
+			continue
+		}
+
+		curPrefix := key[:len(scorePrefix)+byteScoreLen]
+		if !startInclude && !startComFinished {
+			if curPrefix.Cmp(startPrefix) == 0 {
+				offset += 1
+				continue
+			} else {
+				startComFinished = true
+			}
+		}
+
+		comWithStop := curPrefix.Cmp(stopPrefix)
+		if (!stopInclude && comWithStop == 0) ||
+			(positiveOrder && comWithStop > 0) ||
+			(!positiveOrder && comWithStop < 0) {
+			break
+		}
+
+		if i < offset {
+			continue
+		}
+		countN += 1
+		if count > 0 && countN > count {
+			break
+		}
+
+		scoreAndMember := key[len(scorePrefix):]
+		score := scoreAndMember[0:byteScoreLen]
+		member := scoreAndMember[byteScoreLen+len(":"):]
+		items = append(items, member)
+		if withScore {
+			val := []byte(strconv.FormatFloat(DecodeFloat64(score), 'f', -1, 64))
+			items = append(items, val)
+		}
+	}
+
+	return items, nil
+}
+
 func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 	deleted := int64(0)
 
@@ -351,7 +449,7 @@ func zsetMemberKey(dkey []byte, member []byte) []byte {
 func ZSetScorePrefix(dkey []byte) []byte {
 	var sPrefix []byte
 	sPrefix = append(sPrefix, dkey...)
-	sPrefix = append(sPrefix, ':', 'S')
+	sPrefix = append(sPrefix, ':', 'S', ':')
 	return sPrefix
 }
 

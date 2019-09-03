@@ -106,7 +106,8 @@ func (c *client) serve(conn net.Conn) error {
 			zap.L().Error("command is empty", zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID))
 			resp.ReplyError(c, command.ErrEmptyCommand.Error())
-			continue
+			c.conn.Close()
+			return nil
 		}
 
 		c.cliCtx.Updated = time.Now()

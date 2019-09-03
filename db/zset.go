@@ -116,7 +116,10 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			}
 		}
 		memberKey := zsetMemberKey(dkey, members[i])
-		bytesScore, _ := EncodeFloat64(scores[i])
+		bytesScore, err := EncodeFloat64(scores[i])
+		if err != nil {
+			return 0, err
+		}
 		start = time.Now()
 		err = zset.txn.t.Set(memberKey, bytesScore)
 		costSetMem += time.Since(start).Nanoseconds()

@@ -102,6 +102,13 @@ func (c *client) serve(conn net.Conn) error {
 			c.server.servCtx.Pause = 0
 		}
 
+		if len(cmd) <= 0 {
+			zap.L().Error("command is empty", zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID))
+			resp.ReplyError(c, command.ErrEmptyArray.Error())
+			continue
+		}
+
 		c.cliCtx.Updated = time.Now()
 		c.cliCtx.LastCmd = cmd[0]
 

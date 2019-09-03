@@ -91,6 +91,8 @@ var (
 	// ErrEmptyArray error
 	ErrEmptyArray = errors.New("EmptyArray error")
 
+	ErrEmptyCommand = errors.New("command is empty")
+
 	//ErrExec exec without multi
 	ErrExec = errors.New("ERR EXEC without MULTI")
 

@@ -10,7 +10,7 @@ import (
 	ospath "path"
 	"time"
 
-	rolling "github.com/arthurkiller/rollingWriter"
+	rolling "github.com/arthurkiller/rollingwriter"
 	"github.com/distributedio/configo"
 	"github.com/distributedio/continuous"
 	"github.com/sirupsen/logrus"

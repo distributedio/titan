@@ -3,9 +3,10 @@ package db
 import (
 	"encoding/binary"
 	"github.com/pingcap/tidb/kv"
-	"go.uber.org/zap"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // ZSetMeta is the meta data of the sorted set
@@ -118,7 +119,10 @@ func (zset *ZSet) ZAdd(members [][]byte, scores []float64) (int64, error) {
 			}
 		}
 		memberKey := zsetMemberKey(dkey, members[i])
-		bytesScore := EncodeFloat64(scores[i])
+		bytesScore, err := EncodeFloat64(scores[i])
+		if err != nil {
+			return 0, err
+		}
 		start = time.Now()
 		err = zset.txn.t.Set(memberKey, bytesScore)
 		costSetMem += time.Since(start).Nanoseconds()
@@ -175,10 +179,7 @@ func (zset *ZSet) encodeMeta(meta ZSetMeta) []byte {
 }
 
 func (zset *ZSet) Exist() bool {
-	if zset.meta.Len == 0 {
-		return false
-	}
-	return true
+	return zset.meta.Len != 0
 }
 
 func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positiveOrder bool) ([][]byte, error) {

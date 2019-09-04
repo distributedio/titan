@@ -234,7 +234,6 @@ func init() {
 
 func RegisterSDKMetrics() {
 	sdk_metrics.RegisterMetrics()
-	prometheus.MustRegister(sdk_metrics.TiKVTxnCmdCounter)
 }
 
 // GetMetrics return metrics object

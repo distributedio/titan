@@ -120,21 +120,22 @@ func doGC(db *DB, limit int) error {
 		}
 
 		dataKeyCount += count
-		if limit-(gcKeyCount+dataKeyCount) <= 0 {
-			return true
-		}
-		return false
+		return limit-(gcKeyCount+dataKeyCount) <= 0
 	}
 	if err := kv.NextUntil(itr, callback); err != nil {
 		zap.L().Error("[GC] iter prefix err", zap.ByteString("gc-prefix", gcPrefix), zap.Error(err))
 		return err
 	}
 	if resultErr != nil {
-		txn.Rollback()
+		if err := txn.Rollback(); err != nil {
+			zap.L().Error("[GC] rollback err", zap.Error(err))
+		}
 		return resultErr
 	}
 	if err := txn.Commit(context.Background()); err != nil {
-		txn.Rollback()
+		if err := txn.Rollback(); err != nil {
+			zap.L().Error("[GC] rollback err", zap.Error(err))
+		}
 		return err
 	}
 	if logEnv := zap.L().Check(zap.DebugLevel, "[GC]  txn commit success"); logEnv != nil {

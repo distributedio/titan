@@ -2,6 +2,8 @@ package db
 
 import (
 	"strconv"
+
+	"go.uber.org/zap"
 )
 
 //StringMeta string meta msg
@@ -75,7 +77,9 @@ func (s *String) Set(val []byte, expire ...int64) error {
 		}
 	} else {
 		//maybe key is not expire queue,so unExpireAt will return err,but it is not relationship
-		unExpireAt(s.txn.t, mkey, s.Meta.ExpireAt)
+		if err := unExpireAt(s.txn.t, mkey, s.Meta.ExpireAt); err != nil {
+			zap.L().Error("add expire failed", zap.String("key", string(mkey)))
+		}
 		s.Meta.ExpireAt = 0
 	}
 	s.Meta.Value = val
@@ -89,10 +93,7 @@ func (s *String) Len() (int, error) {
 
 // Exist returns ture if key exist
 func (s *String) Exist() bool {
-	if s.Meta.Value == nil {
-		return false
-	}
-	return true
+	return s.Meta.Value != nil
 }
 
 // Append appends a value to key

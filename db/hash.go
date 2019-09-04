@@ -118,10 +118,7 @@ func (hash *Hash) HDel(fields [][]byte) (int64, error) {
 			return false
 		}
 		retainMeta = true
-		if num == int64(len(fieldsMap)) {
-			return true
-		}
-		return false
+		return num == int64(len(fieldsMap))
 	}
 
 	store.SetOption(hash.txn.t, store.KeyOnly, true)

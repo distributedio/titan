@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/distributedio/titan/db/store"
+	"github.com/pingcap/tidb/kv"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +16,8 @@ func TestGC(t *testing.T) {
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
 		for count > 0 {
-			hash.HSet(EncodeInt64(count), []byte("val"))
+			encode, _ := EncodeInt64(count)
+			hash.HSet(encode, []byte("val"))
 			count--
 		}
 		kv := GetKv(txn)
@@ -69,7 +71,7 @@ func TestGC(t *testing.T) {
 		{
 			name: "TestLimitZero",
 			args: args{
-				key:        []byte("TestGCHash3"),
+				key:        []byte("TestGCZeroHash3"),
 				fieldCount: 10,
 				gcCount:    0,
 				call:       hashCall,
@@ -81,6 +83,9 @@ func TestGC(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if err := clearGCData(t); err != nil {
+				assert.NoError(t, err)
+			}
 			id := tt.args.call(t, tt.args.key, tt.args.fieldCount)
 			txn := getTxn(t)
 			doGC(txn.db, tt.args.gcCount)
@@ -98,4 +103,32 @@ func TestGC(t *testing.T) {
 		})
 	}
 
+}
+
+func clearGCData(t *testing.T) error {
+	gcPrefix := toTikvGCKey(nil)
+	endGCPrefix := kv.Key(gcPrefix).PrefixNext()
+
+	txn := getTxn(t)
+	itr, err := txn.t.Iter(gcPrefix, endGCPrefix)
+	if err != nil {
+		return err
+	}
+	defer itr.Close()
+	if !itr.Valid() || !itr.Key().HasPrefix(gcPrefix) {
+		return nil
+	}
+	call := func(k kv.Key) bool {
+		if resultErr := txn.t.Delete(k); resultErr != nil {
+			return true
+		}
+		return false
+	}
+	if err := kv.NextUntil(itr, call); err != nil {
+		return err
+	}
+	if err := txn.Commit(context.TODO()); err != nil {
+		return err
+	}
+	return nil
 }

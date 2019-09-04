@@ -2,9 +2,13 @@ language: go
 go_import_path: github.com/distributedio/titan
 
 go:
-    - "1.11.4"
+    - "1.12"
 
-before_install:
+cache:
+  directories:
+    - $GOPATH/pkg/mod
+
+before_script:
     - go get golang.org/x/tools/cmd/cover
     - go get github.com/mattn/goveralls
 

@@ -52,7 +52,7 @@ func GetSet(txn *Transaction, key []byte) (*Set, error) {
 		return nil, ErrInvalidLength
 	}
 	set.meta.Object = *obj
-    set.meta.Len    = int64(binary.BigEndian.Uint64(m[:8]))
+	set.meta.Len = int64(binary.BigEndian.Uint64(m[:8]))
 	set.exists = true
 	return set, nil
 }
@@ -86,10 +86,7 @@ func (siter *SetIter) Value() []byte {
 
 // Valid judgies whether the key directed by iter has the same prifix
 func (siter *SetIter) Valid() bool {
-	if !siter.Iter.Key().HasPrefix(siter.Prefix) {
-		return false
-	}
-	return true
+	return siter.Iter.Key().HasPrefix(siter.Prefix)
 }
 
 //newSet create new Set object

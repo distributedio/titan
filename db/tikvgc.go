@@ -96,7 +96,9 @@ func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error 
 		return err
 	}
 	if err := txn.t.Commit(ctx); err != nil {
-		txn.Rollback()
+		if err := txn.Rollback(); err != nil {
+			zap.L().Error("rollback failed", zap.Error(err))
+		}
 		return err
 	}
 	return nil

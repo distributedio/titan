@@ -78,6 +78,7 @@ func (c *client) serve(conn net.Conn) error {
 
 	var cmd []string
 	var err error
+	unknownCmdTimes := int(0)
 	for {
 		select {
 		case <-c.cliCtx.Done:
@@ -118,7 +119,13 @@ func (c *client) serve(conn net.Conn) error {
 			zap.L().Error(err.Error(), zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID))
 			resp.ReplyError(c, err.Error())
-			continue
+			unknownCmdTimes++
+			if unknownCmdTimes >= 3 {
+				c.conn.Close()
+				return nil
+			} else {
+				continue
+			}
 		}
 
 		ctx := &command.Context{

@@ -117,6 +117,8 @@ func init() {
 
 		// transactions, exec and discard should called explicitly, so they are registered here
 		"multi":   Desc{Proc: Multi, Cons: Constraint{1, flags("sF"), 0, 0, 0}},
+		"exec":    Desc{Proc: Exec, Cons: Constraint{1, flags("sF"), 0, 0, 0}},
+		"discard": Desc{Proc: Discard, Cons: Constraint{1, flags("sF"), 0, 0, 0}},
 		"watch":   Desc{Proc: Watch, Cons: Constraint{-2, flags("sF"), 1, -1, 1}},
 		"unwatch": Desc{Proc: Unwatch, Cons: Constraint{1, flags("sF"), 0, 0, 0}},
 

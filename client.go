@@ -103,15 +103,23 @@ func (c *client) serve(conn net.Conn) error {
 		}
 
 		if len(cmd) <= 0 {
-			zap.L().Error("command is empty", zap.String("addr", c.cliCtx.RemoteAddr),
+			err := command.ErrEmptyCommand
+			zap.L().Error(err.Error(), zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID))
-			resp.ReplyError(c, command.ErrEmptyCommand.Error())
+			resp.ReplyError(c, err.Error())
 			c.conn.Close()
 			return nil
 		}
 
 		c.cliCtx.Updated = time.Now()
 		c.cliCtx.LastCmd = cmd[0]
+		if !c.exec.CanExecute(c.cliCtx.LastCmd) {
+			err := command.ErrUnKnownCommand(c.cliCtx.LastCmd)
+			zap.L().Error(err.Error(), zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID))
+			resp.ReplyError(c, err.Error())
+			continue
+		}
 
 		ctx := &command.Context{
 			Name:    cmd[0],

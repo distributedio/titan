@@ -190,6 +190,14 @@ func runExpire(db *DB, batchLimit int) {
 		limit--
 	}
 
+	now = time.Now().UnixNano()
+	diff := (ts - now) / int64(time.Second)
+	if diff >= 0 {
+		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(float64(diff))
+	} else {
+		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(float64(-1 * diff))
+	}
+
 	if err := txn.Commit(context.Background()); err != nil {
 		txn.Rollback()
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
@@ -197,13 +205,6 @@ func runExpire(db *DB, batchLimit int) {
 
 	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] expired end"); logEnv != nil {
 		logEnv.Write(zap.Int("expired_num", batchLimit-limit))
-	}
-
-	diff := (ts - now) / int64(time.Second)
-	if diff >= 0 {
-		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(float64(diff))
-	} else {
-		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(float64(-1 * diff))
 	}
 
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))

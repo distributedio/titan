@@ -45,10 +45,11 @@ type Metrics struct {
 	ConnectionOnlineGaugeVec *prometheus.GaugeVec
 
 	//command
-	ZTInfoCounterVec    *prometheus.CounterVec
-	IsLeaderGaugeVec    *prometheus.GaugeVec
-	LRangeSeekHistogram prometheus.Histogram
-	GCKeysCounterVec    *prometheus.CounterVec
+	ZTInfoCounterVec     *prometheus.CounterVec
+	IsLeaderGaugeVec     *prometheus.GaugeVec
+	ExpireLeftSecondsVec *prometheus.GaugeVec
+	LRangeSeekHistogram  prometheus.Histogram
+	GCKeysCounterVec     *prometheus.CounterVec
 
 	//expire
 	ExpireKeysTotal *prometheus.CounterVec
@@ -170,6 +171,14 @@ func init() {
 			Help:      "The number of online connection",
 		}, bizLabel)
 	prometheus.MustRegister(gm.ConnectionOnlineGaugeVec)
+
+	gm.ExpireLeftSecondsVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "expire_left_seconds",
+			Help:      "The seconds after which from now will do expire",
+		}, expireLabel)
+	prometheus.MustRegister(gm.ExpireLeftSecondsVec)
 
 	gm.LRangeSeekHistogram = prometheus.NewHistogram(
 		prometheus.HistogramOpts{

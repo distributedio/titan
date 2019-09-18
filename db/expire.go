@@ -151,9 +151,10 @@ func runExpire(db *DB, batchLimit int) {
 	limit := batchLimit
 	now := time.Now().UnixNano()
 
+	ts := now
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
 		rawKey := iter.Key()
-		ts := DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
+		ts = DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
 		if ts > now {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not need to expire key"); logEnv != nil {
 				logEnv.Write(zap.String("raw-key", string(rawKey)), zap.Int64("last-timestamp", ts))
@@ -198,10 +199,17 @@ func runExpire(db *DB, batchLimit int) {
 		logEnv.Write(zap.Int("expired_num", batchLimit-limit))
 	}
 
+	diff := (ts - now) / int64(time.Second)
+	if diff >= 0 {
+		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(float64(diff))
+	} else {
+		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(float64(-1 * diff))
+	}
+
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
 }
 
-func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte)error{
+func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) error {
 	dkey := toTikvDataKey(namespace, dbid, id)
 	if err := gc(txn.t, dkey); err != nil {
 		zap.L().Error("[Expire] gc failed",
@@ -251,4 +259,3 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 	}
 	return gcDataKey(txn, namespace, dbid, key, id)
 }
-

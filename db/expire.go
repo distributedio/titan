@@ -194,8 +194,10 @@ func runExpire(db *DB, batchLimit int) {
 	diff := (ts - now) / int64(time.Second)
 	if diff >= 0 {
 		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(float64(diff))
+		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(0)
 	} else {
 		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(float64(-1 * diff))
+		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(0)
 	}
 
 	if err := txn.Commit(context.Background()); err != nil {

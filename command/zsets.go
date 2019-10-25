@@ -2,7 +2,6 @@ package command
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -13,8 +12,6 @@ import (
 // ZAdd adds the specified members with scores to the sorted set
 func ZAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-
-	fmt.Println("zadd", ctx.Args)
 
 	kvs := ctx.Args[1:]
 	if len(kvs)%2 != 0 {

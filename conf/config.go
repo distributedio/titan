@@ -12,16 +12,6 @@ type Titan struct {
 	PIDFileName string     `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
 }
 
-// DB config is the config of titan data struct
-type DB struct {
-	Hash Hash `cfg:"hash"`
-}
-
-// Hash config is the config of titan hash data struct
-type Hash struct {
-	MetaSlot int64 `cfg:"meta-slot;0;numeric;hashes slot key count"`
-}
-
 // Server config is the config of titan server
 type Server struct {
 	Auth             string `cfg:"auth;;;client connetion auth"`
@@ -35,7 +25,6 @@ type Server struct {
 // Tikv config is the config of tikv sdk
 type Tikv struct {
 	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
-	DB      DB     `cfg:"db"`
 	GC      GC     `cfg:"gc"`
 	Expire  Expire `cfg:"expire"`
 	ZT      ZT     `cfg:"zt"`

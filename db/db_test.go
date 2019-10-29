@@ -22,7 +22,6 @@ func TestMain(m *testing.M) {
 		Namespace: "mockdb-ns",
 		ID:        1,
 		kv:        &RedisStore{Storage: store, conf: &mockConf.Tikv},
-		conf:      &mockConf.Tikv.DB,
 	}
 
 	os.Exit(m.Run())

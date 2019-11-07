@@ -1,6 +1,8 @@
 package conf
 
-import "time"
+import (
+	"time"
+)
 
 // Titan configuration center
 type Titan struct {
@@ -34,12 +36,13 @@ type Server struct {
 
 // Tikv config is the config of tikv sdk
 type Tikv struct {
-	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
-	DB      DB     `cfg:"db"`
-	GC      GC     `cfg:"gc"`
-	Expire  Expire `cfg:"expire"`
-	ZT      ZT     `cfg:"zt"`
-	TikvGC  TikvGC `cfg:"tikv-gc"`
+	PdAddrs   string    `cfg:"pd-addrs;required; ;pd address in tidb"`
+	DB        DB        `cfg:"db"`
+	GC        GC        `cfg:"gc"`
+	Expire    Expire    `cfg:"expire"`
+	ZT        ZT        `cfg:"zt"`
+	TikvGC    TikvGC    `cfg:"tikv-gc"`
+	RateLimit RateLimit `cfg:"rate-limit"`
 }
 
 // TikvGC config is the config of implement tikv sdk gcwork
@@ -98,4 +101,10 @@ type Status struct {
 	Listen      string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
 	SSLCertFile string `cfg:"ssl-cert-file;;;status server SSL certificate file (enables SSL support)"`
 	SSLKeyFile  string `cfg:"ssl-key-file;;;status server SSL key file"`
+}
+
+type RateLimit struct {
+	LimitPeriod   int    `cfg:"limit-period; 20; numeric; the period in ms to limit rate"`
+	BalancePeriod int    `cfg:"sync-global-period; 3000; numeric; the period in ms to balance rate limiting with other titan nodes"`
+	Rule          string `cfg:"rule; setex:10000:1000000,set:20000:1000000; ; the rule to limit rate(command1:maxqps:maxrate,command2:maxqps:maxrate...)"`
 }

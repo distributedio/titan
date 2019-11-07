@@ -159,6 +159,7 @@ func Call(ctx *Context) {
 
 	feedMonitors(ctx)
 	start := time.Now()
+	// judge ctx.name and ctx.args
 	cmdInfoCommand.Proc(ctx)
 	cost := time.Since(start)
 

@@ -61,17 +61,6 @@ ssl-key-file = ""
 ##mocktikv是内存模式
 pd-addrs = "mocktikv://"
 
-[tikv.db]
-
-[tikv.db.hash]
-
-#type:        int64
-#rules:       numeric
-#description: hashes slot key count
-#default:     0
-#meta-slot = 0
-
-
 [tikv.gc]
 
 #type:        bool

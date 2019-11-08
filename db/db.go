@@ -100,7 +100,6 @@ func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
 type DB struct {
 	Namespace string
 	ID        DBID
-	conf      *conf.DB
 	kv        *RedisStore
 }
 
@@ -127,7 +126,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 
 // DB returns a DB object with sepcific ID
 func (rds *RedisStore) DB(namesapce string, id int) *DB {
-	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds, conf: &rds.conf.DB}
+	return &DB{Namespace: namesapce, ID: DBID(id), kv: rds}
 }
 
 // Close the storage instance

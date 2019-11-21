@@ -26,7 +26,6 @@ const (
 	LIMIT_BURST_TOKEN       = " "
 	TITAN_STATUS_TOKEN      = "titan_status:"
 	TIME_FORMAT             = "2006-01-02 15:04:05"
-	DEFAULT_BURST           = 1
 )
 
 type CommandLimiter struct {
@@ -43,6 +42,11 @@ type CommandLimiter struct {
 	totalCommandsSize  int64
 }
 
+type LimitData struct {
+	limit float64
+	burst int
+}
+
 type LimitersMgr struct {
 	limitDatadb         *DB
 	globalBalancePeriod time.Duration
@@ -51,8 +55,18 @@ type LimitersMgr struct {
 	localIp             string
 	localPercent        float64
 
-	limiters sync.Map
-	lock     sync.Mutex
+	limiters          sync.Map
+	qpsAllmatchLimit  sync.Map
+	rateAllmatchLimit sync.Map
+	lock              sync.Mutex
+}
+
+func getAllmatchLimiterName(limiterName string) string {
+	strs := strings.Split(limiterName, NAMESPACE_COMMAND_TOKEN)
+	if len(strs) < 2 {
+		return ""
+	}
+	return fmt.Sprintf("%s%s%s", ALL_NAMESPACE, NAMESPACE_COMMAND_TOKEN, strs[1])
 }
 
 func NewLimitersMgr(store *RedisStore, rateLimit conf.RateLimit) (*LimitersMgr, error) {
@@ -110,6 +124,10 @@ func (l *LimitersMgr) init(limiterName string) *CommandLimiter {
 		return v.(*CommandLimiter)
 	}
 
+	allmatchLimiterName := getAllmatchLimiterName(limiterName)
+	l.qpsAllmatchLimit.LoadOrStore(allmatchLimiterName, (*LimitData)(nil))
+	l.rateAllmatchLimit.LoadOrStore(allmatchLimiterName, (*LimitData)(nil))
+
 	qpsLimit, qpsBurst := l.getLimit(limiterName, true)
 	rateLimit, rateBurst := l.getLimit(limiterName, false)
 	if (qpsLimit > 0 && qpsBurst > 0) ||
@@ -124,13 +142,6 @@ func (l *LimitersMgr) init(limiterName string) *CommandLimiter {
 }
 
 func (l *LimitersMgr) getLimit(limiterName string, isQps bool) (float64, int) {
-	strs := strings.Split(limiterName, NAMESPACE_COMMAND_TOKEN)
-	if len(strs) < 2 {
-		zap.L().Error("[Limit] wrong format limiter name", zap.String("limiterName", limiterName))
-		return 0, 0
-	}
-	allMatchLimiter := fmt.Sprintf("%s%s%s", ALL_NAMESPACE, NAMESPACE_COMMAND_TOKEN, strs[1])
-	limiterNames := []string{limiterName, allMatchLimiter}
 	limit := float64(0)
 	burst := int64(0)
 
@@ -139,68 +150,70 @@ func (l *LimitersMgr) getLimit(limiterName string, isQps bool) (float64, int) {
 		zap.L().Error("[Limit] transection begin failed", zap.String("limiterName", limiterName), zap.Bool("isQps", isQps), zap.Error(err))
 		return 0, 0
 	}
-	for i := range limiterNames {
-		var limiterKey string
-		if isQps {
-			limiterKey = QPS_PREFIX + limiterNames[i]
-		} else {
-			limiterKey = RATE_PREFIX + limiterNames[i]
+	defer func() {
+		if err := txn.t.Commit(context.Background()); err != nil {
+			zap.L().Error("[Limit] commit after get limit failed", zap.String("limiterName", limiterName), zap.Error(err))
+			txn.t.Rollback()
 		}
+	}()
 
-		str, err := txn.String([]byte(limiterKey))
-		if err != nil {
-			zap.L().Error("[Limit] get limit's value failed", zap.String("key", limiterKey), zap.Error(err))
-			return 0, 0
-		}
-		val, err := str.Get()
-		if err != nil {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit isn't set"); logEnv != nil {
-				logEnv.Write(zap.String("key", limiterKey), zap.Error(err))
-			}
-			continue
-		}
-
-		limitStrs := strings.Split(string(val), LIMIT_BURST_TOKEN)
-		if len(limitStrs) < 2 {
-			zap.L().Error("[Limit] limit hasn't enough parameters, should be: <limit>[K|k|M|m] <burst>", zap.String("key", limiterKey), zap.ByteString("val", val))
-			continue
-		}
-		limitStr := limitStrs[0]
-		burstStr := limitStrs[1]
-		if len(limitStr) < 1 {
-			zap.L().Error("[Limit] limit part's length isn't enough, should be: <limit>[K|k|M|m] <burst>", zap.String("key", limiterKey), zap.ByteString("val", val))
-			continue
-		}
-		var strUnit uint8
-		var unit float64
-		strUnit = limitStr[len(limitStr)-1]
-		if strUnit == 'k' || strUnit == 'K' {
-			unit = 1024
-			limitStr = limitStr[:len(limitStr)-1]
-		} else if strUnit == 'm' || strUnit == 'M' {
-			unit = 1024 * 1024
-			limitStr = limitStr[:len(limitStr)-1]
-		} else {
-			unit = 1
-		}
-		if limit, err = strconv.ParseFloat(limitStr, 64); err != nil {
-			zap.L().Error("[Limit] limit can't be decoded to integer", zap.String("key", limiterKey), zap.ByteString("val", val), zap.Error(err))
-			continue
-		}
-		limit *= unit
-		if burst, err = strconv.ParseInt(burstStr, 10, 64); err != nil {
-			zap.L().Error("[Limit] burst can't be decoded to integer", zap.String("key", limiterKey), zap.ByteString("val", val), zap.Error(err))
-			continue
-		}
-
-		zap.L().Info("[Limit] got limit", zap.String("key", limiterKey), zap.Float64("limit", limit), zap.Int64("burst", burst))
-		break
+	var limiterKey string
+	if isQps {
+		limiterKey = QPS_PREFIX + limiterName
+	} else {
+		limiterKey = RATE_PREFIX + limiterName
 	}
-	if err := txn.t.Commit(context.Background()); err != nil {
-		zap.L().Error("[Limit] commit after get limit failed", zap.String("limiterName", limiterName), zap.Error(err))
-		txn.t.Rollback()
+
+	str, err := txn.String([]byte(limiterKey))
+	if err != nil {
+		zap.L().Error("[Limit] get limit's value failed", zap.String("key", limiterKey), zap.Error(err))
 		return 0, 0
 	}
+	val, err := str.Get()
+	if err != nil {
+		if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit isn't set"); logEnv != nil {
+			logEnv.Write(zap.String("key", limiterKey), zap.Error(err))
+		}
+		return 0, 0
+	}
+
+	limitStrs := strings.Split(string(val), LIMIT_BURST_TOKEN)
+	if len(limitStrs) < 2 {
+		zap.L().Error("[Limit] limit hasn't enough parameters, should be: <limit>[K|k|M|m] <burst>", zap.String("key", limiterKey), zap.ByteString("val", val))
+		return 0, 0
+	}
+	limitStr := limitStrs[0]
+	burstStr := limitStrs[1]
+	if len(limitStr) < 1 {
+		zap.L().Error("[Limit] limit part's length isn't enough, should be: <limit>[K|k|M|m] <burst>", zap.String("key", limiterKey), zap.ByteString("val", val))
+		return 0, 0
+	}
+	var strUnit uint8
+	var unit float64
+	strUnit = limitStr[len(limitStr)-1]
+	if strUnit == 'k' || strUnit == 'K' {
+		unit = 1024
+		limitStr = limitStr[:len(limitStr)-1]
+	} else if strUnit == 'm' || strUnit == 'M' {
+		unit = 1024 * 1024
+		limitStr = limitStr[:len(limitStr)-1]
+	} else {
+		unit = 1
+	}
+	if limit, err = strconv.ParseFloat(limitStr, 64); err != nil {
+		zap.L().Error("[Limit] limit can't be decoded to integer", zap.String("key", limiterKey), zap.ByteString("val", val), zap.Error(err))
+		return 0, 0
+	}
+	limit *= unit
+	if burst, err = strconv.ParseInt(burstStr, 10, 64); err != nil {
+		zap.L().Error("[Limit] burst can't be decoded to integer", zap.String("key", limiterKey), zap.ByteString("val", val), zap.Error(err))
+		return 0, 0
+	}
+
+	if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] got limit"); logEnv != nil {
+		logEnv.Write(zap.String("key", limiterKey), zap.Float64("limit", limit), zap.Int64("burst", burst))
+	}
+
 	return limit, int(burst)
 }
 
@@ -314,27 +327,77 @@ func (l *LimitersMgr) startSyncNewLimit() {
 	ticker := time.NewTicker(l.syncSetPeriod)
 	defer ticker.Stop()
 	for range ticker.C {
-		l.limiters.Range(func(k, v interface{}) bool {
+		l.runSyncNewLimit()
+	}
+}
+
+func (l *LimitersMgr) runSyncNewLimit() {
+	allmatchLimits := []*sync.Map{&l.qpsAllmatchLimit, &l.rateAllmatchLimit}
+	for i, allmatchLimit := range allmatchLimits {
+		allmatchLimit.Range(func(k, v interface{}) bool {
 			limiterName := k.(string)
-			commandLimiter := v.(*CommandLimiter)
-			qpsLimit, qpsBurst := l.getLimit(limiterName, true)
-			rateLimit, rateBurst := l.getLimit(limiterName, false)
-			if (qpsLimit > 0 && qpsBurst > 0) ||
-				(rateLimit > 0 && rateBurst > 0) {
-				if commandLimiter == nil {
-					newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst)
-					l.limiters.Store(limiterName, newCl)
+			limitData := v.(*LimitData)
+			isQps := false
+			if i == 0 {
+				isQps = true
+			}
+			limit, burst := l.getLimit(limiterName, isQps)
+			if limit > 0 && burst > 0 {
+				if limitData == nil {
+					limitData = &LimitData{limit, burst}
+					allmatchLimit.Store(limiterName, limitData)
 				} else {
-					commandLimiter.updateLimit(qpsLimit, qpsBurst, rateLimit, rateBurst)
+					limitData.limit = limit
+					limitData.burst = burst
 				}
 			} else {
-				if commandLimiter != nil {
-					l.limiters.Store(limiterName, (*CommandLimiter)(nil))
-				}
+				allmatchLimit.Store(limiterName, (*LimitData)(nil))
 			}
 			return true
 		})
 	}
+
+	l.limiters.Range(func(k, v interface{}) bool {
+		limiterName := k.(string)
+		commandLimiter := v.(*CommandLimiter)
+		allmatchLimiterName := getAllmatchLimiterName(limiterName)
+		qpsLimit, qpsBurst := l.getLimit(limiterName, true)
+		if !(qpsLimit > 0 && qpsBurst > 0) {
+			v, ok := l.qpsAllmatchLimit.Load(allmatchLimiterName)
+			if ok {
+				limitData := v.(*LimitData)
+				if limitData != nil {
+					qpsLimit = limitData.limit
+					qpsBurst = limitData.burst
+				}
+			}
+		}
+		rateLimit, rateBurst := l.getLimit(limiterName, false)
+		if !(rateLimit > 0 && rateBurst > 0) {
+			v, ok := l.rateAllmatchLimit.Load(allmatchLimiterName)
+			if ok {
+				limitData := v.(*LimitData)
+				if limitData != nil {
+					rateLimit = limitData.limit
+					rateBurst = limitData.burst
+				}
+			}
+		}
+		if (qpsLimit > 0 && qpsBurst > 0) ||
+			(rateLimit > 0 && rateBurst > 0) {
+			if commandLimiter == nil {
+				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst)
+				l.limiters.Store(limiterName, newCl)
+			} else {
+				commandLimiter.updateLimit(qpsLimit, qpsBurst, rateLimit, rateBurst)
+			}
+		} else {
+			if commandLimiter != nil {
+				l.limiters.Store(limiterName, (*CommandLimiter)(nil))
+			}
+		}
+		return true
+	})
 }
 
 func NewCommandLimiter(localIp string, limiterName string, qpsLimit float64, qpsBurst int, rateLimit float64, rateBurst int) *CommandLimiter {

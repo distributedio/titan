@@ -324,81 +324,91 @@ func (ac *AutoClient) LimitCase(t *testing.T) {
 	conns := []redis.Conn{ac.conn, ac.conn2}
 
 	cost := ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
 	ac.setLimit(t, "qps:*@get", "100")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
-	assert.Equal(t, true, math.Abs(cost-2) <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
-	ac.setLimit(t, "qps:test@get", "200")
+	ac.setLimit(t, "qps:*@get", "k 1")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
-	assert.Equal(t, true, math.Abs(cost-1) <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
+
+	ac.setLimit(t, "qps:*@get", "100 1")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, math.Abs(cost-2) <= 0.2)
+
+	ac.setLimit(t, "qps:test@get", "0.2k 20")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, math.Abs(cost-1) <= 0.2)
 
 	ac.delLimit(t, 1, "qps:test@get")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
-	assert.Equal(t, true, math.Abs(cost-2) <= 0.1)
+	assert.Equal(t, true, math.Abs(cost-2) <= 0.2)
 
-	ac.setLimit(t, "qps:*@get", "100a")
+	ac.setLimit(t, "qps:*@get", "100a 1")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
-	ac.setLimit(t, "qps:*@mget", "100")
+	ac.setLimit(t, "qps:*@mget", "100 1")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, math.Abs(cost-2) <= 0.1)
+	assert.Equal(t, true, math.Abs(cost-2) <= 0.2)
 
 	ac.delLimit(t, 1, "qps:*@mget")
 	ac.setLimit(t, "rate:*@mget", "1k")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
 	ac.setLimit(t, "rate:*@mget", "1 2")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
 	ac.setLimit(t, "rate:*@mget", "1s 2")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
 	ac.setLimit(t, "rate:*@mget", "kk 2")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
 	ac.setLimit(t, "rate:*@mget", "1k 2a")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
 	ac.setLimit(t, "rate:*@mget", "1k 2")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.1)
+	assert.Equal(t, true, cost <= 0.2)
 
-	ac.setLimit(t, "rate:*@mget", "28k 100")
+	ac.setLimit(t, "rate:*@mget", "0.028m 100")
 	time.Sleep(time.Second * 1)
 	times = []int{1024, 1025}
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, math.Abs(cost-1) <= 0.3)
+	assert.Equal(t, true, math.Abs(cost-1) <= 0.4)
 
 	ac.setLimit(t, "rate:*@mget", "0.028M 100")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, math.Abs(cost-1) <= 0.3)
+	assert.Equal(t, true, math.Abs(cost-1) <= 0.4)
 
 	ac.delLimit(t, 1, "rate:*@mget")
 	time.Sleep(time.Second * 1)
 	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
-	assert.Equal(t, true, cost <= 0.3)
+	assert.Equal(t, true, cost <= 0.4)
 
 	ac.ek.DelEqual(t, 1, "key1")
 }

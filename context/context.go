@@ -77,6 +77,7 @@ type ServerContext struct {
 	Store            *db.RedisStore
 	Monitors         sync.Map
 	Clients          sync.Map
+	LimitersMgr      *db.LimitersMgr
 	Pause            time.Duration // elapse to pause all clients
 	StartAt          time.Time
 	ListZipThreshold int

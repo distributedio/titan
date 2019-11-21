@@ -48,6 +48,8 @@ type Metrics struct {
 	ZTInfoCounterVec     *prometheus.CounterVec
 	IsLeaderGaugeVec     *prometheus.GaugeVec
 	ExpireLeftSecondsVec *prometheus.GaugeVec
+	LimiterQpsVec        *prometheus.GaugeVec
+	LimiterRateVec       *prometheus.GaugeVec
 	LRangeSeekHistogram  prometheus.Histogram
 	GCKeysCounterVec     *prometheus.CounterVec
 
@@ -59,6 +61,7 @@ type Metrics struct {
 
 	//command biz
 	CommandCallHistogramVec     *prometheus.HistogramVec
+	LimitCostHistogramVec       *prometheus.HistogramVec
 	TxnBeginHistogramVec        *prometheus.HistogramVec
 	CommandFuncDoneHistogramVec *prometheus.HistogramVec
 	TxnCommitHistogramVec       *prometheus.HistogramVec
@@ -110,6 +113,15 @@ func init() {
 			Help:      "The arguments num of command not including the key",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandArgsNumHistogramVec)
+
+	gm.LimitCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "limit_cost_seconds",
+			Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 10),
+			Help:      "the cost times of command execute's limit",
+		}, multiLabel)
+	prometheus.MustRegister(gm.LimitCostHistogramVec)
 
 	gm.TxnBeginHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -179,6 +191,22 @@ func init() {
 			Help:      "The seconds after which from now will do expire",
 		}, expireLabel)
 	prometheus.MustRegister(gm.ExpireLeftSecondsVec)
+
+	gm.LimiterQpsVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "qps_limiter_status",
+			Help:      "the qps of a namespace's command in a titan server",
+		}, multiLabel)
+	prometheus.MustRegister(gm.LimiterQpsVec)
+
+	gm.LimiterRateVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "rate_limiter_status",
+			Help:      "the rate of a namespace's command in a titan server(KB/s)",
+		}, multiLabel)
+	prometheus.MustRegister(gm.LimiterRateVec)
 
 	gm.LRangeSeekHistogram = prometheus.NewHistogram(
 		prometheus.HistogramOpts{

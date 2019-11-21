@@ -28,6 +28,7 @@ func main() {
 		client.StringCase(t)
 		client.ListCase(t)
 		client.KeyCase(t)
+		client.LimitCase(t)
 	}
 	client.Close()
 }

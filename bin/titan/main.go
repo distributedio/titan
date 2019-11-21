@@ -68,11 +68,16 @@ func main() {
 	}
 
 	svr := metrics.NewServer(&config.Status)
-
+	limitersMgr, err := db.NewLimitersMgr(store, config.Tikv.RateLimit)
+	if err != nil {
+		zap.L().Fatal("create limitersMgr failed", zap.Error(err))
+		os.Exit(1)
+	}
 	serv := titan.New(&context.ServerContext{
 		RequirePass:      config.Server.Auth,
 		Store:            store,
 		ListZipThreshold: config.Server.ListZipThreshold,
+		LimitersMgr:      limitersMgr,
 	})
 
 	var servOpts, statusOpts []continuous.ServerOption

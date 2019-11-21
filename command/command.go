@@ -92,6 +92,10 @@ type TxnCommand func(ctx *Context, txn *db.Transaction) (OnCommit, error)
 func Call(ctx *Context) {
 	ctx.Name = strings.ToLower(ctx.Name)
 
+	if _, ok := txnCommands[ctx.Name]; ok && ctx.Server.LimitersMgr != nil {
+		ctx.Server.LimitersMgr.CheckLimit(ctx.Client.Namespace, ctx.Name, ctx.Args)
+	}
+
 	if ctx.Name != "auth" &&
 		ctx.Server.RequirePass != "" &&
 		ctx.Client.Authenticated == false {
@@ -159,7 +163,6 @@ func Call(ctx *Context) {
 
 	feedMonitors(ctx)
 	start := time.Now()
-	// judge ctx.name and ctx.args
 	cmdInfoCommand.Proc(ctx)
 	cost := time.Since(start)
 

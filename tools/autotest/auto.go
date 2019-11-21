@@ -1,13 +1,16 @@
 package autotest
 
 import (
+	"fmt"
+	"github.com/distributedio/titan/tools/autotest/cmd"
+	"github.com/gomodule/redigo/redis"
+	"github.com/stretchr/testify/assert"
+	"math"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
-
-	"github.com/distributedio/titan/tools/autotest/cmd"
-
-	"github.com/gomodule/redigo/redis"
 )
 
 //AutoClient check redis comman
@@ -19,8 +22,10 @@ type AutoClient struct {
 	*cmd.ExampleSystem
 	em *cmd.ExampleMulti
 	// addr string
-	pool *redis.Pool
-	conn redis.Conn
+	pool      *redis.Pool
+	conn      redis.Conn
+	conn2     redis.Conn
+	limitConn redis.Conn
 }
 
 //NewAutoClient creat auto client
@@ -40,6 +45,27 @@ func (ac *AutoClient) Start(addr string) {
 		panic(err)
 	}
 	ac.conn = conn
+
+	conn2, err := redis.Dial("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	_, err = redis.String(conn2.Do("auth", "test-1542098935-1-7ca41bda4efc2a1889c04e"))
+	if err != nil {
+		panic(err)
+	}
+	ac.conn2 = conn2
+
+	limitConn, err := redis.Dial("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	_, err = redis.String(limitConn.Do("auth", "sys_ratelimit-1574130304-1-36c153b109ebca80b43769"))
+	if err != nil {
+		panic(err)
+	}
+	ac.limitConn = limitConn
+
 	ac.es = cmd.NewExampleString(conn)
 	ac.ek = cmd.NewExampleKey(conn)
 	ac.el = cmd.NewExampleList(conn)
@@ -52,6 +78,21 @@ func (ac *AutoClient) Start(addr string) {
 func (ac *AutoClient) Close() {
 	// ac.pool.Close()
 	ac.conn.Close()
+}
+
+func (ac *AutoClient) setLimit(t *testing.T, key string, value string) {
+	reply, err := redis.String(ac.limitConn.Do("SET", key, value))
+	assert.Equal(t, "OK", reply)
+	assert.NoError(t, err)
+	data, err := redis.Bytes(ac.limitConn.Do("GET", key))
+	assert.Equal(t, value, string(data))
+	assert.NoError(t, err)
+}
+
+func (ac *AutoClient) delLimit(t *testing.T, expectReply int, key string) {
+	reply, err := redis.Int(ac.limitConn.Do("DEL", key))
+	assert.Equal(t, expectReply, reply)
+	assert.NoError(t, err)
 }
 
 //StringCase check string case
@@ -274,4 +315,116 @@ func (ac *AutoClient) MultiCase(t *testing.T) {
 	ac.em.Cmd(t)
 	// exec
 	ac.em.ExecEqual(t)
+}
+
+func (ac *AutoClient) LimitCase(t *testing.T) {
+	ac.es.SetEqual(t, "key1", "1")
+	//first command invoke won't be limited
+	times := []int{100, 101}
+	conns := []redis.Conn{ac.conn, ac.conn2}
+
+	cost := ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "qps:*@get", "100")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, math.Abs(cost-2) <= 0.1)
+
+	ac.setLimit(t, "qps:test@get", "200")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, math.Abs(cost-1) <= 0.1)
+
+	ac.delLimit(t, 1, "qps:test@get")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, math.Abs(cost-2) <= 0.1)
+
+	ac.setLimit(t, "qps:*@get", "100a")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "get", "key1", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "qps:*@mget", "100")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, math.Abs(cost-2) <= 0.1)
+
+	ac.delLimit(t, 1, "qps:*@mget")
+	ac.setLimit(t, "rate:*@mget", "1k")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "rate:*@mget", "1 2")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "rate:*@mget", "1s 2")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "rate:*@mget", "kk 2")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "rate:*@mget", "1k 2a")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "rate:*@mget", "1k 2")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.1)
+
+	ac.setLimit(t, "rate:*@mget", "28k 100")
+	time.Sleep(time.Second * 1)
+	times = []int{1024, 1025}
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, math.Abs(cost-1) <= 0.3)
+
+	ac.setLimit(t, "rate:*@mget", "0.028M 100")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, math.Abs(cost-1) <= 0.3)
+
+	ac.delLimit(t, 1, "rate:*@mget")
+	time.Sleep(time.Second * 1)
+	cost = ac.runCmdInGoRoutines(t, "mget", "key1 key2", times, conns)
+	assert.Equal(t, true, cost <= 0.3)
+
+	ac.ek.DelEqual(t, 1, "key1")
+}
+
+func (ac *AutoClient) runCmdInGoRoutines(t *testing.T, cmd string, key string, times []int, conns []redis.Conn) float64 {
+	gonum := len(times)
+	if gonum != len(conns) {
+		return 0
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(gonum)
+	now := time.Now()
+	for i := 0; i < gonum; i++ {
+		go func(times int, conn redis.Conn, wg *sync.WaitGroup) {
+			cmd := strings.ToLower(cmd)
+			for j := 0; j < times; j++ {
+				_, err := conn.Do(cmd, key)
+				if err != nil {
+					fmt.Printf("cmd=%s, key=%s, err=%s\n", cmd, key, err)
+					break
+				}
+			}
+			wg.Done()
+		}(times[i], conns[i], &wg)
+	}
+	wg.Wait()
+	return time.Since(now).Seconds()
 }

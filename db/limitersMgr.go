@@ -154,7 +154,9 @@ func (l *LimitersMgr) getLimit(limiterName string, isQps bool) (float64, int) {
 		}
 		val, err := str.Get()
 		if err != nil {
-			zap.L().Info("[Limit] limit isn't set", zap.String("key", limiterKey), zap.Error(err))
+			if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit isn't set"); logEnv != nil {
+				logEnv.Write(zap.String("key", limiterKey), zap.Error(err))
+			}
 			continue
 		}
 
@@ -180,8 +182,6 @@ func (l *LimitersMgr) getLimit(limiterName string, isQps bool) (float64, int) {
 			limitStr = limitStr[:len(limitStr)-1]
 		} else {
 			unit = 1
-			//zap.L().Error("[Limit] limit is invaild, should be: <limit>[K|k|M|m] <burst>", zap.String("key", limiterKey), zap.ByteString("val", val))
-			//continue
 		}
 		if limit, err = strconv.ParseFloat(limitStr, 64); err != nil {
 			zap.L().Error("[Limit] limit can't be decoded to integer", zap.String("key", limiterKey), zap.ByteString("val", val), zap.Error(err))

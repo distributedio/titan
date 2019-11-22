@@ -282,13 +282,14 @@ func (l *LimitersMgr) runBalanceLimit() {
 		}
 
 		lastActive := obj.Meta.Value
-		lastActiveT, err := time.Parse(TIME_FORMAT, string(lastActive))
+		lastActiveT, err := time.ParseInLocation(TIME_FORMAT, string(lastActive), time.Local)
 		if err != nil {
 			zap.L().Error("[Limit] value can't decoded into a time", zap.ByteString("key", key), zap.ByteString("lastActive", lastActive), zap.Error(err))
 			continue
 		}
 
-		zap.L().Info("[Limit] last active time", zap.ByteString("ip", ip), zap.ByteString("lastActive", lastActive))
+		diff := time.Since(lastActiveT).Seconds()
+		zap.L().Info("[Limit] last active time", zap.ByteString("ip", ip), zap.ByteString("lastActive", lastActive), zap.Float64("activePast", diff))
 		if string(ip) != l.localIp && time.Since(lastActiveT) <= l.titanStatusLifeTime {
 			activeNum++
 		}

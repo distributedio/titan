@@ -395,6 +395,10 @@ func (l *LimitersMgr) runSyncNewLimit() {
 			}
 		} else {
 			if commandLimiter != nil {
+				if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit is cleared"); logEnv != nil {
+					logEnv.Write(zap.String("limiter name", limiterName), zap.Float64("qps limit", qpsLimit), zap.Int("qps burst", qpsBurst),
+						zap.Float64("rate limit", rateLimit), zap.Int("rate burst", rateBurst))
+				}
 				l.limiters.Store(limiterName, (*CommandLimiter)(nil))
 			}
 		}
@@ -496,10 +500,12 @@ func (cl *CommandLimiter) checkLimit(cmdName string, cmdArgs []string) {
 			zap.L().Error("[Limit] request events num exceed limiter burst", zap.Int("qps limiter burst", cl.qpsl.Burst()))
 		} else {
 			d := r.Delay()
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger qps limit"); logEnv != nil {
-				logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Int64("sleep us", int64(d/time.Microsecond)))
+			if d > 0 {
+				if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger qps limit"); logEnv != nil {
+					logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Int64("sleep us", int64(d/time.Microsecond)))
+				}
+				time.Sleep(d)
 			}
-			time.Sleep(d)
 		}
 	}
 
@@ -513,10 +519,12 @@ func (cl *CommandLimiter) checkLimit(cmdName string, cmdArgs []string) {
 			zap.L().Error("[Limit] request events num exceed limiter burst", zap.Int("rate limiter burst", cl.ratel.Burst()), zap.Int("command size", cmdSize))
 		} else {
 			d := r.Delay()
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger rate limit"); logEnv != nil {
-				logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Strings("args", cmdArgs), zap.Int64("sleep us", int64(d/time.Microsecond)))
+			if d > 0 {
+				if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger rate limit"); logEnv != nil {
+					logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Strings("args", cmdArgs), zap.Int64("sleep us", int64(d/time.Microsecond)))
+				}
+				time.Sleep(d)
 			}
-			time.Sleep(d)
 		}
 	}
 

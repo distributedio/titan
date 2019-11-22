@@ -118,7 +118,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "limit_cost_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 10),
+			Buckets:   prometheus.ExponentialBuckets(0.0002, 1.4, 20),
 			Help:      "the cost times of command execute's limit",
 		}, multiLabel)
 	prometheus.MustRegister(gm.LimitCostHistogramVec)
@@ -136,7 +136,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_func_done_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0002, 2, 10),
+			Buckets:   prometheus.ExponentialBuckets(0.0002, 1.4, 20),
 			Help:      "The cost times of command func",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandFuncDoneHistogramVec)

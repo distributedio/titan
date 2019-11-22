@@ -260,7 +260,7 @@ func (l *LimitersMgr) runBalanceLimit() {
 	}
 	defer iter.Close()
 
-	activeNum := 1
+	activeNum := float64(1)
 	prefixLen := len(prefix)
 	for ; iter.Valid() && iter.Key().HasPrefix(prefix); err = iter.Next() {
 		if err != nil {
@@ -293,9 +293,9 @@ func (l *LimitersMgr) runBalanceLimit() {
 			activeNum++
 		}
 	}
-	newPercent := float64(1.0 / activeNum)
+	newPercent := 1 / activeNum
 	if l.localPercent != newPercent {
-		zap.L().Info("[Limit] balance limit in all titan server", zap.Int("active server num", activeNum),
+		zap.L().Info("[Limit] balance limit in all titan server", zap.Float64("active server num", activeNum),
 			zap.Float64("oldPercent", l.localPercent), zap.Float64("newPercent", newPercent))
 		l.limiters.Range(func(k, v interface{}) bool {
 			commandLimiter := v.(*CommandLimiter)

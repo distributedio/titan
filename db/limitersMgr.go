@@ -482,12 +482,14 @@ func (cl *CommandLimiter) updateLimitPercent(newPercent float64) {
 
 	if cl.localPercent != newPercent && cl.localPercent > 0 && newPercent > 0 {
 		if cl.qpsl != nil {
-			qpsLimit := float64(cl.qpsl.Limit()) / cl.localPercent
-			cl.qpsl.SetLimit(rate.Limit(qpsLimit * newPercent))
+			qpsLimit := (float64(cl.qpsl.Limit()) / cl.localPercent) * newPercent
+			zap.L().Info("percent changed", zap.String("limiterName", cl.limiterName), zap.Float64("qps limit", qpsLimit), zap.Int("burst", cl.qpsl.Burst()))
+			cl.qpsl.SetLimit(rate.Limit(qpsLimit))
 		}
 		if cl.ratel != nil {
-			rateLimit := float64(cl.ratel.Limit()) / cl.localPercent
-			cl.ratel.SetLimit(rate.Limit(rateLimit * newPercent))
+			rateLimit := float64(cl.ratel.Limit()) / cl.localPercent * newPercent
+			zap.L().Info("percent changed", zap.String("limiterName", cl.limiterName), zap.Float64("rate limit", rateLimit), zap.Int("burst", cl.ratel.Burst()))
+			cl.ratel.SetLimit(rate.Limit(rateLimit))
 		}
 		cl.localPercent = newPercent
 	}

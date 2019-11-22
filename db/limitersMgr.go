@@ -171,9 +171,6 @@ func (l *LimitersMgr) getLimit(limiterName string, isQps bool) (float64, int) {
 	}
 	val, err := str.Get()
 	if err != nil {
-		if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit isn't set"); logEnv != nil {
-			logEnv.Write(zap.String("key", limiterKey), zap.Error(err))
-		}
 		return 0, 0
 	}
 
@@ -383,8 +380,13 @@ func (l *LimitersMgr) runSyncNewLimit() {
 				}
 			}
 		}
+
 		if (qpsLimit > 0 && qpsBurst > 0) ||
 			(rateLimit > 0 && rateBurst > 0) {
+			if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit is set"); logEnv != nil {
+				logEnv.Write(zap.String("limiter name", limiterName), zap.Float64("qps limit", qpsLimit), zap.Int("qps burst", qpsBurst),
+					zap.Float64("rate limit", rateLimit), zap.Int("rate burst", rateBurst))
+			}
 			if commandLimiter == nil {
 				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst)
 				l.limiters.Store(limiterName, newCl)

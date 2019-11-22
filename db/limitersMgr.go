@@ -132,7 +132,7 @@ func (l *LimitersMgr) init(limiterName string) *CommandLimiter {
 	rateLimit, rateBurst := l.getLimit(limiterName, false)
 	if (qpsLimit > 0 && qpsBurst > 0) ||
 		(rateLimit > 0 && rateBurst > 0) {
-		newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst)
+		newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit*l.localPercent, qpsBurst, rateLimit*l.localPercent, rateBurst)
 		v, _ := l.limiters.LoadOrStore(limiterName, newCl)
 		return v.(*CommandLimiter)
 	} else {
@@ -391,7 +391,7 @@ func (l *LimitersMgr) runSyncNewLimit() {
 					zap.Float64("rate limit", rateLimit), zap.Int("rate burst", rateBurst))
 			}
 			if commandLimiter == nil {
-				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst)
+				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit*l.localPercent, qpsBurst, rateLimit*l.localPercent, rateBurst)
 				l.limiters.Store(limiterName, newCl)
 			} else {
 				commandLimiter.updateLimit(qpsLimit, qpsBurst, rateLimit, rateBurst)

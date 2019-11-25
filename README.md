@@ -19,13 +19,7 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. T
 
 ## Architecture
 
-___Arch about titan___
-
-![titan](docs/titan.png)
-
-___Arch about TiKV___
-
-![TiKV softwares](https://github.com/tikv/tikv/blob/master/images/tikv_stack.png)
+![titan](docs/titan.jpeg)
 
 ## Quick start
 

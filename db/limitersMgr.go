@@ -240,7 +240,22 @@ func (l *LimitersMgr) startBalanceLimit() {
 	defer ticker.Stop()
 	for range ticker.C {
 		l.runBalanceLimit()
+		l.reportLocalStat()
 	}
+}
+
+func (l *LimitersMgr) reportLocalStat() {
+	l.limiters.Range(func(k, v interface{}) bool {
+		limiterName := k.(string)
+		commandLimiter := v.(*CommandLimiter)
+		if commandLimiter != nil {
+			commandLimiter.reportLocalStat()
+		} else {
+			metrics.GetMetrics().LimiterQpsVec.WithLabelValues(l.localIp, limiterName).Set(0)
+			metrics.GetMetrics().LimiterRateVec.WithLabelValues(l.localIp, limiterName).Set(0)
+		}
+		return true
+	})
 }
 
 func (l *LimitersMgr) runBalanceLimit() {
@@ -470,6 +485,11 @@ func (cl *CommandLimiter) updateLimit(qpsLimit float64, qpsBurst int, rateLimit 
 	} else {
 		cl.ratel = nil
 	}
+}
+
+func (cl *CommandLimiter) reportLocalStat() {
+	cl.lock.Lock()
+	defer cl.lock.Unlock()
 
 	var qpsLocal, rateLocal float64
 	seconds := time.Since(cl.lastTime).Seconds()

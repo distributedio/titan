@@ -132,7 +132,7 @@ func (l *LimitersMgr) init(limiterName string) *CommandLimiter {
 	rateLimit, rateBurst := l.getLimit(limiterName, false)
 	if (qpsLimit > 0 && qpsBurst > 0) ||
 		(rateLimit > 0 && rateBurst > 0) {
-		newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit*l.localPercent, qpsBurst, rateLimit*l.localPercent, rateBurst)
+		newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst, l.localPercent)
 		v, _ := l.limiters.LoadOrStore(limiterName, newCl)
 		return v.(*CommandLimiter)
 	} else {
@@ -295,9 +295,13 @@ func (l *LimitersMgr) runBalanceLimit() {
 		}
 	}
 	newPercent := 1 / activeNum
-	if l.localPercent != newPercent {
+	var oldPercent float64
+	l.lock.Lock()
+	oldPercent = l.localPercent
+	l.lock.Unlock()
+	if oldPercent != newPercent {
 		zap.L().Info("[Limit] balance limit in all titan server", zap.Float64("active server num", activeNum),
-			zap.Float64("oldPercent", l.localPercent), zap.Float64("newPercent", newPercent))
+			zap.Float64("oldPercent", oldPercent), zap.Float64("newPercent", newPercent))
 		l.limiters.Range(func(k, v interface{}) bool {
 			commandLimiter := v.(*CommandLimiter)
 			if commandLimiter != nil {
@@ -305,7 +309,10 @@ func (l *LimitersMgr) runBalanceLimit() {
 			}
 			return true
 		})
+
+		l.lock.Lock()
 		l.localPercent = newPercent
+		l.lock.Unlock()
 	}
 
 	key := []byte(TITAN_STATUS_TOKEN + l.localIp)
@@ -357,6 +364,10 @@ func (l *LimitersMgr) runSyncNewLimit() {
 		})
 	}
 
+	var localPercent float64
+	l.lock.Lock()
+	localPercent = l.localPercent
+	l.lock.Unlock()
 	l.limiters.Range(func(k, v interface{}) bool {
 		limiterName := k.(string)
 		commandLimiter := v.(*CommandLimiter)
@@ -391,7 +402,7 @@ func (l *LimitersMgr) runSyncNewLimit() {
 					zap.Float64("rate limit", rateLimit), zap.Int("rate burst", rateBurst))
 			}
 			if commandLimiter == nil {
-				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit*l.localPercent, qpsBurst, rateLimit*l.localPercent, rateBurst)
+				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst, localPercent)
 				l.limiters.Store(limiterName, newCl)
 			} else {
 				commandLimiter.updateLimit(qpsLimit, qpsBurst, rateLimit, rateBurst)
@@ -409,20 +420,20 @@ func (l *LimitersMgr) runSyncNewLimit() {
 	})
 }
 
-func NewCommandLimiter(localIp string, limiterName string, qpsLimit float64, qpsBurst int, rateLimit float64, rateBurst int) *CommandLimiter {
+func NewCommandLimiter(localIp string, limiterName string, qpsLimit float64, qpsBurst int, rateLimit float64, rateBurst int, localPercent float64) *CommandLimiter {
 	var qpsl, ratel *rate.Limiter
 	if qpsLimit > 0 && qpsBurst > 0 {
-		qpsl = rate.NewLimiter(rate.Limit(qpsLimit), qpsBurst)
+		qpsl = rate.NewLimiter(rate.Limit(qpsLimit*localPercent), qpsBurst)
 	}
 	if rateLimit > 0 && rateBurst > 0 {
-		ratel = rate.NewLimiter(rate.Limit(rateLimit), rateBurst)
+		ratel = rate.NewLimiter(rate.Limit(rateLimit*localPercent), rateBurst)
 	}
 	cl := &CommandLimiter{
 		limiterName:  limiterName,
 		localIp:      localIp,
 		qpsl:         qpsl,
 		ratel:        ratel,
-		localPercent: 1,
+		localPercent: localPercent,
 		lastTime:     time.Now(),
 	}
 	return cl

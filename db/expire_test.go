@@ -115,7 +115,7 @@ func Test_runExpire(t *testing.T) {
 			txn.Commit(context.TODO())
 
 			txn = getTxn(t)
-			gcKey := toTikvGCKey(toTikvDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
+			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
 
 			_, err := txn.t.Get(gcKey)
 			txn.Commit(context.TODO())
@@ -211,7 +211,7 @@ func Test_doExpire(t *testing.T) {
 			name: "TestExpiredNotExistsMeta",
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash")),
-				id:  nmateHashId,
+				id:   nmateHashId,
 			},
 			want: want{
 				gckey: true,
@@ -222,7 +222,7 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredHash_dirty_data")),
 				id:   dirtyDataHashID,
-				tp: byte(ObjectHash),
+				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: true,
@@ -233,7 +233,7 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash_dirty_data")),
 				id:   rDHashId,
-				tp: byte(ObjectHash),
+				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: true,
@@ -252,7 +252,7 @@ func Test_doExpire(t *testing.T) {
 			assert.NoError(t, err)
 
 			txn = getTxn(t)
-			gcKey := toTikvGCKey(toTikvDataKey([]byte(txn.db.Namespace), txn.db.ID, tt.args.id))
+			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, tt.args.id))
 
 			_, err = txn.t.Get(gcKey)
 			txn.Commit(context.TODO())

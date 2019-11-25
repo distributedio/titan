@@ -6,8 +6,8 @@ import "time"
 type Titan struct {
 	Server      Server     `cfg:"server"`
 	Status      Status     `cfg:"status"`
-	Tikv        Tikv       `cfg:"tikv"`
-	TikvLog     TikvLogger `cfg:"tikv-logger"`
+	TiKV        TiKV       `cfg:"tikv"`
+	TiKVLog     TiKVLogger `cfg:"tikv-logger"`
 	Logger      Logger     `cfg:"logger"`
 	PIDFileName string     `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
 }
@@ -22,17 +22,17 @@ type Server struct {
 	ListZipThreshold int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
 }
 
-// Tikv config is the config of tikv sdk
-type Tikv struct {
+// TiKV config is the config of tikv sdk
+type TiKV struct {
 	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
 	GC      GC     `cfg:"gc"`
 	Expire  Expire `cfg:"expire"`
 	ZT      ZT     `cfg:"zt"`
-	TikvGC  TikvGC `cfg:"tikv-gc"`
+	TiKVGC  TiKVGC `cfg:"tikv-gc"`
 }
 
-// TikvGC config is the config of implement tikv sdk gcwork
-type TikvGC struct {
+// TiKVGC config is the config of implement tikv sdk gcwork
+type TiKVGC struct {
 	Disable           bool          `cfg:"disable; false; boolean; false is used to disable tikvgc "`
 	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
 	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
@@ -74,8 +74,8 @@ type Logger struct {
 	TimeRotate string `cfg:"time-rotate; 0 0 0 * * *; ; log time rotate pattern(s m h D M W)"`
 }
 
-// TikvLogger config is the config of tikv log
-type TikvLogger struct {
+// TiKVLogger config is the config of tikv log
+type TiKVLogger struct {
 	Path       string `cfg:"path; logs/tikv;nonempty ; the default log path"`
 	Level      string `cfg:"level; info; ; log level(debug, info, warn, error, panic, fatal)"`
 	Compress   bool   `cfg:"compress; false; boolean; true for enabling log compress"`

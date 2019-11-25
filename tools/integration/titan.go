@@ -20,7 +20,7 @@ var (
 		MaxConnection: 10000,
 		Auth:          "",
 	}
-	tikvConf = conf.MockConf().Tikv
+	tikvConf = conf.MockConf().TiKV
 	//ServerAddr default server addr
 	ServerAddr = "127.0.0.1:17369"
 	lis        net.Listener
@@ -49,8 +49,8 @@ func Start() {
 	}
 
 	svr = titan.New(&context.ServerContext{
-		RequirePass: cfg.Auth,
-		Store:       store,
+		RequirePass:      cfg.Auth,
+		Store:            store,
 		ListZipThreshold: 100,
 	})
 	err = svr.ListenAndServe(cfg.Listen)

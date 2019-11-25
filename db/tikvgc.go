@@ -12,16 +12,16 @@ import (
 )
 
 var (
-	sysTikvGCLeader        = []byte("$sys:0:TGC:GCLeader")
-	sysTikvGCLastSafePoint = []byte("$sys:0:TGC:LastSafePoint")
+	sysTiKVGCLeader        = []byte("$sys:0:TGC:GCLeader")
+	sysTiKVGCLastSafePoint = []byte("$sys:0:TGC:LastSafePoint")
 )
 
 const (
 	tikvGcTimeFormat = "20060102-15:04:05 -0700 MST"
 )
 
-// StartTikvGC start tikv gcwork
-func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
+// StartTiKVGC start tikv gcwork
+func StartTiKVGC(db *DB, tikvCfg *conf.TiKVGC) {
 	ticker := time.NewTicker(tikvCfg.Interval)
 	defer ticker.Stop()
 	uuid := UUID()
@@ -30,14 +30,14 @@ func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 		if tikvCfg.Disable {
 			continue
 		}
-		isLeader, err := isLeader(db, sysTikvGCLeader, uuid, tikvCfg.LeaderLifeTime)
+		isLeader, err := isLeader(db, sysTiKVGCLeader, uuid, tikvCfg.LeaderLifeTime)
 		if err != nil {
-			zap.L().Error("[TikvGC] check TikvGC leader failed", zap.Error(err))
+			zap.L().Error("[TiKVGC] check TiKVGC leader failed", zap.Error(err))
 			continue
 		}
 		if !isLeader {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[TikvGC]  not TikvGC leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysTikvGCLeader),
+			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC]  not TiKVGC leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("leader", sysTiKVGCLeader),
 					zap.ByteString("uuid", uuid),
 					zap.Duration("leader-life-time", tikvCfg.LeaderLifeTime),
 					zap.Duration("safe-point-life-time", tikvCfg.SafePointLifeTime),
@@ -45,14 +45,14 @@ func StartTikvGC(db *DB, tikvCfg *conf.TikvGC) {
 			}
 			continue
 		}
-		if err := runTikvGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {
-			zap.L().Error("[TikvGC] do TikvGC failed", zap.Error(err))
+		if err := runTiKVGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {
+			zap.L().Error("[TiKVGC] do TiKVGC failed", zap.Error(err))
 			continue
 		}
 	}
 }
 
-func runTikvGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
+func runTiKVGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
 	newPoint, err := getNewSafePoint(db, lifeTime)
 	if err != nil {
 		return err
@@ -64,19 +64,19 @@ func runTikvGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration,
 	}
 
 	if lastPoint != nil && newPoint.Before(*lastPoint) {
-		zap.L().Info("[TikvGC] last safe point is later than current on,no need to gc.",
+		zap.L().Info("[TiKVGC] last safe point is later than current on,no need to gc.",
 			zap.Time("last", *lastPoint), zap.Time("current", *newPoint))
 		return nil
 	}
 
 	if lastPoint == nil {
-		zap.L().Info("[TikvGC] current safe point ", zap.Time("current", *newPoint))
+		zap.L().Info("[TiKVGC] current safe point ", zap.Time("current", *newPoint))
 	} else {
-		zap.L().Info("[TikvGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
+		zap.L().Info("[TiKVGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
 	}
 
 	if err := saveLastSafePoint(ctx, db, newPoint); err != nil {
-		zap.L().Error("[TikvGC] save last safe point err ", zap.Time("current", *newPoint))
+		zap.L().Error("[TiKVGC] save last safe point err ", zap.Time("current", *newPoint))
 		return err
 	}
 	safePoint := oracle.ComposeTS(oracle.GetPhysical(*newPoint), 0)
@@ -92,7 +92,7 @@ func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error 
 	if err != nil {
 		return err
 	}
-	if err := txn.t.Set(sysTikvGCLastSafePoint, []byte(safePoint.Format(tikvGcTimeFormat))); err != nil {
+	if err := txn.t.Set(sysTiKVGCLastSafePoint, []byte(safePoint.Format(tikvGcTimeFormat))); err != nil {
 		return err
 	}
 	if err := txn.t.Commit(ctx); err != nil {
@@ -121,7 +121,7 @@ func getLastSafePoint(db *DB) (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
-	val, err := txn.t.Get(sysTikvGCLastSafePoint)
+	val, err := txn.t.Get(sysTiKVGCLastSafePoint)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil

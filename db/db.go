@@ -106,11 +106,11 @@ type DB struct {
 // RedisStore wraps store.Storage
 type RedisStore struct {
 	store.Storage
-	conf *conf.Tikv
+	conf *conf.TiKV
 }
 
 // Open a storage instance
-func Open(conf *conf.Tikv) (*RedisStore, error) {
+func Open(conf *conf.TiKV) (*RedisStore, error) {
 	s, err := store.Open(conf.PdAddrs)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	go StartGC(sysdb, &conf.GC)
 	go StartExpire(sysdb, &conf.Expire)
 	go StartZT(sysdb, &conf.ZT)
-	go StartTikvGC(sysdb, &conf.TikvGC)
+	go StartTiKVGC(sysdb, &conf.TiKVGC)
 	return rds, nil
 }
 
@@ -351,7 +351,7 @@ func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, e
 		label = "GC"
 	case bytes.Equal(leader, sysExpireLeader):
 		label = "EX"
-	case bytes.Equal(leader, sysTikvGCLeader):
+	case bytes.Equal(leader, sysTiKVGCLeader):
 		label = "TGC"
 
 	}

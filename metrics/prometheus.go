@@ -54,7 +54,7 @@ type Metrics struct {
 	ExpireKeysTotal *prometheus.CounterVec
 
 	//tikvGC
-	TikvGCTotal *prometheus.CounterVec
+	TiKVGCTotal *prometheus.CounterVec
 
 	//command biz
 	CommandCallHistogramVec     *prometheus.HistogramVec
@@ -204,13 +204,13 @@ func init() {
 		}, expireLabel)
 	prometheus.MustRegister(gm.ExpireKeysTotal)
 
-	gm.TikvGCTotal = prometheus.NewCounterVec(
+	gm.TiKVGCTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "tikv_gc_total",
 			Help:      "the number of tikv gc total by exec",
 		}, tikvGCLabel)
-	prometheus.MustRegister(gm.TikvGCTotal)
+	prometheus.MustRegister(gm.TiKVGCTotal)
 
 	gm.IsLeaderGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

@@ -489,10 +489,8 @@ func (cl *CommandLimiter) updateLimit(qpsLimit float64, qpsBurst int, rateLimit 
 }
 
 func (cl *CommandLimiter) reportLocalStat() {
-	cl.lock.Lock()
-	defer cl.lock.Unlock()
-
 	var qpsLocal, rateLocal float64
+	cl.lock.Lock()
 	seconds := time.Since(cl.lastTime).Seconds()
 	if seconds >= 0 {
 		qpsLocal = float64(cl.totalCommandsCount) / seconds
@@ -501,11 +499,13 @@ func (cl *CommandLimiter) reportLocalStat() {
 		qpsLocal = 0
 		rateLocal = 0
 	}
-	metrics.GetMetrics().LimiterQpsVec.WithLabelValues(cl.localIp, cl.limiterName).Set(qpsLocal)
-	metrics.GetMetrics().LimiterRateVec.WithLabelValues(cl.localIp, cl.limiterName).Set(rateLocal)
 	cl.totalCommandsCount = 0
 	cl.totalCommandsSize = 0
 	cl.lastTime = time.Now()
+	cl.lock.Unlock()
+
+	metrics.GetMetrics().LimiterQpsVec.WithLabelValues(cl.localIp, cl.limiterName).Set(qpsLocal)
+	metrics.GetMetrics().LimiterRateVec.WithLabelValues(cl.localIp, cl.limiterName).Set(rateLocal)
 }
 
 func (cl *CommandLimiter) updateLimitPercent(newPercent float64) {

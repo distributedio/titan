@@ -100,8 +100,12 @@ func NewLimitersMgr(store *RedisStore, rateLimit conf.RateLimit) (*LimitersMgr, 
 		return nil, errors.New(rateLimit.InterfaceName + " adds is empty")
 	}
 
+	if rateLimit.LimiterNamespace == "" {
+		return nil, errors.New("limiter-namespace is configured with empty")
+	}
+
 	l := &LimitersMgr{
-		limitDatadb:         store.DB(LIMITDATA_NAMESPACE, LIMITDATA_DBID),
+		limitDatadb:         store.DB(rateLimit.LimiterNamespace, LIMITDATA_DBID),
 		globalBalancePeriod: rateLimit.GlobalBalancePeriod,
 		titanStatusLifeTime: rateLimit.TitanStatusLifetime,
 		syncSetPeriod:       rateLimit.SyncSetPeriod,
@@ -215,9 +219,6 @@ func (l *LimitersMgr) getLimit(limiterName string, isQps bool) (float64, int) {
 }
 
 func (l *LimitersMgr) CheckLimit(namespace string, cmdName string, cmdArgs []string) {
-	if namespace == LIMITDATA_NAMESPACE {
-		return
-	}
 	limiterName := fmt.Sprintf("%s%s%s", namespace, NAMESPACE_COMMAND_TOKEN, cmdName)
 	v, ok := l.limiters.Load(limiterName)
 	var commandLimiter *CommandLimiter

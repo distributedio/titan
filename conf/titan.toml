@@ -188,6 +188,11 @@ pd-addrs = "mocktikv://"
 #description: the interface name to get ip and write local titan status to tikv for balancing rate limit
 interface-name = "eth0"
 
+#type:        string
+#default:     sys_ratelimit
+#the namespace of getting limit/balance data
+#limiter-namespace = "sys_ratelimit"
+
 #type:        time.Duration
 #description: the period in seconds to balance rate limiting with other titan nodes
 #default:     15s

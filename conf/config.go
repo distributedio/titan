@@ -105,6 +105,7 @@ type Status struct {
 
 type RateLimit struct {
 	InterfaceName       string        `cfg:"interface-name; eth0; ; the interface name to get ip and write local titan status to tikv for balancing rate limit"`
+	LimiterNamespace    string        `cfg:"limiter-namespace; sys_ratelimit;; the namespace of getting limit/balance data"`
 	GlobalBalancePeriod time.Duration `cfg:"global-balance-period; 15s;; the period in seconds to balance rate limiting with other titan nodes"`
 	TitanStatusLifetime time.Duration `cfg:"titanstatus-life-time; 1m;; how long if a titan didn't update its status, we consider it dead"`
 	SyncSetPeriod       time.Duration `cfg:"sync-set-period; 3s;; the period in seconds to sync new limit set in tikv"`

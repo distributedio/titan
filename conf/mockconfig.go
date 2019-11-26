@@ -5,7 +5,7 @@ import "time"
 // MockConf init and return titan mock conf
 func MockConf() *Titan {
 	return &Titan{
-		Tikv: Tikv{
+		TiKV: TiKV{
 			PdAddrs: "mocktikv://",
 			GC: GC{
 				Disable:        false,
@@ -26,7 +26,7 @@ func MockConf() *Titan {
 				QueueDepth: 100,
 				Interval:   1000 * time.Millisecond,
 			},
-			TikvGC: TikvGC{
+			TiKVGC: TiKVGC{
 				Disable:           false,
 				Interval:          20 * time.Minute,
 				LeaderLifeTime:    30 * time.Minute,

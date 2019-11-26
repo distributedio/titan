@@ -234,8 +234,8 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 
 //clear system range data(GC/ZT)
 func clearSysRangeData(ctx context.Context, db *DB, startKey, endKey []byte) error {
-	gcStart := toTikvGCKey(startKey)
-	gcEnd := toTikvGCKey(endKey)
+	gcStart := toTiKVGCKey(startKey)
+	gcEnd := toTiKVGCKey(endKey)
 	if err := unsafeDeleteRange(ctx, db, gcStart, gcEnd); err != nil {
 		zap.L().Error("[GC] unsafe clear err",
 			zap.ByteString("start", gcStart),

@@ -46,7 +46,7 @@ func main() {
 		os.Exit(1)
 	}
 	if pdAddrs != "" {
-		config.Tikv.PdAddrs = pdAddrs
+		config.TiKV.PdAddrs = pdAddrs
 	}
 
 	if err := ConfigureZap(config.Logger.Name, config.Logger.Path, config.Logger.Level,
@@ -55,13 +55,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := ConfigureLogrus(config.TikvLog.Path, config.TikvLog.Level,
-		config.TikvLog.TimeRotate, config.TikvLog.Compress); err != nil {
+	if err := ConfigureLogrus(config.TiKVLog.Path, config.TiKVLog.Level,
+		config.TiKVLog.TimeRotate, config.TiKVLog.Compress); err != nil {
 		fmt.Printf("create tikv logger failed, %s\n", err)
 		os.Exit(1)
 	}
 
-	store, err := db.Open(&config.Tikv)
+	store, err := db.Open(&config.TiKV)
 	if err != nil {
 		zap.L().Fatal("open db failed", zap.Error(err))
 		os.Exit(1)

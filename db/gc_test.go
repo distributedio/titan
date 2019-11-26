@@ -91,7 +91,7 @@ func TestGC(t *testing.T) {
 			doGC(txn.db, tt.args.gcCount)
 
 			txn = getTxn(t)
-			gcKey := toTikvGCKey(toTikvDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
+			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
 
 			_, err := txn.t.Get(gcKey)
 			txn.Commit(context.TODO())
@@ -106,7 +106,7 @@ func TestGC(t *testing.T) {
 }
 
 func clearGCData(t *testing.T) error {
-	gcPrefix := toTikvGCKey(nil)
+	gcPrefix := toTiKVGCKey(nil)
 	endGCPrefix := kv.Key(gcPrefix).PrefixNext()
 
 	txn := getTxn(t)

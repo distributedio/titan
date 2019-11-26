@@ -15,7 +15,7 @@ var (
 	sysGCLeader = []byte("$sys:0:GCL:GCLeader")
 )
 
-func toTikvGCKey(key []byte) []byte {
+func toTiKVGCKey(key []byte) []byte {
 	b := []byte{}
 	b = append(b, sysNamespace...)
 	b = append(b, ':', byte(sysDatabaseID))
@@ -32,7 +32,7 @@ func gc(txn store.Transaction, prefixes ...[]byte) error {
 			logEnv.Write(zap.ByteString("prefix", prefix))
 		}
 		metrics.GetMetrics().GCKeysCounterVec.WithLabelValues("gc_add").Inc()
-		if err := txn.Set(toTikvGCKey(prefix), []byte{0}); err != nil {
+		if err := txn.Set(toTiKVGCKey(prefix), []byte{0}); err != nil {
 			return err
 		}
 	}
@@ -70,7 +70,7 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 }
 
 func doGC(db *DB, limit int) error {
-	gcPrefix := toTikvGCKey(nil)
+	gcPrefix := toTiKVGCKey(nil)
 	endGCPrefix := kv.Key(gcPrefix).PrefixNext()
 	dbTxn, err := db.Begin()
 	if err != nil {

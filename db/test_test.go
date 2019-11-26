@@ -13,6 +13,6 @@ func MockDB() *DB {
 		panic(err)
 	}
 	mockConf := conf.MockConf()
-	redis := &RedisStore{Storage: store, conf: &mockConf.Tikv}
+	redis := &RedisStore{Storage: store, conf: &mockConf.TiKV}
 	return &DB{Namespace: "ns", ID: DBID(1), kv: redis}
 }

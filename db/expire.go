@@ -130,7 +130,7 @@ func splitMetaKey(key []byte) ([]byte, DBID, []byte) {
 	return namespace, id, rawkey
 }
 
-func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
+func toTiKVDataKey(namespace []byte, id DBID, key []byte) []byte {
 	var b []byte
 	b = append(b, namespace...)
 	b = append(b, ':')
@@ -139,18 +139,6 @@ func toTikvDataKey(namespace []byte, id DBID, key []byte) []byte {
 	b = append(b, key...)
 	return b
 }
-
-/*
-func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
-	var b []byte
-	b = append(b, namespace...)
-	b = append(b, ':')
-	b = append(b, id.Bytes()...)
-	b = append(b, ':', 'S', ':')
-	b = append(b, key...)
-	return b
-}
-*/
 
 func runExpire(db *DB, batchLimit int) {
 	txn, err := db.Begin()
@@ -229,7 +217,7 @@ func runExpire(db *DB, batchLimit int) {
 }
 
 func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) error {
-	dkey := toTikvDataKey(namespace, dbid, id)
+	dkey := toTiKVDataKey(namespace, dbid, id)
 	if err := gc(txn.t, dkey); err != nil {
 		zap.L().Error("[Expire] gc failed",
 			zap.ByteString("key", key),

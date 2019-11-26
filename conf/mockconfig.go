@@ -37,6 +37,7 @@ func MockConf() *Titan {
 				SyncSetPeriod:       1 * time.Second,
 				GlobalBalancePeriod: 15 * time.Second,
 				TitanStatusLifetime: 30 * time.Second,
+				LimiterNamespace:    "sys_ratelimit",
 			},
 		},
 	}

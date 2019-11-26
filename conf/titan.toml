@@ -196,17 +196,17 @@ interface-name = "eth0"
 #type:        time.Duration
 #description: the period in seconds to balance rate limiting with other titan nodes
 #default:     15s
-#global-balance-period = 15s
+#global-balance-period = "15s"
 
 #type:        time.Duration
 #description: how long if a titan didn't update its status, we consider it dead
 #default:     1m
-#titanstatus-life-time = 1m
+#titanstatus-life-time = "1m"
 
 #type:        time.Duration
 #description: the period in seconds to sync new limit set in tikv
 #default:     3s
-#sync-set-period = 3s
+#sync-set-period = "3s"
 
 [tikv-logger]
 

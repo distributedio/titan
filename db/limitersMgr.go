@@ -115,6 +115,7 @@ func NewLimitersMgr(store *RedisStore, rateLimit conf.RateLimit) (*LimitersMgr, 
 
 	go l.startBalanceLimit()
 	go l.startSyncNewLimit()
+	go l.startReportLocalStat()
 	return l, nil
 }
 
@@ -241,6 +242,13 @@ func (l *LimitersMgr) startBalanceLimit() {
 	defer ticker.Stop()
 	for range ticker.C {
 		l.runBalanceLimit()
+	}
+}
+
+func (l *LimitersMgr) startReportLocalStat() {
+	ticker := time.NewTicker(l.globalBalancePeriod)
+	defer ticker.Stop()
+	for range ticker.C {
 		l.reportLocalStat()
 	}
 }

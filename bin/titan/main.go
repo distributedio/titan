@@ -68,7 +68,7 @@ func main() {
 	}
 
 	svr := metrics.NewServer(&config.Status)
-	limitersMgr, err := db.NewLimitersMgr(store, config.Tikv.RateLimit)
+	limitersMgr, err := db.NewLimitersMgr(store, &config.Tikv.RateLimit)
 	if err != nil {
 		zap.L().Fatal("create limitersMgr failed", zap.Error(err))
 		os.Exit(1)

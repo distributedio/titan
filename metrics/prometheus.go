@@ -22,6 +22,7 @@ const (
 	gckeys    = "gckeys"
 	expire    = "expire"
 	tikvGC    = "tikvgc"
+	titanip   = "titanip"
 )
 
 var (
@@ -34,6 +35,7 @@ var (
 	gcKeysLabel  = []string{gckeys}
 	expireLabel  = []string{expire}
 	tikvGCLabel  = []string{tikvGC}
+	limitLabel   = []string{biz, command, titanip}
 
 	// global prometheus object
 	gm *Metrics
@@ -197,7 +199,7 @@ func init() {
 			Namespace: namespace,
 			Name:      "qps_limiter_status",
 			Help:      "the qps of a namespace's command in a titan server",
-		}, multiLabel)
+		}, limitLabel)
 	prometheus.MustRegister(gm.LimiterQpsVec)
 
 	gm.LimiterRateVec = prometheus.NewGaugeVec(
@@ -205,7 +207,7 @@ func init() {
 			Namespace: namespace,
 			Name:      "rate_limiter_status",
 			Help:      "the rate of a namespace's command in a titan server(KB/s)",
-		}, multiLabel)
+		}, limitLabel)
 	prometheus.MustRegister(gm.LimiterRateVec)
 
 	gm.LRangeSeekHistogram = prometheus.NewHistogram(

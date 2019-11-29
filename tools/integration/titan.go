@@ -48,7 +48,7 @@ func Start() {
 		log.Fatalln(err)
 	}
 
-	limitersMgr, err := db.NewLimitersMgr(store, tikvConf.RateLimit)
+	limitersMgr, err := db.NewLimitersMgr(store, &tikvConf.RateLimit)
 	if err != nil {
 		log.Fatalln(err)
 	}

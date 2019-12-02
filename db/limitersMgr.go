@@ -415,6 +415,8 @@ func (cl *CommandLimiter) updateLimit(qpsLimit float64, qpsBurst int, rateLimit 
 		orgRateBurst = cl.ratel.Burst()
 	}
 	if orgQpsLimit != qpsLimit || orgQpsBurst != qpsBurst || orgRateLimit != rateLimit || orgRateBurst != rateBurst {
+		zap.L().Info("limit changed", zap.Float64("orgQpsLimit", orgQpsLimit), zap.Float64("qpsLimit", qpsLimit), zap.Int("orgQpsBurst", orgQpsBurst), zap.Int("qpsBurst", qpsBurst),
+			zap.Float64("orgRateLimit", orgRateLimit), zap.Float64("rateLimit", rateLimit), zap.Int("orgRateBurst", orgRateBurst), zap.Int("rateBurst", rateBurst))
 		cl.skipBalance = true
 	}
 	if qpsLimit > 0 && qpsBurst > 0 {

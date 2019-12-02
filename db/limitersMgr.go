@@ -606,7 +606,7 @@ func (cl *CommandLimiter) scanStatusInOtherTitan(limitDatadb *DB, txn *Transacti
 			continue
 		}
 
-		zap.L().Info("[Limit] other titan status", zap.ByteString("key", key), zap.Float64("weight", weight), zap.Float64("qps", qps), zap.String("lastActive", lastActive))
+		zap.L().Info("[Limit] titan status", zap.ByteString("key", key), zap.Float64("weight", weight), zap.Float64("qps", qps), zap.String("lastActive", lastActive))
 		if string(ip) != cl.localIp && time.Since(lastActiveT) <= titanStatusLifetime {
 			weights = append(weights, weight)
 			qpss = append(qpss, qps)

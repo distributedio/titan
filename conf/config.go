@@ -110,7 +110,7 @@ type RateLimit struct {
 	TitanStatusLifetime time.Duration `cfg:"titanstatus-life-time; 1m;; how long if a titan didn't update its status, we consider it dead"`
 	SyncSetPeriod       time.Duration `cfg:"sync-set-period; 3s;; the period in seconds to sync new limit set in tikv"`
 	UsageToDivide       float64       `cfg:"usage-to-divide; 0.6;; if the qps/weighted limit < the percent, will divide change Factor to balance limit"`
-	UsageToMultiply     float64       `cfg:"usage-to-multiply; 0.9;; if the qps/weighted limit > the percent, will multiply change Factor to balance limit"`
-	WeightChangeFactor  float64       `cfg:"weight-change-factor; 1.5;; the weight change unit when balance limit, is also the minimum weight"`
-	InitialPercent      float64       `cfg:"initial-percent; 0.33;; the percent in a commandLimiter is created"`
+	UsageToMultiply     float64       `cfg:"usage-to-multiply; 0.9;; if the qps/weighted limit >= the percent, will multiply change Factor to balance limit"`
+	WeightChangeFactor  float64       `cfg:"weight-change-factor; 1.5;; the factor to devide/multipy in current weight"`
+	InitialPercent      float64       `cfg:"initial-percent; 0.33;; the limit is set in the percent when a commandLimiter is created"`
 }

@@ -208,6 +208,26 @@ interface-name = "eth0"
 #default:     3s
 #sync-set-period = "3s"
 
+#type:          float64
+#description:   if the qps/weighted limit < the percent, will divide change Factor to balance limit
+#default:       0.6
+usage-to-divide = 0.6
+
+#type:          float64
+#description:   if the qps/weighted limit >= the percent, will multiply change Factor to balance limit
+#default:       0.9
+usage-to-multiply = 0.9
+
+#type:          float64
+#description:   the factor to devide/multipy in current weight
+#default:       1.5
+weight-change-factor = 1.5
+
+#type:          float64
+#description:   the limit is set in the percent when a commandLimiter is created
+#default:       0.33
+initial-percent = 0.33
+
 [tikv-logger]
 
 #type:        string

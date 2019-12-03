@@ -514,18 +514,29 @@ func (cl *CommandLimiter) balanceLimit(averageQps float64, limitDatadb *DB, tita
 	originalLimit := float64(cl.qpsl.Limit()) / cl.localPercent
 	selfLimitInTarget := originalLimit * (cl.weight / totalWeight)
 	if averageQps < selfLimitInTarget*devideUsage {
-		otherFull := false
+		otherHaveHigh := false
+		otherAllLow := true
 		for i := range qpss {
 			otherLimitInTarget := originalLimit * (weights[i] / totalWeight)
 			if qpss[i] >= otherLimitInTarget*multiplyUsage {
-				otherFull = true
+				otherHaveHigh = true
+				otherAllLow = false
+				break
+			}
+			if qpss[i] >= otherLimitInTarget*devideUsage {
+				otherAllLow = false
 				break
 			}
 		}
-		if otherFull {
+		if otherHaveHigh {
 			cl.weight /= weightChangeFactor
 			if cl.weight < MINIMUM_WEIGHT {
 				cl.weight = MINIMUM_WEIGHT
+			}
+		} else if otherAllLow {
+			cl.weight *= weightChangeFactor
+			if cl.weight > MAXIMUM_WEIGHT {
+				cl.weight = MAXIMUM_WEIGHT
 			}
 		}
 	} else if averageQps >= selfLimitInTarget*multiplyUsage {

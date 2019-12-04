@@ -1,22 +1,25 @@
 #!/bin/bash
-host=tkv7369.test.zhuaninc.com
-port=7369
-rediscli="./redis-cli"
-token="sys_ratelimit-1574130304-1-36c153b109ebca80b43769"
+
 usage_exit()
 {
 	echo "usage:"
-	echo "$0 set qps=(1|0) cmd=<cmd> namespace=<namespace> limit=<num>[k/K/m/M] burst=<num>"
+	echo "<hostportconfigpath> set qps=(1|0) cmd=<cmd> namespace=<namespace> limit=<num>[k/K/m/M] burst=<num>"
 	echo "or"
-	echo "$0 del qps=(1|0) cmd=<cmd> namespace=<namespace>"
+	echo "<hostportconfigpath> del qps=(1|0) cmd=<cmd> namespace=<namespace>"
 	echo "<namespace>: all means matching all namespaces"
 	exit 1
 }
-
-if [ $# -lt 1 ]; then
+if [ $# -lt 5 ]; then
 	usage_exit
 fi
-op=$1
+
+configpath=$1
+host=`grep host= $configpath|sed 's/host=//'`
+port=`grep port= $configpath|sed 's/port=//'`
+rediscli=`grep rediscli= $configpath|sed 's/rediscli=//'`
+token=`grep token= $configpath|sed 's/token=//'`
+
+op=$2
 if [ "$op" != "set" -a "$op" != "del" ]; then
 	usage_exit
 fi
@@ -27,9 +30,11 @@ namespace=
 limit=
 burst=
 
+i=0
 for arg in $*
 do
-	if [ "$arg" = "$op" ]; then
+	i=`expr $i + 1`
+	if [ $i -le 2 ]; then
 		continue
 	fi
 

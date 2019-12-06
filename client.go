@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/distributedio/titan/command"
@@ -22,31 +21,16 @@ type client struct {
 	exec   *command.Executor
 	r      *bufio.Reader
 
-	eofLock sync.Mutex //the lock of reading_writing 'eof'
-	eof     bool       //is over when read data from socket
+	remoteClosed bool //is the connection closed by remote peer?
 }
 
 func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
 	return &client{
-		cliCtx: cliCtx,
-		server: s,
-		exec:   exec,
-		eof:    false,
+		cliCtx:       cliCtx,
+		server:       s,
+		exec:         exec,
+		remoteClosed: false,
 	}
-}
-
-func (c *client) readEof() {
-	c.eofLock.Lock()
-	defer c.eofLock.Unlock()
-
-	c.eof = true
-}
-
-func (c *client) isEof() bool {
-	c.eofLock.Lock()
-	defer c.eofLock.Unlock()
-
-	return c.eof
 }
 
 // Write to conn and log error if needed
@@ -68,9 +52,9 @@ func (c *client) Write(p []byte) (int, error) {
 				zap.String("error", err.Error()))
 		}
 		//client.serve() will get the channel close event, close the connection, exit current go routine
-		//if the remote client create the connection and use pipeline to invoke command, then it close the connection, titan still can get command from client.bufio.Reader and process
-		//close ClientContext.Done will help client.serve() to interrupt command processing
-		close(c.cliCtx.Done)
+		//if the remote client use pipeline to invoke command, then close the connection(timeout etc), titan still get command from client.bufio.Reader and process
+		//setting client.remoteClosed to true will help client.serve() to interrupt command processing
+		c.remoteClosed = true
 	}
 	//return err for above write() error, then replying many times command can break its sending to a half-closed connection, etc BytesArray(lrange invoke it).
 	return n, err
@@ -88,6 +72,11 @@ func (c *client) serve(conn net.Conn) error {
 		case <-c.cliCtx.Done:
 			return c.conn.Close()
 		default:
+			if c.remoteClosed {
+				zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
+					zap.Int64("clientid", c.cliCtx.ID), zap.String("namespace", c.cliCtx.Namespace))
+				return c.conn.Close()
+			}
 			cmd, err = c.readCommand()
 			if err != nil {
 				c.conn.Close()

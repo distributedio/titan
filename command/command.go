@@ -70,7 +70,9 @@ func BytesArray(w io.Writer, a [][]byte) OnCommit {
 				resp.ReplyNullBulkString(w)
 				continue
 			}
-			resp.ReplyBulkString(w, string(a[i]))
+			if err := resp.ReplyBulkString(w, string(a[i])); err != nil {
+				break
+			}
 			if i%10 == 9 {
 				zap.L().Debug("reply 10 bulk string", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 				start = time.Now()

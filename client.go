@@ -54,11 +54,11 @@ func (c *client) Write(p []byte) (int, error) {
 	zap.L().Debug("write to client", zap.Int64("clientid", c.cliCtx.ID), zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
-		c.conn.Close()
 		if err == io.EOF {
-			zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
-				zap.Int64("clientid", c.cliCtx.ID))
+			zap.L().Info("connection was half-closed by remote peer", zap.String("addr", c.cliCtx.RemoteAddr),
+				zap.Int64("clientid", c.cliCtx.ID), zap.String("namespace", c.cliCtx.Namespace))
 		} else {
+			//may be unknown error with message "connection reset by peer"
 			zap.L().Error("write net failed", zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID),
 				zap.String("namespace", c.cliCtx.Namespace),
@@ -66,10 +66,14 @@ func (c *client) Write(p []byte) (int, error) {
 				zap.Bool("watching", c.cliCtx.Txn != nil),
 				zap.String("command", c.cliCtx.LastCmd),
 				zap.String("error", err.Error()))
-			return 0, err
 		}
+		//client.serve() will get the channel close event, close the connection, exit current go routine
+		//if the remote client create the connection and use pipeline to invoke command, then it close the connection, titan still can get command from client.bufio.Reader and process
+		//close ClientContext.Done will help client.serve() to interrupt command processing
+		close(c.cliCtx.Done)
 	}
-	return n, nil
+	//return err for above write() error, then replying many times command can break its sending to a half-closed connection, etc BytesArray(lrange invoke it).
+	return n, err
 }
 
 func (c *client) serve(conn net.Conn) error {
@@ -89,11 +93,11 @@ func (c *client) serve(conn net.Conn) error {
 				c.conn.Close()
 				if err == io.EOF {
 					zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
-						zap.Int64("clientid", c.cliCtx.ID))
+						zap.Int64("clientid", c.cliCtx.ID), zap.String("namespace", c.cliCtx.Namespace))
 					return nil
 				}
 				zap.L().Error("read command failed", zap.String("addr", c.cliCtx.RemoteAddr),
-					zap.Int64("clientid", c.cliCtx.ID), zap.Error(err))
+					zap.Int64("clientid", c.cliCtx.ID), zap.String("namespace", c.cliCtx.Namespace), zap.Error(err))
 				return err
 			}
 		}

@@ -467,10 +467,8 @@ func (cl *CommandLimiter) balanceLimit(averageQps float64, limitDatadb *DB, tita
 				otherHaveHigh = true
 				otherAllLow = false
 				break
-			}
-			if qpss[i] >= otherLimitInTarget*devideUsage {
+			} else if qpss[i] >= otherLimitInTarget*devideUsage {
 				otherAllLow = false
-				break
 			}
 		}
 		if otherHaveHigh {

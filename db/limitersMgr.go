@@ -30,19 +30,24 @@ const (
 	MINIMUM_WEIGHT             = 0.1
 )
 
+type LimiterWrapper struct {
+	limiterName  string
+	limiter      *rate.Limiter
+	globalLimit  int64
+	localPercent float64
+	lock         sync.Mutex
+}
+
 type CommandLimiter struct {
 	localIp     string
 	limiterName string
 
-	qpsl            *rate.Limiter
-	ratel           *rate.Limiter
-	globalQpsLimit  int64
-	globalRateLimit int64
-	localPercent    float64
-	weight          float64
-	skipBalance     bool
+	qpsLw  LimiterWrapper
+	rateLw LimiterWrapper
+	weight float64
 
 	lock               sync.Mutex
+	skipBalance        bool
 	lastTime           time.Time
 	totalCommandsCount int64
 	totalCommandsSize  int64
@@ -351,10 +356,6 @@ func (l *LimitersMgr) runSyncNewLimit() {
 
 		if (qpsLimit > 0 && qpsBurst > 0) ||
 			(rateLimit > 0 && rateBurst > 0) {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limit is set"); logEnv != nil {
-				logEnv.Write(zap.String("limiter name", limiterName), zap.Int64("qps limit", qpsLimit), zap.Int("qps burst", qpsBurst),
-					zap.Int64("rate limit", rateLimit), zap.Int("rate burst", rateBurst))
-			}
 			if commandLimiter == nil {
 				newCl := NewCommandLimiter(l.localIp, limiterName, qpsLimit, qpsBurst, rateLimit, rateBurst, l.conf.InitialPercent)
 				l.limiters.Store(limiterName, newCl)
@@ -382,80 +383,27 @@ func NewCommandLimiter(localIp string, limiterName string, qpsLimit int64, qpsBu
 	if initialPercent <= 0 {
 		return nil
 	}
-	var qpsl, ratel *rate.Limiter
-	if qpsLimit > 0 && qpsBurst > 0 {
-		localQpsLimit := float64(qpsLimit) * initialPercent
-		qpsl = rate.NewLimiter(rate.Limit(localQpsLimit), qpsBurst)
-	}
-	if rateLimit > 0 && rateBurst > 0 {
-		localRateLimit := float64(rateLimit) * initialPercent
-		ratel = rate.NewLimiter(rate.Limit(localRateLimit), rateBurst)
-	}
 	cl := &CommandLimiter{
-		limiterName:     limiterName,
-		localIp:         localIp,
-		qpsl:            qpsl,
-		ratel:           ratel,
-		globalQpsLimit:  qpsLimit,
-		globalRateLimit: rateLimit,
-		localPercent:    initialPercent,
-		weight:          MAXIMUM_WEIGHT,
-		skipBalance:     true,
-		lastTime:        time.Now(),
+		limiterName: limiterName,
+		localIp:     localIp,
+		qpsLw:       LimiterWrapper{localPercent: initialPercent, limiterName: limiterName + "-qps"},
+		rateLw:      LimiterWrapper{localPercent: initialPercent, limiterName: limiterName + "-rate"},
+		weight:      MAXIMUM_WEIGHT,
+		skipBalance: true,
+		lastTime:    time.Now(),
 	}
+	cl.qpsLw.updateLimit(qpsLimit, qpsBurst)
+	cl.rateLw.updateLimit(rateLimit, rateBurst)
 	return cl
 }
 
 func (cl *CommandLimiter) updateLimit(newQpsLimit int64, newQpsBurst int, newRateLimit int64, newRateBurst int) {
-	cl.lock.Lock()
-	defer cl.lock.Unlock()
-
-	////when limit is changed, the qps can't be used to balanceLimit
-	var qpsBurst, rateBurst int
-	if cl.qpsl != nil {
-		qpsBurst = cl.qpsl.Burst()
+	qpsLimitChanged := cl.qpsLw.updateLimit(newQpsLimit, newQpsBurst)
+	rateLimitChanged := cl.rateLw.updateLimit(newRateLimit, newRateBurst)
+	if qpsLimitChanged || rateLimitChanged {
+		////when limit is changed, the qps can't be used to balanceLimit
+		cl.setSkipBalance(true)
 	}
-	if cl.ratel != nil {
-		rateBurst = cl.ratel.Burst()
-	}
-	if cl.globalQpsLimit != newQpsLimit || qpsBurst != newQpsBurst || cl.globalRateLimit != newRateLimit || rateBurst != newRateBurst {
-		zap.L().Info("limit changed", zap.Int64("globalQpsLimit", cl.globalQpsLimit), zap.Int64("newQpsLimit", newQpsLimit), zap.Int("qpsBurst", qpsBurst), zap.Int("newQpsBurst", newQpsBurst),
-			zap.Int64("globalRateLimit", cl.globalRateLimit), zap.Int64("newRateLimit", newRateLimit), zap.Int("rateBurst", rateBurst), zap.Int("newRateBurst", newRateBurst))
-		cl.skipBalance = true
-	}
-
-	if newQpsLimit > 0 && newQpsBurst > 0 {
-		localQpsLimit := float64(newQpsLimit) * cl.localPercent
-		if cl.qpsl != nil {
-			if cl.qpsl.Burst() != newQpsBurst {
-				cl.qpsl = rate.NewLimiter(rate.Limit(localQpsLimit), newQpsBurst)
-			} else if cl.globalQpsLimit != newQpsLimit {
-				cl.qpsl.SetLimit(rate.Limit(localQpsLimit))
-			}
-		} else {
-			cl.qpsl = rate.NewLimiter(rate.Limit(localQpsLimit), newQpsBurst)
-		}
-	} else {
-		cl.qpsl = nil
-	}
-
-	if newRateLimit > 0 && newRateBurst > 0 {
-		localRateLimit := float64(newRateLimit) * cl.localPercent
-		if cl.ratel != nil {
-			if cl.ratel.Burst() != newRateBurst {
-				cl.ratel = rate.NewLimiter(rate.Limit(localRateLimit), newRateBurst)
-			} else if cl.globalRateLimit != newRateLimit {
-				cl.ratel.SetLimit(rate.Limit(localRateLimit))
-			}
-		} else {
-			cl.ratel = rate.NewLimiter(rate.Limit(localRateLimit), newRateBurst)
-		}
-	} else {
-		cl.ratel = nil
-	}
-
-	cl.globalQpsLimit = newQpsLimit
-	cl.globalRateLimit = newRateLimit
 }
 
 func (cl *CommandLimiter) reportLocalStat(globalBalancePeriod time.Duration) float64 {
@@ -483,14 +431,12 @@ func (cl *CommandLimiter) reportLocalStat(globalBalancePeriod time.Duration) flo
 
 func (cl *CommandLimiter) balanceLimit(averageQps float64, limitDatadb *DB, titanStatusLifetime time.Duration,
 	devideUsage float64, multiplyUsage float64, weightChangeFactor float64) {
-	cl.lock.Lock()
-	defer cl.lock.Unlock()
-
-	if cl.qpsl == nil {
+	qpsGlobalLimit := float64(cl.qpsLw.getLimit())
+	if qpsGlobalLimit <= 0 {
 		return
 	}
-	if cl.skipBalance {
-		cl.skipBalance = false
+	if cl.getSkipBalance() {
+		cl.setSkipBalance(false)
 		return
 	}
 
@@ -511,13 +457,12 @@ func (cl *CommandLimiter) balanceLimit(averageQps float64, limitDatadb *DB, tita
 		totalWeight += weights[i]
 	}
 
-	originalLimit := float64(cl.qpsl.Limit()) / cl.localPercent
-	selfLimitInTarget := originalLimit * (cl.weight / totalWeight)
+	selfLimitInTarget := qpsGlobalLimit * (cl.weight / totalWeight)
 	if averageQps < selfLimitInTarget*devideUsage {
 		otherHaveHigh := false
 		otherAllLow := true
 		for i := range qpss {
-			otherLimitInTarget := originalLimit * (weights[i] / totalWeight)
+			otherLimitInTarget := qpsGlobalLimit * (weights[i] / totalWeight)
 			if qpss[i] >= otherLimitInTarget*multiplyUsage {
 				otherHaveHigh = true
 				otherAllLow = false
@@ -569,7 +514,8 @@ func (cl *CommandLimiter) balanceLimit(averageQps float64, limitDatadb *DB, tita
 	}
 	zap.L().Info("[Limit] balance limit", zap.String("limiterName", cl.limiterName),
 		zap.Float64("qps", averageQps), zap.Float64("newWeight", cl.weight), zap.Float64("newPercent", newPercent))
-	cl.updateLimitPercent(newPercent)
+	cl.qpsLw.updatePercent(newPercent)
+	cl.rateLw.updatePercent(newPercent)
 }
 
 func (cl *CommandLimiter) scanStatusInOtherTitan(limitDatadb *DB, txn *Transaction, titanStatusLifetime time.Duration) ([]float64, []float64, error) {
@@ -638,63 +584,115 @@ func (cl *CommandLimiter) scanStatusInOtherTitan(limitDatadb *DB, txn *Transacti
 	return weights, qpss, nil
 }
 
-func (cl *CommandLimiter) updateLimitPercent(newPercent float64) {
-	if cl.localPercent != newPercent && cl.localPercent > 0 && newPercent > 0 {
-		if cl.qpsl != nil {
-			qpsLimit := float64(cl.globalQpsLimit) * newPercent
-			zap.L().Info("percent changed", zap.String("limiterName", cl.limiterName), zap.Float64("qps limit", qpsLimit), zap.Int("burst", cl.qpsl.Burst()))
-			cl.qpsl.SetLimit(rate.Limit(qpsLimit))
-		}
-		if cl.ratel != nil {
-			rateLimit := float64(cl.globalRateLimit) * newPercent
-			zap.L().Info("percent changed", zap.String("limiterName", cl.limiterName), zap.Float64("rate limit", rateLimit), zap.Int("burst", cl.ratel.Burst()))
-			cl.ratel.SetLimit(rate.Limit(rateLimit))
-		}
-		cl.localPercent = newPercent
-	}
-}
-
 func (cl *CommandLimiter) checkLimit(cmdName string, cmdArgs []string) {
-	cl.lock.Lock()
-	defer cl.lock.Unlock()
-
-	if cl.qpsl != nil {
-		r := cl.qpsl.Reserve()
-		if !r.OK() {
-			zap.L().Error("[Limit] request events num exceed limiter burst", zap.Int("qps limiter burst", cl.qpsl.Burst()))
-		} else {
-			d := r.Delay()
-			if d > 0 {
-				if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger qps limit"); logEnv != nil {
-					logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Int64("sleep us", int64(d/time.Microsecond)))
-				}
-				time.Sleep(d)
-			}
-		}
-	}
+	d := cl.qpsLw.waitTime(1)
+	time.Sleep(d)
 
 	cmdSize := len(cmdName)
 	for i := range cmdArgs {
 		cmdSize += len(cmdArgs[i]) + 1
 	}
-	if cl.ratel != nil {
-		r := cl.ratel.ReserveN(time.Now(), cmdSize)
-		if !r.OK() {
-			zap.L().Error("[Limit] request events num exceed limiter burst", zap.Int("rate limiter burst", cl.ratel.Burst()), zap.Int("command size", cmdSize))
-		} else {
-			d := r.Delay()
-			if d > 0 {
-				if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger rate limit"); logEnv != nil {
-					logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Strings("args", cmdArgs), zap.Int64("sleep us", int64(d/time.Microsecond)))
-				}
-				time.Sleep(d)
-			}
-		}
-	}
+	d = cl.rateLw.waitTime(cmdSize)
+	time.Sleep(d)
 
+	cl.lock.Lock()
+	defer cl.lock.Unlock()
 	cl.totalCommandsCount++
 	cl.totalCommandsSize += int64(cmdSize)
 	if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] limiter state"); logEnv != nil {
-		logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Time("last time", cl.lastTime), zap.Int64("command count", cl.totalCommandsCount), zap.Int64("command size", cl.totalCommandsSize))
+		logEnv.Write(zap.String("limiter name", cl.limiterName), zap.Time("last time", cl.lastTime),
+			zap.Int64("command count", cl.totalCommandsCount), zap.Int64("command size", cl.totalCommandsSize))
 	}
+}
+
+func (cl *CommandLimiter) setSkipBalance(skipBalance bool) {
+	cl.lock.Lock()
+	defer cl.lock.Unlock()
+	cl.skipBalance = skipBalance
+}
+
+func (cl *CommandLimiter) getSkipBalance() bool {
+	cl.lock.Lock()
+	defer cl.lock.Unlock()
+	return cl.skipBalance
+}
+
+func (lw *LimiterWrapper) updateLimit(newLimit int64, newBurst int) bool {
+	lw.lock.Lock()
+	defer lw.lock.Unlock()
+
+	var burst int
+	if lw.limiter != nil {
+		burst = lw.limiter.Burst()
+	}
+
+	changed := false
+	if lw.globalLimit != newLimit || burst != newBurst {
+		zap.L().Info("limit changed", zap.String("limiterName", lw.limiterName),
+			zap.Int64("globalLimit", lw.globalLimit), zap.Int64("newGlobalLimit", newLimit),
+			zap.Int("burst", burst), zap.Int("newBurst", newBurst))
+		changed = true
+	}
+
+	if newLimit > 0 && newBurst > 0 {
+		localLimit := float64(newLimit) * lw.localPercent
+		if lw.limiter != nil {
+			if lw.limiter.Burst() != newBurst {
+				lw.limiter = rate.NewLimiter(rate.Limit(localLimit), newBurst)
+			} else if lw.globalLimit != newLimit {
+				lw.limiter.SetLimit(rate.Limit(localLimit))
+			}
+		} else {
+			lw.limiter = rate.NewLimiter(rate.Limit(localLimit), newBurst)
+		}
+	} else {
+		lw.limiter = nil
+	}
+
+	lw.globalLimit = newLimit
+	return changed
+}
+
+func (lw *LimiterWrapper) getLimit() int64 {
+	lw.lock.Lock()
+	defer lw.lock.Unlock()
+
+	return lw.globalLimit
+}
+
+func (lw *LimiterWrapper) updatePercent(newPercent float64) {
+	lw.lock.Lock()
+	defer lw.lock.Unlock()
+
+	if lw.localPercent != newPercent && lw.localPercent > 0 && newPercent > 0 {
+		if lw.limiter != nil {
+			limit := float64(lw.globalLimit) * newPercent
+			zap.L().Info("percent changed", zap.String("limiterName", lw.limiterName),
+				zap.Float64("limit", limit), zap.Int("burst", lw.limiter.Burst()))
+			lw.limiter.SetLimit(rate.Limit(limit))
+		}
+
+		lw.localPercent = newPercent
+	}
+}
+
+func (lw *LimiterWrapper) waitTime(eventsNum int) time.Duration {
+	lw.lock.Lock()
+	defer lw.lock.Unlock()
+
+	var d time.Duration
+	if lw.limiter != nil {
+		r := lw.limiter.ReserveN(time.Now(), eventsNum)
+		if !r.OK() {
+			zap.L().Error("[Limit] request events num exceed limiter burst", zap.String("limiter name", lw.limiterName), zap.Int("burst", lw.limiter.Burst()), zap.Int("request events num", eventsNum))
+		} else {
+			d = r.Delay()
+			if d > 0 {
+				if logEnv := zap.L().Check(zap.DebugLevel, "[Limit] trigger limit"); logEnv != nil {
+					logEnv.Write(zap.String("limiter name", lw.limiterName), zap.Int("request events num", eventsNum), zap.Int64("sleep us", int64(d/time.Microsecond)))
+				}
+			}
+		}
+	}
+	return d
 }

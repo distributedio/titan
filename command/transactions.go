@@ -38,9 +38,15 @@ func Exec(ctx *Context) {
 	var outputs []*bytes.Buffer
 	var onCommits []OnCommit
 	err = retry.Ensure(ctx, func() error {
+		mt := metrics.GetMetrics()
 		if !watching {
+			start := time.Now()
 			txn, err = ctx.Client.DB.Begin()
+			cost := time.Since(start).Seconds()
+			mt.TxnBeginHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.Int64("cost(us)", int64(cost*1000000)))
 			if err != nil {
+				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				zap.L().Error("begin txn failed",
 					zap.Int64("clientid", ctx.Client.ID),
 					zap.String("command", ctx.Name),
@@ -63,11 +69,16 @@ func Exec(ctx *Context) {
 				Out:     out,
 				Context: ctx.Context,
 			}
+			if len(ctx.Args) > 0 {
+				mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args)))
+			}
 			name := strings.ToLower(cmd.Name)
 			if _, ok := txnCommands[name]; ok {
 				start := time.Now()
 				onCommit, err = TxnCall(subCtx, txn)
-				zap.L().Debug("execute", zap.String("command", subCtx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+				cost := time.Since(start).Seconds()
+				mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+				zap.L().Debug("execute", zap.String("command", subCtx.Name), zap.Int64("cost(us)", int64(cost*1000000)))
 				if err != nil {
 					resp.ReplyError(out, err.Error())
 				}
@@ -79,7 +90,6 @@ func Exec(ctx *Context) {
 			commandCount++
 		}
 		start := time.Now()
-		mt := metrics.GetMetrics()
 		mt.MultiCommandHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(commandCount))
 		defer func() {
 			cost := time.Since(start).Seconds()
@@ -123,7 +133,7 @@ func Exec(ctx *Context) {
 		return
 	}
 
-
+	start := time.Now()
 	resp.ReplyArray(ctx.Out, size)
 	// run OnCommit that fill reply to outputs
 	for i := range onCommits {
@@ -141,6 +151,9 @@ func Exec(ctx *Context) {
 			break
 		}
 	}
+	cost := time.Since(start).Seconds()
+	metrics.GetMetrics().ReplyFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+	zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.Int64("cost(us)", int64(cost*1000000)))
 }
 
 // Watch starts a transaction, watch is a global transaction and is not key associated(this is different from redis)

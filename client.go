@@ -130,7 +130,6 @@ func (c *client) serve(conn net.Conn) error {
 		}
 
 		ctx.Context = context.New(c.cliCtx, c.server.servCtx)
-		zap.L().Debug("recv msg", zap.String("command", ctx.Name), zap.Strings("arguments", ctx.Args))
 
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
@@ -143,7 +142,8 @@ func (c *client) serve(conn net.Conn) error {
 			env.Write(zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID),
 				zap.String("traceid", ctx.TraceID),
-				zap.String("command", ctx.Name))
+				zap.String("command", ctx.Name),
+				zap.Strings("arguments", ctx.Args))
 		}
 
 		c.exec.Execute(ctx)

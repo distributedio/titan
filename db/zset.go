@@ -2,9 +2,10 @@ package db
 
 import (
 	"encoding/binary"
-	"github.com/pingcap/tidb/kv"
 	"strconv"
 	"time"
+
+	"github.com/pingcap/tidb/kv"
 
 	"go.uber.org/zap"
 )
@@ -263,6 +264,7 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 	return items, nil
 }
 
+// ZAnyOrderRangeByScore returns the items of a zset in specific order
 func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 	stopScore float64, stopInclude bool,
 	withScore bool,
@@ -286,16 +288,21 @@ func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 
 	startPrefix := make([]byte, len(scorePrefix)+byteScoreLen)
 	copy(startPrefix, scorePrefix)
-	byteStartScore := EncodeFloat64(startScore)
+	byteStartScore, err := EncodeFloat64(startScore)
+	if err != nil {
+		return nil, err
+	}
 	copy(startPrefix[len(scorePrefix):], byteStartScore)
 
 	stopPrefix := make([]byte, len(scorePrefix)+byteScoreLen)
 	copy(stopPrefix, scorePrefix)
-	byteStopScore := EncodeFloat64(stopScore)
+	byteStopScore, err := EncodeFloat64(stopScore)
+	if err != nil {
+		return nil, err
+	}
 	copy(stopPrefix[len(scorePrefix):], byteStopScore)
 
 	var iter Iterator
-	var err error
 	if positiveOrder {
 		upperBoundKey := kv.Key(stopPrefix).PrefixNext()
 		iter, err = zset.txn.t.Iter(startPrefix, upperBoundKey)

@@ -69,16 +69,16 @@ func Exec(ctx *Context) {
 				Out:     out,
 				Context: ctx.Context,
 			}
-			if len(ctx.Args) > 0 {
-				mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args)))
+			if len(cmd.Args) > 0 {
+				mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, cmd.Name).Observe(float64(len(cmd.Args)))
 			}
 			name := strings.ToLower(cmd.Name)
 			if _, ok := txnCommands[name]; ok {
 				start := time.Now()
 				onCommit, err = TxnCall(subCtx, txn)
 				cost := time.Since(start).Seconds()
-				mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
-				zap.L().Debug("execute", zap.String("command", subCtx.Name), zap.Int64("cost(us)", int64(cost*1000000)))
+				mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, cmd.Name).Observe(cost)
+				zap.L().Debug("execute", zap.String("command", cmd.Name), zap.Int64("cost(us)", int64(cost*1000000)))
 				if err != nil {
 					resp.ReplyError(out, err.Error())
 				}

@@ -6,7 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"math"
 	"strconv"
+	"strings"
 )
 
 //tokenSignLen token default len
@@ -216,4 +218,45 @@ func globMatchPrefix(val []byte) []byte {
 		}
 	}
 	return v
+}
+
+func getFloatAndInclude(strf string) (float64, bool, error) {
+	var f float64
+	include := true
+	var err error
+	lowerStrf := strings.ToLower(strf)
+	if lowerStrf[0] == '(' {
+		include = false
+		lowerStrf = lowerStrf[1:]
+	}
+	if lowerStrf == "-inf" {
+		f = -math.MaxFloat64
+	} else if lowerStrf == "+inf" || lowerStrf == "inf" {
+		f = math.MaxFloat64
+	} else {
+		if f, err = strconv.ParseFloat(lowerStrf, 64); err != nil {
+			return f, include, err
+		}
+	}
+	return f, include, nil
+
+}
+
+func getLimitParameters(offsetCount []string) (int64, int64, error) {
+	if len(offsetCount) < 2 {
+		return 0, 0, ErrSyntax
+	}
+	var offset, count, tmp int64
+	var err error
+	for i := 0; i < 2; i++ {
+		if tmp, err = strconv.ParseInt(offsetCount[i], 10, 64); err != nil {
+			return offset, count, ErrInteger
+		}
+		if i == 0 {
+			offset = tmp
+		} else {
+			count = tmp
+		}
+	}
+	return offset, count, nil
 }

@@ -148,7 +148,7 @@
 - [x] zrange
 - [ ] zrangebylex
 - [ ] zrevrangebylex
-- [ ] zrangebyscore
+- [x] zrangebyscore
 - [ ] zrank
 - [x] zrem
 - [ ] zremrangebylex
@@ -247,7 +247,6 @@ ___NOTICE: commands beyond this table has already been fully supported___
 |zscan           |Sorted set| |
 |zrangebylex     |Sorted set| |
 |zrevrangebylex  |Sorted set| |
-|zrangebyscore   |Sorted set| |
 |zrank           |Sorted set| |
 |zremrangebylex  |Sorted set| |
 |zremrangebyrank |Sorted set| |

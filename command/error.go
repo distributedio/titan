@@ -96,6 +96,9 @@ var (
 
 	//ErrDiscard without multi
 	ErrDiscard = errors.New("ERR DISCARD without MULTI")
+
+	//argument min or max isn't float
+	ErrMinOrMaxNotFloat = errors.New("ERR min or max is not a float")
 )
 
 //ErrUnKnownCommand return RedisError of the cmd

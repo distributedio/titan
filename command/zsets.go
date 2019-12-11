@@ -103,6 +103,68 @@ func zAnyOrderRange(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCo
 	return BytesArrayOnce(ctx.Out, items), nil
 }
 
+func ZRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByScore(ctx, txn, true)
+}
+
+func ZRevRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByScore(ctx, txn, false)
+}
+
+func zAnyOrderRangeByScore(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+
+	startScore, startInclude, err := getFloatAndInclude(ctx.Args[1])
+	if err != nil {
+		return nil, ErrMinOrMaxNotFloat
+	}
+	endScore, endInclude, err := getFloatAndInclude(ctx.Args[2])
+	if err != nil {
+		return nil, ErrMinOrMaxNotFloat
+	}
+
+	withScore := bool(false)
+	offset := int64(0)
+	count := int64(math.MaxInt64)
+	for i := 3; i < len(ctx.Args); i++ {
+		switch strings.ToUpper(ctx.Args[i]) {
+		case "WITHSCORES":
+			withScore = true
+		case "LIMIT":
+			if offset, count, err = getLimitParameters(ctx.Args[i+1:]); err != nil {
+				return nil, err
+			}
+			i += 2
+		default:
+			return nil, ErrSyntax
+		}
+	}
+
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return BytesArrayOnce(ctx.Out, nil), nil
+	}
+
+	items, err := zset.ZAnyOrderRangeByScore(startScore, startInclude,
+		endScore, endInclude,
+		withScore,
+		offset, count,
+		positiveOrder)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if len(items) == 0 {
+		return BytesArrayOnce(ctx.Out, nil), nil
+	}
+	return BytesArrayOnce(ctx.Out, items), nil
+}
+
 func ZRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 

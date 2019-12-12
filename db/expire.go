@@ -21,6 +21,10 @@ var (
 	expireMetakeyOffset   = expireTimestampOffset + 8 /*sizeof(int64)*/ + len(":")
 )
 
+const (
+	expire_worker = "expire"
+)
+
 // IsExpired judge object expire through now
 func IsExpired(obj *Object, now int64) bool {
 	if obj.ExpireAt == 0 || obj.ExpireAt > now {
@@ -88,6 +92,8 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 		if conf.Disable {
 			continue
 		}
+
+		start := time.Now()
 		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
@@ -102,6 +108,7 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 			continue
 		}
 		runExpire(db, conf.BatchLimit)
+		metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
 	}
 	return nil
 }
@@ -142,7 +149,9 @@ func runExpire(db *DB, batchLimit int) {
 		return
 	}
 	endPrefix := kv.Key(expireKeyPrefix).PrefixNext()
+	start := time.Now()
 	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
+	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
 		txn.Rollback()
@@ -180,7 +189,13 @@ func runExpire(db *DB, batchLimit int) {
 			logEnv.Write(zap.ByteString("mkey", mkey))
 		}
 
-		if err := iter.Next(); err != nil {
+		start = time.Now()
+		err := iter.Next()
+		cost := time.Since(start)
+		if cost >= time.Millisecond {
+			metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(cost.Seconds())
+		}
+		if err != nil {
 			zap.L().Error("[Expire] next failed",
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
@@ -200,7 +215,10 @@ func runExpire(db *DB, batchLimit int) {
 		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(0)
 	}
 
-	if err := txn.Commit(context.Background()); err != nil {
+	start = time.Now()
+	err = txn.Commit(context.Background())
+	metrics.GetMetrics().WorkerCommitCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+	if err != nil {
 		txn.Rollback()
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}

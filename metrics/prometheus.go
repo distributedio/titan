@@ -23,6 +23,7 @@ const (
 	expire    = "expire"
 	tikvGC    = "tikvgc"
 	titanip   = "titanip"
+	worker    = "worker"
 )
 
 var (
@@ -36,6 +37,7 @@ var (
 	expireLabel  = []string{expire}
 	tikvGCLabel  = []string{tikvGC}
 	limitLabel   = []string{biz, command, titanip}
+	workerLabel  = []string{worker}
 
 	// global prometheus object
 	gm *Metrics
@@ -62,17 +64,20 @@ type Metrics struct {
 	TikvGCTotal *prometheus.CounterVec
 
 	//command biz
-	CommandCallHistogramVec     *prometheus.HistogramVec
-	LimitCostHistogramVec       *prometheus.HistogramVec
-	TxnBeginHistogramVec        *prometheus.HistogramVec
-	CommandFuncDoneHistogramVec *prometheus.HistogramVec
-	TxnCommitHistogramVec       *prometheus.HistogramVec
-	ReplyFuncDoneHistogramVec   *prometheus.HistogramVec
-	CommandArgsNumHistogramVec  *prometheus.HistogramVec
-	TxnRetriesCounterVec        *prometheus.CounterVec
-	TxnConflictsCounterVec      *prometheus.CounterVec
-	TxnFailuresCounterVec       *prometheus.CounterVec
-	MultiCommandHistogramVec    *prometheus.HistogramVec
+	CommandCallHistogramVec      *prometheus.HistogramVec
+	LimitCostHistogramVec        *prometheus.HistogramVec
+	TxnBeginHistogramVec         *prometheus.HistogramVec
+	CommandFuncDoneHistogramVec  *prometheus.HistogramVec
+	TxnCommitHistogramVec        *prometheus.HistogramVec
+	ReplyFuncDoneHistogramVec    *prometheus.HistogramVec
+	CommandArgsNumHistogramVec   *prometheus.HistogramVec
+	TxnRetriesCounterVec         *prometheus.CounterVec
+	TxnConflictsCounterVec       *prometheus.CounterVec
+	TxnFailuresCounterVec        *prometheus.CounterVec
+	MultiCommandHistogramVec     *prometheus.HistogramVec
+	WorkerRoundCostHistogramVec  *prometheus.HistogramVec
+	WorkerSeekCostHistogramVec   *prometheus.HistogramVec
+	WorkerCommitCostHistogramVec *prometheus.HistogramVec
 
 	//logger
 	LogMetricsCounterVec *prometheus.CounterVec
@@ -268,6 +273,31 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
+
+	gm.WorkerRoundCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "worker_round_cost",
+			Help:      "the cost of a round expire/gc worker",
+		}, workerLabel)
+	prometheus.MustRegister(gm.WorkerRoundCostHistogramVec)
+
+	gm.WorkerSeekCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "worker_seek_cost",
+			Help:      "the cost of tikv seek in expire/gc worker",
+		}, workerLabel)
+	prometheus.MustRegister(gm.WorkerSeekCostHistogramVec)
+
+	gm.WorkerCommitCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "worker_commit_cost",
+			Help:      "the cost of commit in expire/gc worker",
+		}, workerLabel)
+	prometheus.MustRegister(gm.WorkerCommitCostHistogramVec)
+
 	RegisterSDKMetrics()
 }
 

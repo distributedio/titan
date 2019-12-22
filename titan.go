@@ -36,8 +36,27 @@ func (s *Server) Serve(lis net.Listener) error {
 		}
 
 		cliCtx := context.NewClientContext(s.idgen(), conn)
+		connectExceed := false
+		s.servCtx.Lock.Lock()
+		if s.servCtx.ClientsNum >= s.servCtx.MaxConnection {
+			connectExceed = true
+		}
+		s.servCtx.Lock.Unlock()
+		if connectExceed {
+			zap.L().Warn("max connection exceed, will close after some time",
+				zap.Int64("max connection num", s.servCtx.MaxConnection), zap.Int64("wait ms", s.servCtx.MaxConnectionWait),
+				zap.String("addr", cliCtx.RemoteAddr), zap.Int64("clientid", cliCtx.ID))
+			go func() {
+				time.Sleep(time.Duration(s.servCtx.MaxConnectionWait) * time.Millisecond)
+				zap.L().Warn("close connection for max connection exceed", zap.String("addr", cliCtx.RemoteAddr), zap.Int64("clientid", cliCtx.ID))
+				conn.Close()
+			}()
+		}
 		cliCtx.DB = s.servCtx.Store.DB(cliCtx.Namespace, 0)
 		s.servCtx.Clients.Store(cliCtx.ID, cliCtx)
+		s.servCtx.Lock.Lock()
+		s.servCtx.ClientsNum++
+		s.servCtx.Lock.Unlock()
 
 		cli := newClient(cliCtx, s, command.NewExecutor())
 
@@ -52,6 +71,9 @@ func (s *Server) Serve(lis net.Listener) error {
 			}
 			metrics.GetMetrics().ConnectionOnlineGaugeVec.WithLabelValues(cli.cliCtx.Namespace).Dec()
 			s.servCtx.Clients.Delete(cli.cliCtx.ID)
+			s.servCtx.Lock.Lock()
+			s.servCtx.ClientsNum--
+			s.servCtx.Lock.Unlock()
 		}(cli, conn)
 	}
 }

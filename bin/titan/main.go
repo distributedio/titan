@@ -74,10 +74,12 @@ func main() {
 		os.Exit(1)
 	}
 	serv := titan.New(&context.ServerContext{
-		RequirePass:      config.Server.Auth,
-		Store:            store,
-		ListZipThreshold: config.Server.ListZipThreshold,
-		LimitersMgr:      limitersMgr,
+		RequirePass:       config.Server.Auth,
+		Store:             store,
+		ListZipThreshold:  config.Server.ListZipThreshold,
+		LimitersMgr:       limitersMgr,
+		MaxConnection:     config.Server.MaxConnection,
+		MaxConnectionWait: config.Server.MaxConnectionWait,
 	})
 
 	var servOpts, statusOpts []continuous.ServerOption

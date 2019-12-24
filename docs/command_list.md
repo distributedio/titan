@@ -1,15 +1,15 @@
 ## Commands list
 
 ### Connections
-- [x] auth 
-- [x] echo 
+- [x] auth
+- [x] echo
 - [x] ping
-- [x] quit 
-- [x] select 
+- [x] quit
+- [x] select
 - [ ] swapdb, not supported
 
 ### Transactions
-- [x] multi 
+- [x] multi
 - [x] exec
 - [x] discard
 - [x] watch
@@ -19,7 +19,7 @@
 - [x] client list
 - [x] client kill
 - [x] client pause
-- [x] client reply 
+- [x] client reply
 - [x] client getname
 - [x] client setname
 - [x] monitor
@@ -35,28 +35,28 @@
 - [ ] slowlog
 
 ### Keys
-- [x] del 
+- [x] del
 - [x] type
 - [x] exists
 - [x] expire
 - [x] expireat
-- [x] object 
+- [x] object
 - [x] pexpire
 - [x] pexpireat
 - [x] ttl
 - [x] pttl
 - [x] randomkey
-- [ ] touch 
+- [ ] touch
 - [x] keys
 - [x] scan
 - [ ] unlink
 
 ### Strings
 
-- [x] get 
-- [x] set 
-- [x] mget 
-- [x] mset 
+- [x] get
+- [x] set
+- [x] mget
+- [x] mset
 - [x] strlen
 - [x] incr
 - [x] incrby
@@ -70,7 +70,7 @@
 - [ ] getbit
 - [x] getrange
 - [x] getset
-- [x] incrbyfloat 
+- [x] incrbyfloat
 - [ ] msetnx
 - [x] psetex
 - [ ] setbit
@@ -88,10 +88,10 @@
 - [x] lpush
 - [x] lpop
 - [x] lpushx
-- [ ] ltrim
-- [ ] lrem
-- [ ] rpop
-- [ ] rpoplpush
+- [x] ltrim
+- [x] lrem
+- [x] rpop
+- [x] rpoplpush
 - [x] rpush
 - [x] rpushx
 - [ ] blpop
@@ -214,7 +214,7 @@ ___NOTICE: commands beyond this table has already been fully supported___
 |slowlog |Server | |
 |touch  |Keys | |
 |unlink |Keys | |
-|bitcount|Strings|| 
+|bitcount|Strings||
 |bitfield|Strings||
 |bitop   |Strings||
 |bitpos  |Strings||
@@ -222,10 +222,6 @@ ___NOTICE: commands beyond this table has already been fully supported___
 |msetnx  |Strings||
 |setbit  |Strings||
 |setrange|Strings||
-|ltrim     |List||
-|lrem      |List||
-|rpop      |List||
-|rpoplpush |List||
 |blpop     |List||
 |brpop     |List||
 |brpoplpush|List||

@@ -7,3 +7,4 @@ cover.cov
 logs
 vendor
 .DS_Store
+go.sum

@@ -51,6 +51,7 @@ func (s *Server) Serve(lis net.Listener) error {
 				zap.L().Warn("close connection for max connection exceed", zap.String("addr", cliCtx.RemoteAddr), zap.Int64("clientid", cliCtx.ID))
 				conn.Close()
 			}()
+			continue
 		}
 		cliCtx.DB = s.servCtx.Store.DB(cliCtx.Namespace, 0)
 		s.servCtx.Clients.Store(cliCtx.ID, cliCtx)

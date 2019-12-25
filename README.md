@@ -69,6 +69,8 @@ For more details about [Deploy Titan](docs/ops/deploy.md), click here.
 
 ## Benchmarks
 
+Refer to the [benchmark docs](https://pan.baidu.com/s/1m5yp5LsvFjsDKvHtaXwWvg) for more details. It is shared on Baidu Disks, use the code `hzt6` to gain the permission.
+
 Basic benchmarking result.
 
 ### Get
@@ -85,22 +87,22 @@ For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
 
 For fully supported command list vist [here](docs/command_list.md)
 
-|command|status|
-|---|---|
-|Connections|Won't Fully Supported|
-|Transactions|Supported|
-|Server|Not Fully Supported Yet|
-|Keys|Not Fully Supported Yet|
-|Strings|Not Fully Supported Yet|
-|List|Not Fully Supported Yet|
-|Hashes|Supported|
-|Sets|Not Fully Supported Yet|
-|Sorted Sets|Not Fully Supported Yet|
-|Geo| Not Supported Yet|
-|Hyperloglog| Not Supported Yet|
-|Pub/Sub| Not Supported Yet|
-|Scripting| Not Supported Yet|
-|Streams| Not Supported Yet|
+| command      | status                  |
+| ------------ | ----------------------- |
+| Connections  | Won't Fully Supported   |
+| Transactions | Supported               |
+| Server       | Not Fully Supported Yet |
+| Keys         | Not Fully Supported Yet |
+| Strings      | Not Fully Supported Yet |
+| List         | Not Fully Supported Yet |
+| Hashes       | Supported               |
+| Sets         | Not Fully Supported Yet |
+| Sorted Sets  | Not Fully Supported Yet |
+| Geo          | Not Supported Yet       |
+| Hyperloglog  | Not Supported Yet       |
+| Pub/Sub      | Not Supported Yet       |
+| Scripting    | Not Supported Yet       |
+| Streams      | Not Supported Yet       |
 
 ## FAQ
 

@@ -49,7 +49,7 @@
 - [ ] touch
 - [x] keys
 - [x] scan
-- [ ] unlink
+- [x] unlink
 
 ### Strings
 
@@ -212,8 +212,6 @@ ___NOTICE: commands beyond this table has already been fully supported___
 |---|---|---|
 |swapdb |Connections| |
 |slowlog |Server | |
-|touch  |Keys | |
-|unlink |Keys | |
 |bitcount|Strings||
 |bitfield|Strings||
 |bitop   |Strings||

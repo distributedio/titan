@@ -49,6 +49,7 @@ func init() {
 		"exists":    Exists,
 		"keys":      Keys,
 		"del":       Delete,
+		"unlink":    Delete, // unlink is the same as del in design
 		"expire":    Expire,
 		"expireat":  ExpireAt,
 		"pexpire":   PExpire,
@@ -162,6 +163,7 @@ func init() {
 		"exists":    Desc{Proc: AutoCommit(Exists), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
 		"keys":      Desc{Proc: AutoCommit(Keys), Cons: Constraint{-2, flags("rS"), 0, 0, 0}},
 		"del":       Desc{Proc: AutoCommit(Delete), Cons: Constraint{-2, flags("w"), 1, -1, 1}},
+		"unlink":    Desc{Proc: AutoCommit(Delete), Cons: Constraint{-2, flags("w"), 1, -1, 1}},
 		"expire":    Desc{Proc: AutoCommit(Expire), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
 		"expireat":  Desc{Proc: AutoCommit(ExpireAt), Cons: Constraint{3, flags("wF"), 1, 1, 1}},
 		"pexpire":   Desc{Proc: AutoCommit(PExpire), Cons: Constraint{3, flags("wF"), 1, 1, 1}},

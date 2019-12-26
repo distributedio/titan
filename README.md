@@ -92,7 +92,7 @@ For fully supported command list vist [here](docs/command_list.md)
 | Connections  | Won't Fully Supported   |
 | Transactions | Supported               |
 | Server       | Not Fully Supported Yet |
-| Keys         | Not Fully Supported Yet |
+| Keys         | Supported               |
 | Strings      | Not Fully Supported Yet |
 | List         | Not Fully Supported Yet |
 | Hashes       | Supported               |

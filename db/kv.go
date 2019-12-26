@@ -232,6 +232,43 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 	return nil, err
 }
 
+// Touch alters the last access time of a key(s)
+func (kv *Kv) Touch(keys [][]byte) (int64, error) {
+	ts := Now()
+	count := int64(0)
+
+	mkeys := make([][]byte, len(keys))
+	for i, key := range keys {
+		mkeys[i] = MetaKey(kv.txn.db, key)
+	}
+
+	values, err := store.BatchGetValues(kv.txn.t, mkeys)
+	if err != nil {
+		return 0, err
+	}
+
+	for mkey, meta := range values {
+		if meta == nil {
+			continue
+		}
+		obj, err := DecodeObject(meta)
+		if err != nil {
+			return 0, err
+		}
+		if IsExpired(obj, ts) {
+			continue
+		}
+
+		obj.UpdatedAt = ts
+		count++
+		updated := append(EncodeObject(obj), meta[ObjectEncodingLength:]...)
+		if err := kv.txn.t.Set([]byte(mkey), updated); err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
+}
+
 //clear system range data(GC/ZT)
 func clearSysRangeData(ctx context.Context, db *DB, startKey, endKey []byte) error {
 	gcStart := toTiKVGCKey(startKey)

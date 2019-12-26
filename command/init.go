@@ -59,6 +59,7 @@ func init() {
 		"object":    Object,
 		"scan":      Scan,
 		"randomkey": RandomKey,
+		"touch":     Touch,
 
 		// server
 		"debug":    Debug,
@@ -172,6 +173,7 @@ func init() {
 		"object":    Desc{Proc: AutoCommit(Object), Cons: Constraint{-2, flags("rR"), 0, 0, 0}},
 		"scan":      Desc{Proc: AutoCommit(Scan), Cons: Constraint{-2, flags("rR"), 0, 0, 0}},
 		"randomkey": Desc{Proc: AutoCommit(RandomKey), Cons: Constraint{1, flags("rR"), 0, 0, 0}},
+		"touch":     Desc{Proc: AutoCommit(Touch), Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
 
 		// server
 		"monitor":  Desc{Proc: Monitor, Cons: Constraint{1, flags("as"), 0, 0, 0}},

@@ -34,6 +34,12 @@ const (
 	KeyOnly
 )
 
+const (
+	CommandPri_Normal = iota
+	CommandPri_Low
+	CommandPri_High
+)
+
 //type rename tidb kv type
 type (
 	// Storage defines the interface for storage.

@@ -356,3 +356,17 @@ func RandomKey(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return BulkString(ctx.Out, string(key)), nil
 }
+
+// Touch alters the last access time of a key(s)
+func Touch(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	kv := txn.Kv()
+	keys := make([][]byte, len(ctx.Args))
+	for i := range ctx.Args {
+		keys[i] = []byte(ctx.Args[i])
+	}
+	count, err := kv.Touch(keys)
+	if err != nil {
+		return nil, err
+	}
+	return Integer(ctx.Out, count), nil
+}

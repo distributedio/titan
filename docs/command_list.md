@@ -46,7 +46,7 @@
 - [x] ttl
 - [x] pttl
 - [x] randomkey
-- [ ] touch
+- [x] touch
 - [x] keys
 - [x] scan
 - [x] unlink

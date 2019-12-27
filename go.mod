@@ -50,3 +50,5 @@ require (
 	google.golang.org/grpc v1.17.0 // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 )
+
+go 1.13

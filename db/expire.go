@@ -146,6 +146,8 @@ func runExpire(db *DB, batchLimit int) {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
 		return
 	}
+	store.SetOption(txn.t, store.Priority, store.PriorityLow)
+
 	endPrefix := kv.Key(expireKeyPrefix).PrefixNext()
 	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
 	if err != nil {

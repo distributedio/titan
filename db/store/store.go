@@ -34,6 +34,13 @@ const (
 	KeyOnly
 )
 
+// Priority value for transaction priority.
+const (
+	PriorityNormal = iota
+	PriorityLow
+	PriorityHigh
+)
+
 //type rename tidb kv type
 type (
 	// Storage defines the interface for storage.

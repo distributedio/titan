@@ -82,7 +82,7 @@ func doGC(db *DB, limit int) error {
 	}
 	txn := dbTxn.t
 	store.SetOption(txn, store.KeyOnly, true)
-	store.SetOption(txn, store.Priority, store.CommandPri_Low)
+	store.SetOption(txn, store.Priority, store.PriorityLow)
 
 	itr, err := txn.Iter(gcPrefix, endGCPrefix)
 	if err != nil {

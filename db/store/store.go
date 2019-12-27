@@ -34,10 +34,11 @@ const (
 	KeyOnly
 )
 
+// Priority value for transaction priority.
 const (
-	CommandPri_Normal = iota
-	CommandPri_Low
-	CommandPri_High
+	PriorityNormal = iota
+	PriorityLow
+	PriorityHigh
 )
 
 //type rename tidb kv type

@@ -79,12 +79,6 @@ func BytesArray(w io.Writer, a [][]byte) OnCommit {
 	}
 }
 
-func BytesArrayOnce(w io.Writer, a [][]byte) OnCommit {
-    return func() {
-        resp.ReplyStringArray(w, a)
-    }
-}
-
 // TxnCommand runs a command in transaction
 type TxnCommand func(ctx *Context, txn *db.Transaction) (OnCommit, error)
 

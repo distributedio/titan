@@ -210,26 +210,36 @@ func (kv *Kv) RandomKey() ([]byte, error) {
 	mkey := MetaKey(kv.txn.db, buf)
 	prefix := MetaKey(kv.txn.db, nil)
 
-	// Iter >= mkey
+	randKeys := func(iter sdk_kv.Iterator) []byte {
+		keys := make([][]byte, 0)
+		for iter.Valid() && iter.Key().HasPrefix(prefix) {
+			keys = append(keys, iter.Key()[len(prefix):])
+			iter.Next()
+		}
+		count := len(keys)
+		if count == 0 {
+			return nil
+		}
+		return keys[rand.Int31n(int32(count))]
+	}
+
 	iter, err := kv.txn.t.Iter(mkey, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if iter.Valid() && iter.Key().HasPrefix(prefix) {
-		return iter.Key()[len(prefix):], nil
+	if key := randKeys(iter); key != nil {
+		return key, nil
 	}
-	first := make([]byte, len(prefix)+1)
-	copy(first, prefix)
-	iter, err = kv.txn.t.Iter(first, nil)
+
+	iter, err = kv.txn.t.IterReverse(mkey)
 	if err != nil {
 		return nil, err
 	}
-
-	if iter.Valid() && iter.Key().HasPrefix(prefix) {
-		return iter.Key()[len(prefix):], nil
+	if key := randKeys(iter); key != nil {
+		return key, nil
 	}
-	return nil, err
+	return nil, nil
 }
 
 // Touch alters the last access time of a key(s)

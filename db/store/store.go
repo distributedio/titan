@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"strings"
 	"unsafe"
 
@@ -68,11 +69,11 @@ func IsErrNotFound(err error) bool {
 
 // IsRetryableError checks if err is a kind of RetryableError error.
 func IsRetryableError(err error) bool {
-	return kv.IsRetryableError(err)
+	return kv.IsTxnRetryableError(err)
 }
 
 func IsConflictError(err error) bool {
-	return kv.ErrLockConflict.Equal(err)
+	return kv.ErrWriteConflict.Equal(err)
 
 }
 
@@ -86,7 +87,7 @@ func LockKeys(txn Transaction, keys [][]byte) error {
 	for i := range keys {
 		kvKeys[i] = kv.Key(keys[i])
 	}
-	return txn.LockKeys(kvKeys...)
+	return txn.LockKeys(context.Background(), &kv.LockCtx{}, kvKeys...)
 }
 
 // BatchGetValues issue batch requests to get values

@@ -7,6 +7,7 @@ import (
 
 	sdk_metrics "github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -243,7 +244,7 @@ func GetMetrics() *Metrics {
 
 // MetricsHandle register the metrics handle
 func MetricsHandle() {
-	http.Handle("/metrics", prometheus.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 }
 
 // Measure logger level rate

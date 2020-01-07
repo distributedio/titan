@@ -2,7 +2,7 @@ language: go
 go_import_path: github.com/distributedio/titan
 
 go:
-    - "1.12"
+    - "1.13.3"
 
 cache:
   directories:

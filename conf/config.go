@@ -4,12 +4,11 @@ import "time"
 
 // Titan configuration center
 type Titan struct {
-	Server      Server     `cfg:"server"`
-	Status      Status     `cfg:"status"`
-	TiKV        TiKV       `cfg:"tikv"`
-	TiKVLog     TiKVLogger `cfg:"tikv-logger"`
-	Logger      Logger     `cfg:"logger"`
-	PIDFileName string     `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
+	Server      Server `cfg:"server"`
+	Status      Status `cfg:"status"`
+	TiKV        TiKV   `cfg:"tikv"`
+	Logger      Logger `cfg:"logger"`
+	PIDFileName string `cfg:"pid-filename; titan.pid; ; the file name to record connd PID"`
 }
 
 // Server config is the config of titan server
@@ -24,11 +23,12 @@ type Server struct {
 
 // TiKV config is the config of tikv sdk
 type TiKV struct {
-	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
-	GC      GC     `cfg:"gc"`
-	Expire  Expire `cfg:"expire"`
-	ZT      ZT     `cfg:"zt"`
-	TiKVGC  TiKVGC `cfg:"tikv-gc"`
+	PdAddrs string     `cfg:"pd-addrs;required; ;pd address in tidb"`
+	GC      GC         `cfg:"gc"`
+	Expire  Expire     `cfg:"expire"`
+	ZT      ZT         `cfg:"zt"`
+	TiKVGC  TiKVGC     `cfg:"tikv-gc"`
+	TiKVLog TiKVLogger `cfg:"tikv-logger"`
 }
 
 // TiKVGC config is the config of implement tikv sdk gcwork

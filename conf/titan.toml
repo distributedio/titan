@@ -113,7 +113,7 @@ pd-addrs = ""
 
 
 
-[tikv.tikv-logger]
+[tikv.logger]
 
 #type: string, rules: nonempty, description: the default log path, default: logs/tikv
 #path = "logs/tikv"

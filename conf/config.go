@@ -28,7 +28,7 @@ type TiKV struct {
 	Expire  Expire     `cfg:"expire"`
 	ZT      ZT         `cfg:"zt"`
 	TiKVGC  TiKVGC     `cfg:"tikv-gc"`
-	TiKVLog TiKVLogger `cfg:"tikv-logger"`
+	Logger  TiKVLogger `cfg:"logger"`
 }
 
 // TiKVGC config is the config of implement tikv sdk gcwork

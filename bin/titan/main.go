@@ -55,8 +55,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := ConfigureLogrus(config.TiKVLog.Path, config.TiKVLog.Level,
-		config.TiKVLog.TimeRotate, config.TiKVLog.Compress); err != nil {
+	if err := ConfigureLogrus(config.TiKV.Logger.Path, config.TiKV.Logger.Level,
+		config.TiKV.Logger.TimeRotate, config.TiKV.Logger.Compress); err != nil {
 		fmt.Printf("create tikv logger failed, %s\n", err)
 		os.Exit(1)
 	}

@@ -104,6 +104,9 @@ func init() {
 		"ZRem":          ZRem,
 		"zcard":         ZCard,
 		"zscore":        ZScore,
+
+		// extension commands
+		"escan": Escan,
 	}
 
 	// commands contains all commands that open to clients
@@ -224,5 +227,8 @@ func init() {
 		"zrem":          Desc{Proc: AutoCommit(ZRem), Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
 		"zcard":         Desc{Proc: AutoCommit(ZCard), Cons: Constraint{2, flags("rF"), 1, 1, 1}},
 		"zscore":        Desc{Proc: AutoCommit(ZScore), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
+
+		// extension commands
+		"escan": Desc{Proc: AutoCommit(Escan), Cons: Constraint{-1, flags(""), 0, 0, 0}},
 	}
 }

@@ -268,3 +268,26 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 	}
 	return gcDataKey(txn, namespace, dbid, key, id)
 }
+
+// ScanExpiration scans the expiration list
+func ScanExpiration(txn *Transaction, from, to, count int64) ([]int64, [][]byte, error) {
+	// from/to are valid integers so no errors will happen here
+	start, _ := expireKey(nil, from)
+	end, _ := expireKey(nil, to)
+	iter, err := txn.t.Iter(start, end)
+	if err != nil {
+		return nil, nil, err
+	}
+	var at []int64
+	var keys [][]byte
+	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && count > 0 {
+		rawKey := iter.Key()
+		ts := rawKey[expireTimestampOffset : expireMetakeyOffset-1]
+		at = append(at, DecodeInt64(ts))
+		metaKey := rawKey[expireMetakeyOffset:]
+		keys = append(keys, metaKey)
+		count--
+		iter.Next()
+	}
+	return at, keys, nil
+}

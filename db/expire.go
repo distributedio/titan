@@ -278,6 +278,7 @@ func ScanExpiration(txn *Transaction, from, to, count int64) ([]int64, [][]byte,
 	if err != nil {
 		return nil, nil, err
 	}
+	defer iter.Close()
 	var at []int64
 	var keys [][]byte
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && count > 0 {

@@ -229,6 +229,6 @@ func init() {
 		"zscore":        Desc{Proc: AutoCommit(ZScore), Cons: Constraint{3, flags("rF"), 1, 1, 1}},
 
 		// extension commands
-		"escan": Desc{Proc: AutoCommit(Escan), Cons: Constraint{-1, flags(""), 0, 0, 0}},
+		"escan": Desc{Proc: AutoCommit(Escan), Cons: Constraint{-1, flags("rR"), 0, 0, 0}},
 	}
 }

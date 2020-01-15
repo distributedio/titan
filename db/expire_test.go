@@ -3,6 +3,8 @@ package db
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -264,4 +266,82 @@ func Test_doExpire(t *testing.T) {
 		})
 	}
 
+}
+
+func TestScanExpiration(t *testing.T) {
+	var at []int64
+	var mkeys [][]byte
+
+	// setUp fill the expiration list
+	now := Now()
+	setUp := func() {
+		txn, err := mockDB.Begin()
+		assert.NoError(t, err)
+		for i := 0; i < 10; i++ {
+			ts := now - 10 + int64(i)*int64(time.Second)
+			mkey := MetaKey(txn.db, []byte(fmt.Sprintf("expire_key_%d", i)))
+			err := expireAt(txn.t, mkey, mkey, ObjectString, 0, ts)
+			assert.NoError(t, err)
+
+			at = append(at, ts)
+			mkeys = append(mkeys, mkey)
+		}
+		assert.NoError(t, txn.Commit(context.Background()))
+	}
+	tearDown := func() {
+		txn, err := mockDB.Begin()
+		assert.NoError(t, err)
+		for i := range at {
+			assert.NoError(t, unExpireAt(txn.t, mkeys[i], at[i]))
+		}
+		assert.NoError(t, txn.Commit(context.Background()))
+	}
+
+	setUp()
+
+	type args struct {
+		from  int64
+		to    int64
+		count int64
+	}
+	type want struct {
+		s int // start index of the result
+		e int // end index of the result(not included)
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{"escan 0 max 10", args{0, math.MaxInt64, 10}, want{0, 10}},
+		{"escan 0 max 1", args{0, math.MaxInt64, 1}, want{0, 1}},
+		{"escan 0 0 1", args{0, 0, 1}, want{0, 0}},
+		{"escan max max 1", args{math.MaxInt64, math.MaxInt64, 1}, want{0, 0}},
+		{"escan 0 max 20", args{0, math.MaxInt64, 10}, want{0, 10}},
+		{"escan at[2] at[8] 10", args{at[2], at[8], 10}, want{2, 8}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//t.Parallel()
+			t.Log(tt.name)
+
+			txn, err := mockDB.Begin()
+			assert.NoError(t, err)
+
+			tses, keys, err := ScanExpiration(txn, tt.args.from, tt.args.to, tt.args.count)
+			assert.NoError(t, err)
+			assert.NoError(t, txn.Commit(context.Background()))
+
+			assert.Equal(t, tt.want.e-tt.want.s, len(tses))
+			assert.Equal(t, tt.want.e-tt.want.s, len(keys))
+			for i := range tses {
+				assert.Equal(t, at[tt.want.s+i], tses[i])
+				assert.Equal(t, mkeys[tt.want.s+i], keys[i])
+			}
+		})
+	}
+
+	tearDown()
 }

@@ -277,6 +277,16 @@ func TestScanExpiration(t *testing.T) {
 	setUp := func() {
 		txn, err := mockDB.Begin()
 		assert.NoError(t, err)
+
+		// cleanup the keys left by other tests(TODO these dirty data should be deleted where it is generated)
+		iter, err := txn.t.Iter(expireKeyPrefix, nil)
+		assert.NoError(t, err)
+		defer iter.Close()
+		for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) {
+			txn.t.Delete(iter.Key())
+			iter.Next()
+		}
+
 		for i := 0; i < 10; i++ {
 			ts := now - 10 + int64(i)*int64(time.Second)
 			mkey := MetaKey(txn.db, []byte(fmt.Sprintf("expire_key_%d", i)))
@@ -324,7 +334,6 @@ func TestScanExpiration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//t.Parallel()
 			t.Log(tt.name)
 
 			txn, err := mockDB.Begin()

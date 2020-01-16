@@ -48,6 +48,10 @@ func main() {
 	if pdAddrs != "" {
 		config.TiKV.PdAddrs = pdAddrs
 	}
+	if config.TiKV.PdAddrs == "mocktikv://" {
+		fmt.Println("Warning: Titan is running in memory mode, all the data would be cleared after the process exit.")
+		fmt.Println("The memory mode can only be used for experience, configure the tikv.pd-addrs to use the TiKV as a backend")
+	}
 
 	if err := ConfigureZap(config.Logger.Name, config.Logger.Path, config.Logger.Level,
 		config.Logger.TimeRotate, config.Logger.Compress); err != nil {

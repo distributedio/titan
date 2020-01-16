@@ -39,8 +39,8 @@ ssl-key-file = ""
 
 [tikv]
 
-#type: string, description: pd address in tidb, required
-pd-addrs = ""
+#type: string, description: pd address in tidb, default: mocktikv://
+#pd-addrs = "mocktikv://"
 
 
 [tikv.gc]

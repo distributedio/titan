@@ -13,7 +13,7 @@ require (
 	github.com/cznic/strutil v0.0.0-20171016134553-529a34b1c186 // indirect
 	github.com/cznic/y v0.0.0-20170802143616-045f81c6662a // indirect
 	github.com/dgraph-io/ristretto v0.0.1 // indirect
-	github.com/distributedio/configo v0.0.0-20190610140513-0d38d0d8590a
+	github.com/distributedio/configo v0.0.0-20200107073829-efd79b027816
 	github.com/distributedio/continuous v0.0.0-20190527021358-1768e41f22b9
 	github.com/elazarl/go-bindata-assetfs v1.0.0 // indirect
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect

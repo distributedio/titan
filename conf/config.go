@@ -23,7 +23,7 @@ type Server struct {
 
 // TiKV config is the config of tikv sdk
 type TiKV struct {
-	PdAddrs string     `cfg:"pd-addrs;required; ;pd address in tidb"`
+	PdAddrs string     `cfg:"pd-addrs; mocktikv://; ;pd address in tidb"`
 	GC      GC         `cfg:"gc"`
 	Expire  Expire     `cfg:"expire"`
 	ZT      ZT         `cfg:"zt"`

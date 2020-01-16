@@ -71,7 +71,7 @@ func BytesArray(w io.Writer, a [][]byte) OnCommit {
 				continue
 			}
 			resp.ReplyBulkString(w, string(a[i]))
-			if i % 10 == 9 {
+			if i%10 == 9 {
 				zap.L().Debug("reply 10 bulk string", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 				start = time.Now()
 			}
@@ -163,11 +163,12 @@ func Call(ctx *Context) {
 // TxnCall calls a command with transaction, it is used with multi/exec
 func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	name := strings.ToLower(ctx.Name)
-	cmd, ok := txnCommands[name]
-	if !ok {
+	desc, ok := commands[name]
+	if !ok || desc.Txn == nil {
 		return nil, ErrUnKnownCommand(ctx.Name)
 	}
 	feedMonitors(ctx)
+	cmd := desc.Txn
 	return cmd(ctx, txn)
 }
 
@@ -176,18 +177,18 @@ func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
 		retry.Ensure(ctx, func() error {
 			mt := metrics.GetMetrics()
-            start := time.Now()
+			start := time.Now()
 			txn, err := ctx.Client.DB.Begin()
 			key := ""
 			if len(ctx.Args) > 0 {
 				key = ctx.Args[0]
 				if len(ctx.Args) > 1 {
-					mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args)-1))
+					mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args) - 1))
 				}
 			}
 			cost := time.Since(start).Seconds()
-            zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
-            mt.TxnBeginHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
+			mt.TxnBeginHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
@@ -271,9 +272,9 @@ func feedMonitors(ctx *Context) {
 		id := strconv.FormatInt(int64(ctx.Client.DB.ID), 10)
 
 		line := ts + " [" + id + " " + ctx.Client.RemoteAddr + "]" + " " + ctx.Name + " " + strings.Join(ctx.Args, " ")
-        start := time.Now()
+		start := time.Now()
 		err := resp.ReplySimpleString(mCtx.Out, line)
-        zap.L().Debug("feedMonitors reply", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
+		zap.L().Debug("feedMonitors reply", zap.String("name", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 		if err != nil {
 			ctx.Server.Monitors.Delete(k)
 		}
@@ -284,13 +285,12 @@ func feedMonitors(ctx *Context) {
 
 // Executor executes a command
 type Executor struct {
-	txnCommands map[string]TxnCommand
-	commands    map[string]Desc
+	commands map[string]Desc
 }
 
 // NewExecutor news a Executor
 func NewExecutor() *Executor {
-	return &Executor{txnCommands: txnCommands, commands: commands}
+	return &Executor{commands: commands}
 }
 
 // Execute a command
@@ -304,6 +304,7 @@ func (e *Executor) Execute(ctx *Context) {
 // Desc describes a command with constraints
 type Desc struct {
 	Proc Command
+	Txn  TxnCommand
 	Stat Statistic
 	Cons Constraint
 }

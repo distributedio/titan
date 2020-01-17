@@ -21,8 +21,8 @@ func Multi(ctx *Context) {
 // Exec all the commands queued in client
 func Exec(ctx *Context) {
 	ctx.Client.Multi = false
-	commands := ctx.Client.Commands
-	if len(commands) == 0 {
+	pendings := ctx.Client.Commands
+	if len(pendings) == 0 {
 		resp.ReplyArray(ctx.Out, 0)
 		return
 	}
@@ -33,7 +33,7 @@ func Exec(ctx *Context) {
 	txn := ctx.Client.Txn
 	ctx.Client.Txn = nil
 
-	size := len(commands)
+	size := len(pendings)
 	var err error
 	var outputs []*bytes.Buffer
 	var onCommits []OnCommit
@@ -53,7 +53,7 @@ func Exec(ctx *Context) {
 		outputs = make([]*bytes.Buffer, size)
 		onCommits = make([]OnCommit, size)
 		commandCount := 0
-		for i, cmd := range commands {
+		for i, cmd := range pendings {
 			var onCommit OnCommit
 			out := bytes.NewBuffer(nil)
 			subCtx := &Context{
@@ -64,7 +64,7 @@ func Exec(ctx *Context) {
 				Context: ctx.Context,
 			}
 			name := strings.ToLower(cmd.Name)
-			if _, ok := txnCommands[name]; ok {
+			if desc, ok := commands[name]; ok && desc.Txn != nil {
 				start := time.Now()
 				onCommit, err = TxnCall(subCtx, txn)
 				zap.L().Debug("execute", zap.String("command", subCtx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
@@ -122,7 +122,6 @@ func Exec(ctx *Context) {
 		resp.ReplyError(ctx.Out, "EXECABORT Transaction discarded because of txn conflicts")
 		return
 	}
-
 
 	resp.ReplyArray(ctx.Out, size)
 	// run OnCommit that fill reply to outputs

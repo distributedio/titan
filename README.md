@@ -67,6 +67,27 @@ pd-addrs="tikv://your-pd-addrs:port"
 
 For more details about [Deploy Titan](docs/ops/deploy.md), click here.
 
+## Commands supporting status
+
+See the details of the commands [supporting status](docs/command_list.md)
+
+| command      | status                  |
+| ------------ | ----------------------- |
+| Connections  | Almost Fully Supported  |
+| Transactions | Supported               |
+| Server       | Almost Fully Supported  |
+| Keys         | Supported               |
+| Strings      | Almost Fully Supported  |
+| List         | Almost Fully Supported  |
+| Hashes       | Supported               |
+| Sets         | Almost Fully Supported  |
+| Sorted Sets  | Almost Fully Supported  |
+| Geo          | Not Supported Yet       |
+| Hyperloglog  | Not Supported Yet       |
+| Pub/Sub      | Not Supported Yet       |
+| Scripting    | Not Supported Yet       |
+| Streams      | Not Supported Yet       |
+
 ## Benchmarks
 
 Refer to the [benchmark docs](https://pan.baidu.com/s/1m5yp5LsvFjsDKvHtaXwWvg) for more details. It is shared on Baidu Disks, use the code `hzt6` to gain the permission.
@@ -82,27 +103,6 @@ Basic benchmarking result.
 ![Set command benchmark](docs/benchmark/set-benchmark.png)
 
 For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
-
-## Commands supporting status
-
-For fully supported command list vist [here](docs/command_list.md)
-
-| command      | status                  |
-| ------------ | ----------------------- |
-| Connections  | Won't Fully Supported   |
-| Transactions | Supported               |
-| Server       | Not Fully Supported Yet |
-| Keys         | Supported               |
-| Strings      | Not Fully Supported Yet |
-| List         | Not Fully Supported Yet |
-| Hashes       | Supported               |
-| Sets         | Not Fully Supported Yet |
-| Sorted Sets  | Not Fully Supported Yet |
-| Geo          | Not Supported Yet       |
-| Hyperloglog  | Not Supported Yet       |
-| Pub/Sub      | Not Supported Yet       |
-| Scripting    | Not Supported Yet       |
-| Streams      | Not Supported Yet       |
 
 ## FAQ
 

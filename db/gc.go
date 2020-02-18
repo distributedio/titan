@@ -15,6 +15,10 @@ var (
 	sysGCLeader = []byte("$sys:0:GCL:GCLeader")
 )
 
+const (
+	gc_worker = "gc"
+)
+
 func toTikvGCKey(key []byte) []byte {
 	b := []byte{}
 	b = append(b, sysNamespace...)
@@ -45,7 +49,9 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 		count     int
 	)
 	endPrefix := kv.Key(prefix).PrefixNext()
+	start := time.Now()
 	itr, err := txn.Iter(prefix, endPrefix)
+	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(gc_worker).Observe(time.Since(start).Seconds())
 	if err != nil {
 		return count, err
 	}
@@ -83,7 +89,9 @@ func doGC(db *DB, limit int) error {
 	txn := dbTxn.t
 	store.SetOption(txn, store.KeyOnly, true)
 
+	start := time.Now()
 	itr, err := txn.Iter(gcPrefix, endGCPrefix)
+	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(gc_worker).Observe(time.Since(start).Seconds())
 	if err != nil {
 		return err
 	}
@@ -133,7 +141,11 @@ func doGC(db *DB, limit int) error {
 		txn.Rollback()
 		return resultErr
 	}
-	if err := txn.Commit(context.Background()); err != nil {
+
+	start = time.Now()
+	err = txn.Commit(context.Background())
+	metrics.GetMetrics().WorkerCommitCostHistogramVec.WithLabelValues(gc_worker).Observe(time.Since(start).Seconds())
+	if err != nil {
 		txn.Rollback()
 		return err
 	}
@@ -158,6 +170,8 @@ func StartGC(db *DB, conf *conf.GC) {
 		if conf.Disable {
 			continue
 		}
+
+		start := time.Now()
 		isLeader, err := isLeader(db, sysGCLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[GC] check GC leader failed",
@@ -183,5 +197,6 @@ func StartGC(db *DB, conf *conf.GC) {
 				zap.Error(err))
 			continue
 		}
+		metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(gc_worker).Observe(time.Since(start).Seconds())
 	}
 }

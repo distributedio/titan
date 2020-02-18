@@ -182,6 +182,51 @@ pd-addrs = "mocktikv://"
 #default:     2
 #concurrency = 2
 
+[tikv.rate-limit]
+#type:        string
+#default:     eth0
+#description: the interface name to get ip and write local titan status to tikv for balancing rate limit
+interface-name = "eth0"
+
+#type:        string
+#default:     sys_ratelimit
+#the namespace of getting limit/balance data
+#limiter-namespace = "sys_ratelimit"
+
+#type:        time.Duration
+#description: the period in seconds to balance rate limiting with other titan nodes
+#default:     15s
+#global-balance-period = "15s"
+
+#type:        time.Duration
+#description: how long if a titan didn't update its status, we consider it dead
+#default:     1m
+#titanstatus-life-time = "1m"
+
+#type:        time.Duration
+#description: the period in seconds to sync new limit set in tikv
+#default:     3s
+#sync-set-period = "3s"
+
+#type:          float64
+#description:   if the qps/weighted limit < the percent, will divide change Factor to balance limit
+#default:       0.6
+usage-to-divide = 0.6
+
+#type:          float64
+#description:   if the qps/weighted limit >= the percent, will multiply change Factor to balance limit
+#default:       0.9
+usage-to-multiply = 0.9
+
+#type:          float64
+#description:   the factor to devide/multipy in current weight
+#default:       1.5
+weight-change-factor = 1.5
+
+#type:          float64
+#description:   the limit is set in the percent when a commandLimiter is created
+#default:       0.33
+initial-percent = 0.33
 
 [tikv-logger]
 

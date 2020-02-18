@@ -1,6 +1,8 @@
 package conf
 
-import "time"
+import (
+	"time"
+)
 
 // Titan configuration center
 type Titan struct {
@@ -24,22 +26,25 @@ type Hash struct {
 
 // Server config is the config of titan server
 type Server struct {
-	Auth             string `cfg:"auth;;;client connetion auth"`
-	Listen           string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
-	SSLCertFile      string `cfg:"ssl-cert-file;;;server SSL certificate file (enables SSL support)"`
-	SSLKeyFile       string `cfg:"ssl-key-file;;;server SSL key file"`
-	MaxConnection    int64  `cfg:"max-connection;1000;numeric;client connection count"`
-	ListZipThreshold int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
+	Auth              string `cfg:"auth;;;client connetion auth"`
+	Listen            string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
+	SSLCertFile       string `cfg:"ssl-cert-file;;;server SSL certificate file (enables SSL support)"`
+	SSLKeyFile        string `cfg:"ssl-key-file;;;server SSL key file"`
+	LimitConnection   bool   `cfg:"limit-connection; false; boolean; limit max connection num when it's true"`
+	MaxConnection     int64  `cfg:"max-connection;500;numeric;client connection count"`
+	ListZipThreshold  int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
+	MaxConnectionWait int64  `cfg:"max-connection-wait;1000;numeric;wait ms before close connection when exceed max connection"`
 }
 
 // Tikv config is the config of tikv sdk
 type Tikv struct {
-	PdAddrs string `cfg:"pd-addrs;required; ;pd address in tidb"`
-	DB      DB     `cfg:"db"`
-	GC      GC     `cfg:"gc"`
-	Expire  Expire `cfg:"expire"`
-	ZT      ZT     `cfg:"zt"`
-	TikvGC  TikvGC `cfg:"tikv-gc"`
+	PdAddrs   string    `cfg:"pd-addrs;required; ;pd address in tidb"`
+	DB        DB        `cfg:"db"`
+	GC        GC        `cfg:"gc"`
+	Expire    Expire    `cfg:"expire"`
+	ZT        ZT        `cfg:"zt"`
+	TikvGC    TikvGC    `cfg:"tikv-gc"`
+	RateLimit RateLimit `cfg:"rate-limit"`
 }
 
 // TikvGC config is the config of implement tikv sdk gcwork
@@ -98,4 +103,16 @@ type Status struct {
 	Listen      string `cfg:"listen;0.0.0.0:7345;nonempty; listen address of http server"`
 	SSLCertFile string `cfg:"ssl-cert-file;;;status server SSL certificate file (enables SSL support)"`
 	SSLKeyFile  string `cfg:"ssl-key-file;;;status server SSL key file"`
+}
+
+type RateLimit struct {
+	InterfaceName       string        `cfg:"interface-name; eth0; ; the interface name to get ip and write local titan status to tikv for balancing rate limit"`
+	LimiterNamespace    string        `cfg:"limiter-namespace; sys_ratelimit;; the namespace of getting limit/balance data"`
+	GlobalBalancePeriod time.Duration `cfg:"global-balance-period; 15s;; the period in seconds to balance rate limiting with other titan nodes"`
+	TitanStatusLifetime time.Duration `cfg:"titanstatus-life-time; 1m;; how long if a titan didn't update its status, we consider it dead"`
+	SyncSetPeriod       time.Duration `cfg:"sync-set-period; 3s;; the period in seconds to sync new limit set in tikv"`
+	UsageToDivide       float64       `cfg:"usage-to-divide; 0.6;; if the qps/weighted limit < the percent, will divide change Factor to balance limit"`
+	UsageToMultiply     float64       `cfg:"usage-to-multiply; 0.9;; if the qps/weighted limit >= the percent, will multiply change Factor to balance limit"`
+	WeightChangeFactor  float64       `cfg:"weight-change-factor; 1.5;; the factor to devide/multipy in current weight"`
+	InitialPercent      float64       `cfg:"initial-percent; 0.33;; the limit is set in the percent when a commandLimiter is created"`
 }

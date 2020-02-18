@@ -6,6 +6,7 @@ import (
 
 func Test(t *testing.T) {
 	at.SystemCase(t)
+	at.LimitCase(t)
 	at.ZSetCase(t)
 	at.StringCase(t)
 	at.KeyCase(t)

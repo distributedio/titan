@@ -22,6 +22,8 @@ const (
 	gckeys    = "gckeys"
 	expire    = "expire"
 	tikvGC    = "tikvgc"
+	titanip   = "titanip"
+	worker    = "worker"
 )
 
 var (
@@ -34,6 +36,8 @@ var (
 	gcKeysLabel  = []string{gckeys}
 	expireLabel  = []string{expire}
 	tikvGCLabel  = []string{tikvGC}
+	limitLabel   = []string{biz, command, titanip}
+	workerLabel  = []string{worker}
 
 	// global prometheus object
 	gm *Metrics
@@ -48,6 +52,8 @@ type Metrics struct {
 	ZTInfoCounterVec     *prometheus.CounterVec
 	IsLeaderGaugeVec     *prometheus.GaugeVec
 	ExpireLeftSecondsVec *prometheus.GaugeVec
+	LimiterQpsVec        *prometheus.GaugeVec
+	LimiterRateVec       *prometheus.GaugeVec
 	LRangeSeekHistogram  prometheus.Histogram
 	GCKeysCounterVec     *prometheus.CounterVec
 
@@ -58,16 +64,20 @@ type Metrics struct {
 	TikvGCTotal *prometheus.CounterVec
 
 	//command biz
-	CommandCallHistogramVec     *prometheus.HistogramVec
-	TxnBeginHistogramVec        *prometheus.HistogramVec
-	CommandFuncDoneHistogramVec *prometheus.HistogramVec
-	TxnCommitHistogramVec       *prometheus.HistogramVec
-	ReplyFuncDoneHistogramVec   *prometheus.HistogramVec
-	CommandArgsNumHistogramVec  *prometheus.HistogramVec
-	TxnRetriesCounterVec        *prometheus.CounterVec
-	TxnConflictsCounterVec      *prometheus.CounterVec
-	TxnFailuresCounterVec       *prometheus.CounterVec
-	MultiCommandHistogramVec    *prometheus.HistogramVec
+	CommandCallHistogramVec      *prometheus.HistogramVec
+	LimitCostHistogramVec        *prometheus.HistogramVec
+	TxnBeginHistogramVec         *prometheus.HistogramVec
+	CommandFuncDoneHistogramVec  *prometheus.HistogramVec
+	TxnCommitHistogramVec        *prometheus.HistogramVec
+	ReplyFuncDoneHistogramVec    *prometheus.HistogramVec
+	CommandArgsNumHistogramVec   *prometheus.HistogramVec
+	TxnRetriesCounterVec         *prometheus.CounterVec
+	TxnConflictsCounterVec       *prometheus.CounterVec
+	TxnFailuresCounterVec        *prometheus.CounterVec
+	MultiCommandHistogramVec     *prometheus.HistogramVec
+	WorkerRoundCostHistogramVec  *prometheus.HistogramVec
+	WorkerSeekCostHistogramVec   *prometheus.HistogramVec
+	WorkerCommitCostHistogramVec *prometheus.HistogramVec
 
 	//logger
 	LogMetricsCounterVec *prometheus.CounterVec
@@ -81,7 +91,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 30),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of command call",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandCallHistogramVec)
@@ -111,6 +121,15 @@ func init() {
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandArgsNumHistogramVec)
 
+	gm.LimitCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "limit_cost_seconds",
+			Buckets:   prometheus.ExponentialBuckets(0.0002, 1.4, 20),
+			Help:      "the cost times of command execute's limit",
+		}, multiLabel)
+	prometheus.MustRegister(gm.LimitCostHistogramVec)
+
 	gm.TxnBeginHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
@@ -124,7 +143,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_func_done_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0002, 2, 10),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of command func",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandFuncDoneHistogramVec)
@@ -179,6 +198,22 @@ func init() {
 			Help:      "The seconds after which from now will do expire",
 		}, expireLabel)
 	prometheus.MustRegister(gm.ExpireLeftSecondsVec)
+
+	gm.LimiterQpsVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "qps_limiter_status",
+			Help:      "the qps of a namespace's command in a titan server",
+		}, limitLabel)
+	prometheus.MustRegister(gm.LimiterQpsVec)
+
+	gm.LimiterRateVec = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "rate_limiter_status",
+			Help:      "the rate of a namespace's command in a titan server(KB/s)",
+		}, limitLabel)
+	prometheus.MustRegister(gm.LimiterRateVec)
 
 	gm.LRangeSeekHistogram = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
@@ -238,6 +273,31 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
+
+	gm.WorkerRoundCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "worker_round_cost",
+			Help:      "the cost of a round expire/gc worker",
+		}, workerLabel)
+	prometheus.MustRegister(gm.WorkerRoundCostHistogramVec)
+
+	gm.WorkerSeekCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "worker_seek_cost",
+			Help:      "the cost of tikv seek in expire/gc worker",
+		}, workerLabel)
+	prometheus.MustRegister(gm.WorkerSeekCostHistogramVec)
+
+	gm.WorkerCommitCostHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      "worker_commit_cost",
+			Help:      "the cost of commit in expire/gc worker",
+		}, workerLabel)
+	prometheus.MustRegister(gm.WorkerCommitCostHistogramVec)
+
 	RegisterSDKMetrics()
 }
 

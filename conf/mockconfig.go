@@ -33,6 +33,16 @@ func MockConf() *Titan {
 				SafePointLifeTime: 10 * time.Minute,
 				Concurrency:       2,
 			},
+			RateLimit: RateLimit{
+				LimiterNamespace:    "sys_ratelimit",
+				SyncSetPeriod:       1 * time.Second,
+				GlobalBalancePeriod: 3 * time.Second,
+				TitanStatusLifetime: 6 * time.Second,
+				UsageToDivide:       0.6,
+				UsageToMultiply:     0.9,
+				WeightChangeFactor:  1.5,
+				InitialPercent:      1,
+			},
 		},
 	}
 }

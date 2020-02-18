@@ -61,19 +61,18 @@ func Integer(w io.Writer, v int64) OnCommit {
 // BytesArray replies a [][]byte when commit
 func BytesArray(w io.Writer, a [][]byte) OnCommit {
 	return func() {
-		start := time.Now()
-		resp.ReplyArray(w, len(a))
-		zap.L().Debug("reply array size", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
-		start = time.Now()
+		if _, err := resp.ReplyArray(w, len(a)); err != nil {
+			return
+		}
 		for i := range a {
 			if a[i] == nil {
-				resp.ReplyNullBulkString(w)
+				if err := resp.ReplyNullBulkString(w); err != nil {
+					return
+				}
 				continue
 			}
-			resp.ReplyBulkString(w, string(a[i]))
-			if i%10 == 9 {
-				zap.L().Debug("reply 10 bulk string", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
-				start = time.Now()
+			if err := resp.ReplyBulkString(w, string(a[i])); err != nil {
+				return
 			}
 		}
 	}
@@ -91,6 +90,10 @@ type TxnCommand func(ctx *Context, txn *db.Transaction) (OnCommit, error)
 // Call a command
 func Call(ctx *Context) {
 	ctx.Name = strings.ToLower(ctx.Name)
+
+	if _, ok := txnCommands[ctx.Name]; ok && ctx.Server.LimitersMgr != nil {
+		ctx.Server.LimitersMgr.CheckLimit(ctx.Client.Namespace, ctx.Name, ctx.Args)
+	}
 
 	if ctx.Name != "auth" &&
 		ctx.Server.RequirePass != "" &&
@@ -187,13 +190,11 @@ func AutoCommit(cmd TxnCommand) Command {
 			key := ""
 			if len(ctx.Args) > 0 {
 				key = ctx.Args[0]
-				if len(ctx.Args) > 1 {
-					mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args) - 1))
-				}
+				mt.CommandArgsNumHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(float64(len(ctx.Args)))
 			}
 			cost := time.Since(start).Seconds()
-			zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			mt.TxnBeginHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			zap.L().Debug("transation begin", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, "ERR "+err.Error())
@@ -208,8 +209,8 @@ func AutoCommit(cmd TxnCommand) Command {
 			start = time.Now()
 			onCommit, err := cmd(ctx, txn)
 			cost = time.Since(start).Seconds()
-			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			zap.L().Debug("command done", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				resp.ReplyError(ctx.Out, err.Error())
@@ -257,8 +258,8 @@ func AutoCommit(cmd TxnCommand) Command {
 				onCommit()
 			}
 			cost = time.Since(start).Seconds()
-			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			mt.ReplyFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+			zap.L().Debug("onCommit ", zap.String("name", ctx.Name), zap.String("key", key), zap.Int64("cost(us)", int64(cost*1000000)))
 			mtFunc()
 			return nil
 		})

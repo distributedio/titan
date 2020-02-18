@@ -48,10 +48,15 @@ func Start() {
 		log.Fatalln(err)
 	}
 
+	limitersMgr, err := db.NewLimitersMgr(store, &tikvConf.RateLimit)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	svr = titan.New(&context.ServerContext{
-		RequirePass: cfg.Auth,
-		Store:       store,
+		RequirePass:      cfg.Auth,
+		Store:            store,
 		ListZipThreshold: 100,
+		LimitersMgr:      limitersMgr,
 	})
 	err = svr.ListenAndServe(cfg.Listen)
 	if err != nil {

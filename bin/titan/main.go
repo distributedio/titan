@@ -78,6 +78,7 @@ func main() {
 		Store:             store,
 		ListZipThreshold:  config.Server.ListZipThreshold,
 		LimitersMgr:       limitersMgr,
+		LimitConnection:   config.Server.LimitConnection,
 		MaxConnection:     config.Server.MaxConnection,
 		MaxConnectionWait: config.Server.MaxConnectionWait,
 	})

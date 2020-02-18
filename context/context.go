@@ -81,6 +81,7 @@ type ServerContext struct {
 	Pause             time.Duration // elapse to pause all clients
 	StartAt           time.Time
 	ListZipThreshold  int
+	LimitConnection   bool
 	MaxConnection     int64
 	MaxConnectionWait int64
 	ClientsNum        int64

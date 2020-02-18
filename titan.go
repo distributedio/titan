@@ -37,9 +37,11 @@ func (s *Server) Serve(lis net.Listener) error {
 
 		cliCtx := context.NewClientContext(s.idgen(), conn)
 		connectExceed := false
-		s.servCtx.Lock.Lock()
-		if s.servCtx.ClientsNum >= s.servCtx.MaxConnection {
-			connectExceed = true
+		if s.servCtx.LimitConnection {
+			s.servCtx.Lock.Lock()
+			if s.servCtx.ClientsNum >= s.servCtx.MaxConnection {
+				connectExceed = true
+			}
 		}
 		s.servCtx.Lock.Unlock()
 		if connectExceed {

@@ -91,7 +91,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 30),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of command call",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandCallHistogramVec)
@@ -143,7 +143,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "command_func_done_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.0002, 1.4, 20),
+			Buckets:   prometheus.ExponentialBuckets(0.0005, 1.4, 40),
 			Help:      "The cost times of command func",
 		}, multiLabel)
 	prometheus.MustRegister(gm.CommandFuncDoneHistogramVec)

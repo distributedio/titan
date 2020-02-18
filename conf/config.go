@@ -30,6 +30,7 @@ type Server struct {
 	Listen            string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
 	SSLCertFile       string `cfg:"ssl-cert-file;;;server SSL certificate file (enables SSL support)"`
 	SSLKeyFile        string `cfg:"ssl-key-file;;;server SSL key file"`
+	LimitConnection   bool   `cfg:"limit-connection; false; boolean; limit max connection num when it's true"`
 	MaxConnection     int64  `cfg:"max-connection;500;numeric;client connection count"`
 	ListZipThreshold  int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
 	MaxConnectionWait int64  `cfg:"max-connection-wait;1000;numeric;wait ms before close connection when exceed max connection"`

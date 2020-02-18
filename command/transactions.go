@@ -80,6 +80,7 @@ func Exec(ctx *Context) {
 				mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, cmd.Name).Observe(cost)
 				zap.L().Debug("execute", zap.String("command", cmd.Name), zap.Int64("cost(us)", int64(cost*1000000)))
 				if err != nil {
+					mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, cmd.Name).Inc()
 					resp.ReplyError(out, err.Error())
 				}
 			} else {

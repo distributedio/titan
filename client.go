@@ -101,6 +101,9 @@ func (c *client) serve(conn net.Conn) error {
 			time.Sleep(c.server.servCtx.Pause)
 			c.server.servCtx.Pause = 0
 		}
+		if len(cmd) == 0 {
+			continue
+		}
 
 		c.cliCtx.Updated = time.Now()
 		c.cliCtx.LastCmd = cmd[0]

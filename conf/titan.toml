@@ -23,11 +23,23 @@ ssl-cert-file = ""
 #description: server SSL key file
 ssl-key-file = ""
 
+#type:        bool
+#rules:       boolean
+#description: limit max connection num when it's true
+#default:     false
+#limit-connection = false
+
 #type:        int64
 #rules:       numeric
 #description: client connection count
 #default:     1000
 #max-connection = 1000
+
+#type:        int64
+#rules:       numeric
+#description: wait ms before close connection when exceed max connection
+#default:     1000
+#max-connection-wait = 1000
 
 #type:        int
 #rules:       numeric

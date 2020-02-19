@@ -42,8 +42,8 @@ func (s *Server) Serve(lis net.Listener) error {
 			if s.servCtx.ClientsNum >= s.servCtx.MaxConnection {
 				connectExceed = true
 			}
+			s.servCtx.Lock.Unlock()
 		}
-		s.servCtx.Lock.Unlock()
 		if connectExceed {
 			zap.L().Warn("max connection exceed, will close after some time",
 				zap.Int64("max connection num", s.servCtx.MaxConnection), zap.Int64("wait ms", s.servCtx.MaxConnectionWait),

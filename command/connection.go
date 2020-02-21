@@ -42,7 +42,7 @@ func Ping(ctx *Context) {
 		resp.ReplyBulkString(ctx.Out, args[0])
 		return
 	}
-	resp.ReplyBulkString(ctx.Out, "PONG")
+	resp.ReplySimpleString(ctx.Out, "PONG")
 }
 
 // Select the logical database

@@ -55,6 +55,7 @@ func init() {
 		"getbit":   Desc{Proc: AutoCommit(GetBit), Txn: GetBit, Cons: Constraint{3, flags("r"), 1, 1, 1}},
 		"bitcount": Desc{Proc: AutoCommit(BitCount), Txn: BitCount, Cons: Constraint{-2, flags("r"), 1, 1, 1}},
 		"bitpos":   Desc{Proc: AutoCommit(BitPos), Txn: BitPos, Cons: Constraint{-3, flags("r"), 1, 1, 1}},
+		"getset":   Desc{Proc: AutoCommit(GetSet), Txn: GetSet, Cons: Constraint{3, flags("wm"), 1, 1, 1}},
 
 		// keys
 		"type":      Desc{Proc: AutoCommit(Type), Txn: Type, Cons: Constraint{2, flags("rF"), 1, 1, 1}},

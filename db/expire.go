@@ -8,7 +8,6 @@ import (
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/db/store"
 	"github.com/distributedio/titan/metrics"
-	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -148,7 +147,15 @@ func runExpire(db *DB, batchLimit int) {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
 		return
 	}
-	endPrefix := kv.Key(expireKeyPrefix).PrefixNext()
+
+	now := time.Now().UnixNano()
+	//iter get keys [key, upperBound), so using now+1 as 2nd parameter will get "at:now:" prefixed keys
+	//we seek end in "at:<now>" replace in "at;" , it can reduce the seek range and seek the deleted expired keys as little as possible.
+	//the behavior should reduce the expire delay in days and get/mget timeout, which are caused by rocksdb tomstone problem
+	var endPrefix []byte
+	endPrefix = append(endPrefix, expireKeyPrefix...)
+	endPrefix = append(endPrefix, EncodeInt64(now+1)...)
+
 	start := time.Now()
 	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
 	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
@@ -158,7 +165,6 @@ func runExpire(db *DB, batchLimit int) {
 		return
 	}
 	limit := batchLimit
-	now := time.Now().UnixNano()
 
 	ts := now
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {

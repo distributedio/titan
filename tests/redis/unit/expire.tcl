@@ -3,11 +3,11 @@ start_server {tags {"expire"}} {
         r set x foobar
         set v1 [r expire x 5]
         set v2 [r ttl x]
-        set v3 [r expire x 10]
+        set v3 [r expire x 9]
         set v4 [r ttl x]
         r expire x 2
         list $v1 $v2 $v3 $v4
-    } {1 [45] 1 10}
+    } {1 [45] 1 [89]}
 
     test {EXPIRE - It should be still possible to read 'x'} {
         r get x

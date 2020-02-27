@@ -227,6 +227,10 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 		thisExpireEndTs = ts
 		limit--
 	}
+	if limit == batchLimit {
+		//means: no expire keys or all expire keys > now in current loop
+		thisExpireEndTs = now
+	}
 
 	now = time.Now().UnixNano()
 	diff := (ts - now) / int64(time.Second)

@@ -87,6 +87,7 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
+	lastExpireEndTs := int64(0)
 	for range ticker.C {
 		if conf.Disable {
 			continue
@@ -106,7 +107,7 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 			}
 			continue
 		}
-		runExpire(db, conf.BatchLimit)
+		lastExpireEndTs = runExpire(db, conf.BatchLimit, lastExpireEndTs)
 		metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
 	}
 	return nil
@@ -141,11 +142,11 @@ func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
-func runExpire(db *DB, batchLimit int) {
+func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 	txn, err := db.Begin()
 	if err != nil {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
-		return
+		return 0
 	}
 
 	now := time.Now().UnixNano()
@@ -156,16 +157,29 @@ func runExpire(db *DB, batchLimit int) {
 	endPrefix = append(endPrefix, expireKeyPrefix...)
 	endPrefix = append(endPrefix, EncodeInt64(now+1)...)
 
+	var startPrefix []byte
+	if lastExpireEndTs > 0 {
+		startPrefix = append(startPrefix, expireKeyPrefix...)
+		startPrefix = append(startPrefix, EncodeInt64(lastExpireEndTs)...)
+		startPrefix = append(startPrefix, ':')
+	} else {
+		startPrefix = expireKeyPrefix
+	}
+
 	start := time.Now()
-	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
+	iter, err := txn.t.Iter(startPrefix, endPrefix)
 	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] seek expire keys"); logEnv != nil {
+		logEnv.Write(zap.ByteString("[startPrefix", startPrefix), zap.ByteString("endPrefix)", endPrefix))
+	}
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
 		txn.Rollback()
-		return
+		return 0
 	}
 	limit := batchLimit
 
+	thisExpireEndTs := int64(0)
 	ts := now
 	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
 		rawKey := iter.Key()
@@ -179,7 +193,7 @@ func runExpire(db *DB, batchLimit int) {
 		mkey := rawKey[expireMetakeyOffset:]
 		if err := doExpire(txn, mkey, iter.Value()); err != nil {
 			txn.Rollback()
-			return
+			return 0
 		}
 
 		// Remove from expire list
@@ -188,11 +202,11 @@ func runExpire(db *DB, batchLimit int) {
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
 			txn.Rollback()
-			return
+			return 0
 		}
 
 		if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete expire list item"); logEnv != nil {
-			logEnv.Write(zap.ByteString("mkey", mkey))
+			logEnv.Write(zap.Int64("ts", ts), zap.ByteString("mkey", mkey))
 		}
 
 		start = time.Now()
@@ -206,8 +220,11 @@ func runExpire(db *DB, batchLimit int) {
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
 			txn.Rollback()
-			return
+			return 0
 		}
+
+		//just use the latest processed expireKey(don't include the last expire key in the loop which is > now) as next seek's start key
+		thisExpireEndTs = ts
 		limit--
 	}
 
@@ -234,6 +251,7 @@ func runExpire(db *DB, batchLimit int) {
 	}
 
 	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
+	return thisExpireEndTs
 }
 
 func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) error {

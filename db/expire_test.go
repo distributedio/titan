@@ -111,7 +111,7 @@ func Test_runExpire(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			id := tt.args.call(t, tt.args.key)
 			txn := getTxn(t)
-			runExpire(txn.db, 1)
+			runExpire(txn.db, 1, 0)
 			txn.Commit(context.TODO())
 
 			txn = getTxn(t)
@@ -211,7 +211,7 @@ func Test_doExpire(t *testing.T) {
 			name: "TestExpiredNotExistsMeta",
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash")),
-				id:  nmateHashId,
+				id:   nmateHashId,
 			},
 			want: want{
 				gckey: true,
@@ -222,7 +222,7 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredHash_dirty_data")),
 				id:   dirtyDataHashID,
-				tp: byte(ObjectHash),
+				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: true,
@@ -233,7 +233,7 @@ func Test_doExpire(t *testing.T) {
 			args: args{
 				mkey: MetaKey(txn.db, []byte("TestExpiredRewriteHash_dirty_data")),
 				id:   rDHashId,
-				tp: byte(ObjectHash),
+				tp:   byte(ObjectHash),
 			},
 			want: want{
 				gckey: true,

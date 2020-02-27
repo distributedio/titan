@@ -170,7 +170,7 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 	iter, err := txn.t.Iter(startPrefix, endPrefix)
 	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
 	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] seek expire keys"); logEnv != nil {
-		logEnv.Write(zap.ByteString("[startPrefix", startPrefix), zap.ByteString("endPrefix)", endPrefix))
+		logEnv.Write(zap.Int64("[startTs", lastExpireEndTs), zap.Int64("endTs)", now+1))
 	}
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))

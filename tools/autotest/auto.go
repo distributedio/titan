@@ -298,6 +298,20 @@ func (ac *AutoClient) KeyCase(t *testing.T) {
 	ac.ez.ZAddEqual(t, "key-zset1", "2.0", "member1")
 	ac.ek.DelEqual(t, 1, "key-zset1")
 	ac.ek.ExistsEqual(t, 0, "key-zset1")
+
+	//test negative expire
+	ac.ez.ZAddEqual(t, "key-zset2", "2.0", "member1")
+	ac.ek.ExpireEqual(t, "key-zset2", -1, 1)
+	ac.ek.ExistsEqual(t, 0, "key-zset2")
+
+	ac.es.SetEqual(t, "key-set", "value")
+	ac.ek.ExpireEqual(t, "key-set", -1, 1)
+	ac.ek.ExistsEqual(t, 0, "key-set")
+
+	ac.es.SetEqual(t, "key-set", "value")
+	at = time.Now().Unix() - 1
+	ac.ek.ExpireAtEqual(t, "key-set", int(at), 1)
+	ac.ek.ExistsEqual(t, 0, "key-set")
 }
 
 //SystemCase check system case

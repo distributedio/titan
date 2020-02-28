@@ -337,6 +337,9 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	if err != nil {
 		return nil, ErrInteger
 	}
+	if ui <= 0 {
+		return nil, ErrExpireSetEx
+	}
 	unit := ui * uint64(time.Millisecond)
 	if err := s.Set([]byte(ctx.Args[2]), int64(unit)); err != nil {
 		return nil, errors.New("ERR " + err.Error())

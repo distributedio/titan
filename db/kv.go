@@ -121,8 +121,13 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 			return err
 		}
 	}
-
 	if at > 0 {
+		if at <= now {
+			//expire goroutine just seek forward and processed higher and higher ts expireKey, can't seek backward
+			//so, if expire at a ts <= now, delete it at once
+			return kv.txn.Destory(obj, key)
+		}
+
 		if err := expireAt(kv.txn.t, mkey, obj.ID, obj.Type, obj.ExpireAt, at); err != nil {
 			return err
 		}

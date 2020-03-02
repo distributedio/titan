@@ -323,7 +323,7 @@ func TestStringPSetEx(t *testing.T) {
 
 }
 
-func TestStringSetRange(t *testing.T) {
+/*func TestStringSetRange(t *testing.T) {
 	args := make([]string, 3)
 	key := "setrange"
 	args[0] = key
@@ -364,7 +364,7 @@ func TestStringSetRange(t *testing.T) {
 	ctx = ContextTest("setrange", args...)
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), ErrMaximum.Error())
-}
+}*/
 func TestStringIncr(t *testing.T) {
 	args := make([]string, 1)
 	args[0] = "incr"
@@ -469,7 +469,7 @@ func TestStringMset(t *testing.T) {
 	assert.Contains(t, ctxString(ctx.Out), ErrMSet.Error())
 }
 
-func TestStringMsetNx(t *testing.T) {
+/*func TestStringMsetNx(t *testing.T) {
 	args := make([]string, 4)
 	args[0] = "MsetN1"
 	args[1] = "MsetN3"
@@ -490,7 +490,7 @@ func TestStringMsetNx(t *testing.T) {
 	Call(ctx)
 	assert.Contains(t, ctxString(ctx.Out), "0")
 	EqualGet(t, args[0], args[1], nil)
-}
+}*/
 
 func TestStringAppend(t *testing.T) {
 	args := make([]string, 2)
@@ -504,7 +504,7 @@ func TestStringAppend(t *testing.T) {
 	assert.Contains(t, out.String(), strconv.Itoa(len(args[1])*2))
 }
 
-func TestStringSetBit(t *testing.T) {
+/*func TestStringSetBit(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -548,9 +548,9 @@ func TestStringSetBit(t *testing.T) {
 			assert.Contains(t, out.String(), tt.want)
 		})
 	}
-}
+}*/
 
-func TestStringGetBit(t *testing.T) {
+/*func TestStringGetBit(t *testing.T) {
 	CallTest("setbit", "getbit", "5", "1")
 	tests := []struct {
 		name string
@@ -590,9 +590,9 @@ func TestStringGetBit(t *testing.T) {
 			assert.Contains(t, out.String(), tt.want)
 		})
 	}
-}
+}*/
 
-func TestStringBitCount(t *testing.T) {
+/*func TestStringBitCount(t *testing.T) {
 	CallTest("setbit", "bit-count", "5", "1")
 	CallTest("setbit", "bit-count", "9", "1")
 	tests := []struct {
@@ -633,9 +633,9 @@ func TestStringBitCount(t *testing.T) {
 			assert.Contains(t, out.String(), tt.want)
 		})
 	}
-}
+}*/
 
-func TestStringBitPos(t *testing.T) {
+/*func TestStringBitPos(t *testing.T) {
 	CallTest("set", "bit-pos", "5")
 	tests := []struct {
 		name string
@@ -685,4 +685,4 @@ func TestStringBitPos(t *testing.T) {
 			assert.Contains(t, out.String(), tt.want)
 		})
 	}
-}
+}*/

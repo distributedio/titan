@@ -14,15 +14,9 @@ array set ::toTestCase {
     "MGET against non-string key" 1
     "MSET base case" 1
     "MSET wrong number of args" 1
-    "MSETNX with already existent key" 1
-    "MSETNX with not existing keys" 1
     "STRLEN against non-existing key" 1
     "STRLEN against integer-encoded value" 1
     "STRLEN against plain string" 1
-    "SETRANGE against non-existing key" 1
-    "SETRANGE against string-encoded key" 1
-    "SETRANGE against key with wrong type" 1
-    "SETRANGE with out of range offset" 1
     "GETRANGE against non-existing key" 1
     "GETRANGE against string value" 1
     "GETRANGE fuzzing" 1

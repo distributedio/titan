@@ -9,7 +9,8 @@
 A distributed implementation of __Redis compatible layer__  based on [TiKV](https://github.com/tikv/tikv/)
 
 ## Why Titan?
-* Completely compatible with redis protocol
+
+* Completely compatible with Redis protocol
 * Full distributed transaction with strong consistency
 * Multi-tenancy support
 * No painful scale out
@@ -23,25 +24,29 @@ Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. T
 
 ## Quick start
 
-Can't wait to experiment Titan? Just follow 2 steps:
+Can't wait to experiment with Titan? Just follow 2 steps:
 
-1. curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml
-2. docker-compose up
+1. `curl -s -O https://raw.githubusercontent.com/distributedio/titan/master/docker-compose.yml`
+2. `docker-compose up`
 
-Then connect to titan use redis-cli
+Then connect to Titan using `redis-cli`
 
-> redis-cli -p 7369
+```
+redis-cli -p 7369
+```
 
 ___Enjoy!___
 
 ## Installation
 
 ### SetUp TiKV cluster
-Titan works with 2 tidb components:
-* TiKV
-* Pd
 
-To setup TiKV and PD, please follow official [instruction](https://pingcap.com/docs-cn/dev/how-to/deploy/orchestrated/ansible/)
+Titan works with 2 TiDB components:
+
+* TiKV
+* PD
+
+To setup TiKV and PD, please follow the official [instructions](https://pingcap.com/docs-cn/dev/how-to/deploy/orchestrated/ansible/)
 
 ### Run Titan
 
@@ -59,7 +64,7 @@ make
 pd-addrs="tikv://your-pd-addrs:port"
 ```
 
-* Run titan
+* Run Titan
 
 ```
 ./titan
@@ -90,7 +95,7 @@ See the details of the commands [supporting status](docs/command_list.md)
 
 ## Benchmarks
 
-Refer to the [benchmark docs](https://pan.baidu.com/s/1m5yp5LsvFjsDKvHtaXwWvg) for more details. It is shared on Baidu Disks, use the code `hzt6` to gain the permission.
+Refer to the [benchmark docs](https://pan.baidu.com/s/1m5yp5LsvFjsDKvHtaXwWvg) for more details. It's shared on Baidu Disks, use the code `hzt6` to gain the permission.
 
 Basic benchmarking result.
 

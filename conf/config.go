@@ -13,12 +13,14 @@ type Titan struct {
 
 // Server config is the config of titan server
 type Server struct {
-	Auth             string `cfg:"auth;;;client connetion auth"`
-	Listen           string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
-	SSLCertFile      string `cfg:"ssl-cert-file;;;server SSL certificate file (enables SSL support)"`
-	SSLKeyFile       string `cfg:"ssl-key-file;;;server SSL key file"`
-	MaxConnection    int64  `cfg:"max-connection;1000;numeric;client connection count"`
-	ListZipThreshold int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
+	Auth                       string `cfg:"auth;;;client connetion auth"`
+	Listen                     string `cfg:"listen; 0.0.0.0:7369; netaddr; address to listen"`
+	SSLCertFile                string `cfg:"ssl-cert-file;;;server SSL certificate file (enables SSL support)"`
+	SSLKeyFile                 string `cfg:"ssl-key-file;;;server SSL key file"`
+	MaxConnection              int64  `cfg:"max-connection;1000;numeric;client connection count"`
+	ListZipThreshold           int    `cfg:"list-zip-threshold;100;numeric;the max limit length of elements in list"`
+	DumpRedisCommand           string `cfg:"dump-redis-command;./;;dump redis command and duration to file"`
+	DumpRedisCommandRotateSize int    `cfg:"dump-redis-command-rotate-size; 500;;dump redis command file rotate size"`
 }
 
 // TiKV config is the config of tikv sdk

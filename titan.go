@@ -7,6 +7,7 @@ import (
 	"github.com/distributedio/titan/command"
 	"github.com/distributedio/titan/context"
 	"github.com/distributedio/titan/metrics"
+	"github.com/distributedio/titan/tools/dump"
 	"go.uber.org/zap"
 )
 
@@ -67,12 +68,14 @@ func (s *Server) ListenAndServe(addr string) error {
 
 //Stop the server
 func (s *Server) Stop() error {
+	dump.CloseDumpChan <- true
 	zap.L().Info("titan serve stop", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }
 
 //GracefulStop the server, TODO close clients connections first
 func (s *Server) GracefulStop() error {
+	dump.CloseDumpChan <- true
 	zap.L().Info("titan serve graceful", zap.String("addr", s.lis.Addr().String()))
 	return s.lis.Close()
 }

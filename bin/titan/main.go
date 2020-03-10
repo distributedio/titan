@@ -23,16 +23,19 @@ import (
 	"github.com/distributedio/titan/db"
 	"github.com/distributedio/titan/metrics"
 	"github.com/distributedio/titan/server"
+	"github.com/distributedio/titan/tools/dump"
 )
 
 func main() {
 	var showVersion bool
 	var confPath string
 	var pdAddrs string
+	var dumpRedisCommand string
 
 	flag.BoolVar(&showVersion, "v", false, "Show Version")
 	flag.StringVar(&confPath, "c", "conf/titan.toml", "conf file path")
 	flag.StringVar(&pdAddrs, "pd-addrs", "", "pd cluster addresses")
+	flag.StringVar(&dumpRedisCommand, "dump", "", "dump redis command and duration to file")
 	flag.Parse()
 
 	if showVersion {
@@ -52,6 +55,9 @@ func main() {
 		fmt.Println("Warning: Titan is running in memory mode, all the data would be cleared after the process exit.")
 		fmt.Println("The memory mode can only be used for experience, configure the tikv.pd-addrs to use the TiKV as a backend")
 	}
+	if dumpRedisCommand != "" {
+		config.Server.DumpRedisCommand = dumpRedisCommand
+	}
 
 	if err := ConfigureZap(config.Logger.Name, config.Logger.Path, config.Logger.Level,
 		config.Logger.TimeRotate, config.Logger.Compress); err != nil {
@@ -70,7 +76,11 @@ func main() {
 		zap.L().Fatal("open db failed", zap.Error(err))
 		os.Exit(1)
 	}
-
+	if config.Server.DumpRedisCommand != "" {
+		if err := dump.InitDumpCommand(&config.Server); err != nil {
+			zap.L().Error(fmt.Sprintf("init dump redis command error %v", err))
+		}
+	}
 	svr := metrics.NewServer(&config.Status)
 
 	serv := titan.New(&context.ServerContext{

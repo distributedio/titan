@@ -10,6 +10,7 @@ import (
 	"github.com/distributedio/titan/db"
 	"github.com/distributedio/titan/encoding/resp"
 	"github.com/distributedio/titan/metrics"
+	"github.com/distributedio/titan/tools/dump"
 	"github.com/shafreeck/retry"
 	"go.uber.org/zap"
 )
@@ -299,6 +300,18 @@ func (e *Executor) Execute(ctx *Context) {
 	Call(ctx)
 	cost := time.Since(start).Seconds()
 	metrics.GetMetrics().CommandCallHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
+	if dump.RecordSeq != nil {
+		dump.RecordSeq <- &dump.Record{
+			StartTime:  start,
+			Cost:       cost,
+			TraceID:    ctx.TraceID,
+			NameSpace:  ctx.Client.Namespace,
+			Name:       ctx.Name,
+			Args:       ctx.Args,
+			RemoteAddr: ctx.Client.RemoteAddr,
+		}
+	}
+
 }
 
 // Desc describes a command with constraints

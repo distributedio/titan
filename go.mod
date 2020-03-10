@@ -4,7 +4,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/arthurkiller/rollingwriter v1.1.2
 	github.com/coreos/bbolt v1.3.3 // indirect
-	github.com/coreos/etcd v3.3.18+incompatible // indirect
+	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/gofail v0.0.0-20190801230047-ad7f989257ca // indirect
 	github.com/cznic/golex v0.0.0-20181122101858-9c343928389c // indirect
@@ -34,6 +34,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/myesui/uuid v1.0.0 // indirect
+	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect

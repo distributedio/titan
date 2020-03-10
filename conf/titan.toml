@@ -22,7 +22,11 @@ ssl-key-file = ""
 #type: int, rules: numeric, description: the max limit length of elements in list, default: 100
 #list-zip-threshold = 100
 
+#type: string, description: dump redis command and duration to file
+#dump-redis-command = "./dumplogs"
 
+#type: int, description: dump redis command file rotate size(MB)
+#dump-redis-command-rotate-size = 500
 
 [status]
 
@@ -40,7 +44,7 @@ ssl-key-file = ""
 [tikv]
 
 #type: string, description: pd address in tidb, default: mocktikv://
-#pd-addrs = "mocktikv://"
+pd-addrs = "mocktikv://"
 
 
 [tikv.gc]
@@ -138,7 +142,7 @@ ssl-key-file = ""
 #path = "logs/titan"
 
 #type: string, description: log level(debug, info, warn, error, panic, fatal), default: info
-#level = "info"
+level = "debug"
 
 #type: bool, rules: boolean, description: true for enabling log compress, default: false
 #compress = false

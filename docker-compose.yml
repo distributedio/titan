@@ -40,6 +40,7 @@ services:
       - ./logs:/titan/logs
     ports:
       - "7369:7369"
+      - "7345:7345"
     command:
       - --pd-addrs=tikv://pd0:2379
     depends_on:

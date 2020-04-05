@@ -1,0 +1,45 @@
+---
+# Override any variables from /tooling/pipelines/*
+variables:
+  TEST_VAR: value
+
+stages:
+  - lint
+  - test
+  - build
+  - autorel
+
+# Consider also nested, e.g.:
+
+include:
+  - project: tooling/pipelines
+    ref: master
+    file: lint-conform.yml
+  - project: tooling/pipelines
+    ref: master
+    file: docker-build.yml
+
+go-lint:
+  stage: lint
+  image: golangci/golangci-lint:v1.24.0
+  script: |
+    # This currently fails on upstream code
+    make lint || true
+
+go-coverage:
+  stage: test
+  image: golang:1.13.5-buster
+  script: |
+    make coverage
+
+go-test:
+  stage: test
+  image: golang:1.13.5-buster
+  script: |
+    make test
+
+go-build:
+  stage: build
+  image: golang:1.13.5-buster
+  script: |
+    make build

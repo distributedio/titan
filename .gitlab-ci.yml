@@ -45,4 +45,4 @@ go-build:
   stage: build
   image: golang:1.13.5-buster
   script: |
-    make build
+    make build token

@@ -39,6 +39,9 @@ go-test:
     make test
 
 go-build:
+  artifacts:
+    paths:
+      - token
   stage: build
   image: golang:1.13.5-buster
   script: |

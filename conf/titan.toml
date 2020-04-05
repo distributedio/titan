@@ -115,7 +115,7 @@ ssl-key-file = ""
 
 [tikv.logger]
 
-#type: string, rules: nonempty, description: the default log path, default: logs/tikv
+#type: string, rules: nonempty, description: the default log path (or stdout/stderr), default: logs/tikv
 #path = "logs/tikv"
 
 #type: string, description: log level(debug, info, warn, error, panic, fatal), default: info
@@ -134,7 +134,7 @@ ssl-key-file = ""
 #type: string, description: the default logger name, default: titan
 #name = "titan"
 
-#type: string, description: the default log path, default: logs/titan
+#type: string, description: the default log path (or stdout/stderr), default: logs/titan
 #path = "logs/titan"
 
 #type: string, description: log level(debug, info, warn, error, panic, fatal), default: info

@@ -118,8 +118,14 @@ func Open(conf *conf.Tikv) (*RedisStore, error) {
 	}
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
+	ls := NewLeaderStatus()
 	go StartGC(sysdb, &conf.GC)
-	go StartExpire(sysdb, &conf.Expire)
+	go setExpireIsLeader(sysdb, &conf.Expire, ls)
+	go startExpire(sysdb, &conf.Expire, ls, "")
+	for i := 0; i < EXPIRE_HASH_NUM; i++ {
+		expireHash := fmt.Sprintf("%04d", i)
+		go startExpire(sysdb, &conf.Expire, ls, expireHash)
+	}
 	go StartZT(sysdb, &conf.ZT)
 	go StartTikvGC(sysdb, &conf.TikvGC)
 	return rds, nil

@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -111,7 +112,10 @@ func Test_runExpire(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			id := tt.args.call(t, tt.args.key)
 			txn := getTxn(t)
-			runExpire(txn.db, 1, 0)
+			for i := 0; i < EXPIRE_HASH_NUM; i++ {
+				expireHash := fmt.Sprintf("%04d", i)
+				runExpire(txn.db, 1, expireHash, 0)
+			}
 			txn.Commit(context.TODO())
 
 			txn = getTxn(t)
@@ -183,9 +187,10 @@ func Test_doExpire(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		args args
-		want want
+		name     string
+		args     args
+		want     want
+		expireAt int64
 	}{
 		{
 			name: "TestExpiredHash",
@@ -196,6 +201,7 @@ func Test_doExpire(t *testing.T) {
 			want: want{
 				gckey: true,
 			},
+			expireAt: 0,
 		},
 		{
 			name: "TestExpiredRewriteHash",
@@ -206,6 +212,7 @@ func Test_doExpire(t *testing.T) {
 			want: want{
 				gckey: true,
 			},
+			expireAt: expireAt,
 		},
 		{
 			name: "TestExpiredNotExistsMeta",
@@ -216,6 +223,7 @@ func Test_doExpire(t *testing.T) {
 			want: want{
 				gckey: true,
 			},
+			expireAt: 0,
 		},
 		{
 			name: "TestExpiredHash_dirty_data",
@@ -227,6 +235,7 @@ func Test_doExpire(t *testing.T) {
 			want: want{
 				gckey: true,
 			},
+			expireAt: 0,
 		},
 		{
 			name: "TestExpiredRewriteHash_dirty_data",
@@ -238,6 +247,7 @@ func Test_doExpire(t *testing.T) {
 			want: want{
 				gckey: true,
 			},
+			expireAt: expireAt,
 		},
 	}
 	for _, tt := range tests {
@@ -247,7 +257,7 @@ func Test_doExpire(t *testing.T) {
 			if tt.args.tp == byte(ObjectHash) {
 				id = append(id, tt.args.tp)
 			}
-			err := doExpire(txn, tt.args.mkey, id)
+			err := doExpire(txn, tt.args.mkey, id, "", tt.expireAt)
 			txn.Commit(context.TODO())
 			assert.NoError(t, err)
 

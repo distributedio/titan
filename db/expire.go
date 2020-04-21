@@ -3,6 +3,9 @@ package db
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"hash/crc32"
+	"sync"
 	"time"
 
 	"github.com/distributedio/titan/conf"
@@ -21,8 +24,36 @@ var (
 )
 
 const (
-	expire_worker = "expire"
+	expire_worker   = "expire"
+	EXPIRE_HASH_NUM = 256
 )
+
+type LeaderStatus struct {
+	isLeader bool
+	cond     *sync.Cond
+}
+
+func NewLeaderStatus() *LeaderStatus {
+	return &LeaderStatus{
+		cond: sync.NewCond(new(sync.Mutex)),
+	}
+}
+
+func (ls *LeaderStatus) setIsLeader(isLeader bool) {
+	ls.cond.L.Lock()
+	defer ls.cond.L.Unlock()
+
+	ls.isLeader = isLeader
+	ls.cond.Broadcast()
+}
+
+func (ls *LeaderStatus) getIsLeader() bool {
+	ls.cond.L.Lock()
+	defer ls.cond.L.Unlock()
+
+	ls.cond.Wait()
+	return ls.isLeader
+}
 
 // IsExpired judge object expire through now
 func IsExpired(obj *Object, now int64) bool {
@@ -33,8 +64,12 @@ func IsExpired(obj *Object, now int64) bool {
 }
 
 func expireKey(key []byte, ts int64) []byte {
+	hashnum := crc32.ChecksumIEEE(key)
+	hashPrefix := fmt.Sprintf("%04d", hashnum%EXPIRE_HASH_NUM)
 	var buf []byte
 	buf = append(buf, expireKeyPrefix...)
+	buf = append(buf, []byte(hashPrefix)...)
+	buf = append(buf, ':')
 	buf = append(buf, EncodeInt64(ts)...)
 	buf = append(buf, ':')
 	buf = append(buf, key...)
@@ -82,21 +117,21 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 	return nil
 }
 
-// StartExpire get leader from db
-func StartExpire(db *DB, conf *conf.Expire) error {
+// setExpireIsLeader get leader from db
+func setExpireIsLeader(db *DB, conf *conf.Expire, ls *LeaderStatus) error {
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
-	lastExpireEndTs := int64(0)
 	for range ticker.C {
 		if conf.Disable {
+			ls.setIsLeader(false)
 			continue
 		}
 
-		start := time.Now()
 		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
 		if err != nil {
 			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
+			ls.setIsLeader(false)
 			continue
 		}
 		if !isLeader {
@@ -105,12 +140,27 @@ func StartExpire(db *DB, conf *conf.Expire) error {
 					zap.ByteString("uuid", id),
 					zap.Duration("leader-life-time", conf.LeaderLifeTime))
 			}
+			ls.setIsLeader(isLeader)
 			continue
 		}
-		lastExpireEndTs = runExpire(db, conf.BatchLimit, lastExpireEndTs)
-		metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+		ls.setIsLeader(isLeader)
 	}
 	return nil
+}
+
+func startExpire(db *DB, conf *conf.Expire, ls *LeaderStatus, expireHash string) {
+	ticker := time.NewTicker(conf.Interval)
+	defer ticker.Stop()
+	lastExpireEndTs := int64(0)
+	for range ticker.C {
+		if !ls.getIsLeader() {
+			continue
+		}
+
+		start := time.Now()
+		lastExpireEndTs = runExpire(db, conf.BatchLimit, expireHash, lastExpireEndTs)
+		metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+	}
 }
 
 // split a meta key with format: {namespace}:{id}:M:{key}
@@ -142,10 +192,25 @@ func toTikvScorePrefix(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
-func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
+func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64) int64 {
+	curExpireTimestampOffset := expireTimestampOffset
+	curExpireMetakeyOffset := expireMetakeyOffset
+	var curExpireKeyPrefix []byte //expireKeyPrefix of current go routine
+	curExpireKeyPrefix = append(curExpireKeyPrefix, expireKeyPrefix...)
+	var expireLogFlag string
+	if expireHash != "" {
+		curExpireKeyPrefix = append(curExpireKeyPrefix, expireHash...)
+		curExpireKeyPrefix = append(curExpireKeyPrefix, ':')
+		curExpireTimestampOffset += len(expireHash) + len(":")
+		curExpireMetakeyOffset += len(expireHash) + len(":")
+		expireLogFlag = fmt.Sprintf("[Expire-%s]", expireHash)
+	} else {
+		expireLogFlag = "[Expire]"
+	}
+
 	txn, err := db.Begin()
 	if err != nil {
-		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
+		zap.L().Error(expireLogFlag+" txn begin failed", zap.Error(err))
 		return 0
 	}
 
@@ -154,26 +219,26 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 	//we seek end in "at:<now>" replace in "at;" , it can reduce the seek range and seek the deleted expired keys as little as possible.
 	//the behavior should reduce the expire delay in days and get/mget timeout, which are caused by rocksdb tomstone problem
 	var endPrefix []byte
-	endPrefix = append(endPrefix, expireKeyPrefix...)
+	endPrefix = append(endPrefix, curExpireKeyPrefix...)
 	endPrefix = append(endPrefix, EncodeInt64(now+1)...)
 
 	var startPrefix []byte
 	if lastExpireEndTs > 0 {
-		startPrefix = append(startPrefix, expireKeyPrefix...)
+		startPrefix = append(startPrefix, curExpireKeyPrefix...)
 		startPrefix = append(startPrefix, EncodeInt64(lastExpireEndTs)...)
 		startPrefix = append(startPrefix, ':')
 	} else {
-		startPrefix = expireKeyPrefix
+		startPrefix = curExpireKeyPrefix
 	}
 
 	start := time.Now()
 	iter, err := txn.t.Iter(startPrefix, endPrefix)
 	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
-	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] seek expire keys"); logEnv != nil {
+	if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" seek expire keys"); logEnv != nil {
 		logEnv.Write(zap.Int64("[startTs", lastExpireEndTs), zap.Int64("endTs)", now+1))
 	}
 	if err != nil {
-		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
+		zap.L().Error(expireLogFlag+" seek failed", zap.ByteString("prefix", curExpireKeyPrefix), zap.Error(err))
 		txn.Rollback()
 		return 0
 	}
@@ -181,31 +246,31 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 
 	thisExpireEndTs := int64(0)
 	ts := now
-	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
+	for iter.Valid() && iter.Key().HasPrefix(curExpireKeyPrefix) && limit > 0 {
 		rawKey := iter.Key()
-		ts = DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
+		ts = DecodeInt64(rawKey[curExpireTimestampOffset : curExpireTimestampOffset+8])
 		if ts > now {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not need to expire key"); logEnv != nil {
+			if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" not need to expire key"); logEnv != nil {
 				logEnv.Write(zap.String("raw-key", string(rawKey)), zap.Int64("last-timestamp", ts))
 			}
 			break
 		}
-		mkey := rawKey[expireMetakeyOffset:]
-		if err := doExpire(txn, mkey, iter.Value()); err != nil {
+		mkey := rawKey[curExpireMetakeyOffset:]
+		if err := doExpire(txn, mkey, iter.Value(), expireLogFlag, ts); err != nil {
 			txn.Rollback()
 			return 0
 		}
 
 		// Remove from expire list
 		if err := txn.t.Delete(rawKey); err != nil {
-			zap.L().Error("[Expire] delete failed",
+			zap.L().Error(expireLogFlag+" delete failed",
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
 			txn.Rollback()
 			return 0
 		}
 
-		if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete expire list item"); logEnv != nil {
+		if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" delete expire list item"); logEnv != nil {
 			logEnv.Write(zap.Int64("ts", ts), zap.ByteString("mkey", mkey))
 		}
 
@@ -216,7 +281,7 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 			metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(cost.Seconds())
 		}
 		if err != nil {
-			zap.L().Error("[Expire] next failed",
+			zap.L().Error(expireLogFlag+" next failed",
 				zap.ByteString("mkey", mkey),
 				zap.Error(err))
 			txn.Rollback()
@@ -233,13 +298,11 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 	}
 
 	now = time.Now().UnixNano()
-	diff := (ts - now) / int64(time.Second)
-	if diff >= 0 {
-		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(float64(diff))
-		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(0)
+	if ts < now {
+		diff := (now - ts) / int64(time.Second)
+		metrics.GetMetrics().ExpireDelaySecondsVec.WithLabelValues("delay-" + expireHash).Set(float64(diff))
 	} else {
-		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("delay").Set(float64(-1 * diff))
-		metrics.GetMetrics().ExpireLeftSecondsVec.WithLabelValues("left").Set(0)
+		metrics.GetMetrics().ExpireDelaySecondsVec.WithLabelValues("delay-" + expireHash).Set(0)
 	}
 
 	start = time.Now()
@@ -247,10 +310,10 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 	metrics.GetMetrics().WorkerCommitCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
 	if err != nil {
 		txn.Rollback()
-		zap.L().Error("[Expire] commit failed", zap.Error(err))
+		zap.L().Error(expireLogFlag+" commit failed", zap.Error(err))
 	}
 
-	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] expired end"); logEnv != nil {
+	if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" expired end"); logEnv != nil {
 		logEnv.Write(zap.Int("expired_num", batchLimit-limit))
 	}
 
@@ -258,10 +321,10 @@ func runExpire(db *DB, batchLimit int, lastExpireEndTs int64) int64 {
 	return thisExpireEndTs
 }
 
-func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) error {
+func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte, expireLogFlag string) error {
 	dkey := toTikvDataKey(namespace, dbid, id)
 	if err := gc(txn.t, dkey); err != nil {
-		zap.L().Error("[Expire] gc failed",
+		zap.L().Error(expireLogFlag+" gc failed",
 			zap.ByteString("key", key),
 			zap.ByteString("namepace", namespace),
 			zap.Int64("db_id", int64(dbid)),
@@ -269,17 +332,18 @@ func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) er
 			zap.Error(err))
 		return err
 	}
-	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] gc data key"); logEnv != nil {
+	if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" gc data key"); logEnv != nil {
 		logEnv.Write(zap.ByteString("obj_id", id))
 	}
 	return nil
 }
-func doExpire(txn *Transaction, mkey, id []byte) error {
+
+func doExpire(txn *Transaction, mkey, id []byte, expireLogFlag string, expireAt int64) error {
 	namespace, dbid, key := splitMetaKey(mkey)
 	obj, err := getObject(txn, mkey)
 	// Check for dirty data due to copying or flushdb/flushall
 	if err == ErrKeyNotFound {
-		return gcDataKey(txn, namespace, dbid, key, id)
+		return gcDataKey(txn, namespace, dbid, key, id, expireLogFlag)
 	}
 	if err != nil {
 		return err
@@ -288,23 +352,38 @@ func doExpire(txn *Transaction, mkey, id []byte) error {
 	if len(id) > idLen {
 		id = id[:idLen]
 	}
+
+	//if a not-string structure haven't been deleted and set by user again after expire-time, because the expire go-routine is too slow and delayed.
+	//the id in old expire-keys's value is different with the new one in the new key's value
+	//so comparing id in doExpire() is necessary and also can handle below scenarios(should just delete old id object's data):
+	//a not-string structure was set with unhashed expire-key, and then deleted and set again with hashed expire-key
+	//or a string was set with unhashed expire-key, and set again with hashed expire-key
 	if !bytes.Equal(obj.ID, id) {
-		return gcDataKey(txn, namespace, dbid, key, id)
+		return gcDataKey(txn, namespace, dbid, key, id, expireLogFlag)
+	}
+
+	//compare expire-key's ts with object.expireat(their object id is same in the condition),
+	//if different, means it's a not-string structure and its expire-key was rewriten in hashed prefix, but old ones was writen in unhashed prefix
+	if obj.ExpireAt != expireAt {
+		if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" it should be unhashed expire key un-matching key's expireAt, skip doExpire"); logEnv != nil {
+			logEnv.Write(zap.ByteString("mkey", mkey), zap.Int64("this expire key's ts", expireAt), zap.Int64("key's expireAt", obj.ExpireAt))
+		}
+		return nil
 	}
 
 	// Delete object meta
 	if err := txn.t.Delete(mkey); err != nil {
-		zap.L().Error("[Expire] delete failed",
+		zap.L().Error(expireLogFlag+" delete failed",
 			zap.ByteString("key", key),
 			zap.Error(err))
 		return err
 	}
 
-	if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] delete metakey"); logEnv != nil {
+	if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" delete metakey"); logEnv != nil {
 		logEnv.Write(zap.ByteString("mkey", mkey))
 	}
 	if obj.Type == ObjectString {
 		return nil
 	}
-	return gcDataKey(txn, namespace, dbid, key, id)
+	return gcDataKey(txn, namespace, dbid, key, id, expireLogFlag)
 }

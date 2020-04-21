@@ -49,13 +49,13 @@ type Metrics struct {
 	ConnectionOnlineGaugeVec *prometheus.GaugeVec
 
 	//command
-	ZTInfoCounterVec     *prometheus.CounterVec
-	IsLeaderGaugeVec     *prometheus.GaugeVec
-	ExpireLeftSecondsVec *prometheus.GaugeVec
-	LimiterQpsVec        *prometheus.GaugeVec
-	LimiterRateVec       *prometheus.GaugeVec
-	LRangeSeekHistogram  prometheus.Histogram
-	GCKeysCounterVec     *prometheus.CounterVec
+	ZTInfoCounterVec      *prometheus.CounterVec
+	IsLeaderGaugeVec      *prometheus.GaugeVec
+	ExpireDelaySecondsVec *prometheus.GaugeVec
+	LimiterQpsVec         *prometheus.GaugeVec
+	LimiterRateVec        *prometheus.GaugeVec
+	LRangeSeekHistogram   prometheus.Histogram
+	GCKeysCounterVec      *prometheus.CounterVec
 
 	//expire
 	ExpireKeysTotal *prometheus.CounterVec
@@ -191,13 +191,13 @@ func init() {
 		}, bizLabel)
 	prometheus.MustRegister(gm.ConnectionOnlineGaugeVec)
 
-	gm.ExpireLeftSecondsVec = prometheus.NewGaugeVec(
+	gm.ExpireDelaySecondsVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
-			Name:      "expire_left_seconds",
-			Help:      "The seconds after which from now will do expire",
+			Name:      "expire_delay_seconds",
+			Help:      "how mach the processing expire-ts delay to now",
 		}, expireLabel)
-	prometheus.MustRegister(gm.ExpireLeftSecondsVec)
+	prometheus.MustRegister(gm.ExpireDelaySecondsVec)
 
 	gm.LimiterQpsVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -278,6 +278,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "worker_round_cost",
+			Buckets:   prometheus.ExponentialBuckets(0.02, 2, 8),
 			Help:      "the cost of a round expire/gc worker",
 		}, workerLabel)
 	prometheus.MustRegister(gm.WorkerRoundCostHistogramVec)
@@ -286,6 +287,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "worker_seek_cost",
+			Buckets:   prometheus.ExponentialBuckets(0.002, 2, 12),
 			Help:      "the cost of tikv seek in expire/gc worker",
 		}, workerLabel)
 	prometheus.MustRegister(gm.WorkerSeekCostHistogramVec)
@@ -294,6 +296,7 @@ func init() {
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Name:      "worker_commit_cost",
+			Buckets:   prometheus.ExponentialBuckets(0.005, 2, 6),
 			Help:      "the cost of commit in expire/gc worker",
 		}, workerLabel)
 	prometheus.MustRegister(gm.WorkerCommitCostHistogramVec)

@@ -20,16 +20,18 @@ func init() {
 		"unwatch": Desc{Proc: Unwatch, Cons: Constraint{1, flags("sF"), 0, 0, 0}},
 
 		// lists
-		"lindex":  Desc{Proc: AutoCommit(LIndex), Txn: LIndex, Cons: Constraint{3, flags("r"), 1, 1, 1}},
-		"linsert": Desc{Proc: AutoCommit(LInsert), Txn: LInsert, Cons: Constraint{5, flags("wm"), 1, 1, 1}},
-		"llen":    Desc{Proc: AutoCommit(LLen), Txn: LLen, Cons: Constraint{2, flags("rF"), 1, 1, 1}},
-		"lpop":    Desc{Proc: AutoCommit(LPop), Txn: LPop, Cons: Constraint{2, flags("wF"), 1, 1, 1}},
-		"lpush":   Desc{Proc: AutoCommit(LPush), Txn: LPush, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
-		"lpushx":  Desc{Proc: AutoCommit(LPushx), Txn: LPushx, Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
-		"lrange":  Desc{Proc: AutoCommit(LRange), Txn: LRange, Cons: Constraint{4, flags("r"), 1, 1, 1}},
-		"lset":    Desc{Proc: AutoCommit(LSet), Txn: LSet, Cons: Constraint{4, flags("wm"), 1, 1, 1}},
-		"rpush":   Desc{Proc: AutoCommit(RPush), Txn: RPush, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
-		"rpushx":  Desc{Proc: AutoCommit(RPushx), Txn: RPushx, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"lindex":    Desc{Proc: AutoCommit(LIndex), Txn: LIndex, Cons: Constraint{3, flags("r"), 1, 1, 1}},
+		"linsert":   Desc{Proc: AutoCommit(LInsert), Txn: LInsert, Cons: Constraint{5, flags("wm"), 1, 1, 1}},
+		"llen":      Desc{Proc: AutoCommit(LLen), Txn: LLen, Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"lpop":      Desc{Proc: AutoCommit(LPop), Txn: LPop, Cons: Constraint{2, flags("wF"), 1, 1, 1}},
+		"lpush":     Desc{Proc: AutoCommit(LPush), Txn: LPush, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"lpushx":    Desc{Proc: AutoCommit(LPushx), Txn: LPushx, Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
+		"lrange":    Desc{Proc: AutoCommit(LRange), Txn: LRange, Cons: Constraint{4, flags("r"), 1, 1, 1}},
+		"lset":      Desc{Proc: AutoCommit(LSet), Txn: LSet, Cons: Constraint{4, flags("wm"), 1, 1, 1}},
+		"rpop":      Desc{Proc: AutoCommit(RPop), Txn: RPop, Cons: Constraint{2, flags("wF"), 1, 1, 1}},
+		"rpoplpush": Desc{Proc: AutoCommit(RPopLPush), Txn: RPopLPush, Cons: Constraint{3, flags("wF"), 1, 2, 1}},
+		"rpush":     Desc{Proc: AutoCommit(RPush), Txn: RPush, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
+		"rpushx":    Desc{Proc: AutoCommit(RPushx), Txn: RPushx, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
 
 		// strings
 		"get":         Desc{Proc: AutoCommit(Get), Txn: Get, Cons: Constraint{2, flags("rF"), 1, 1, 1}},

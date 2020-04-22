@@ -14,7 +14,7 @@ A distributed implementation of __Redis compatible layer__  based on [TiKV](http
 * Full distributed transaction with strong consistency
 * Multi-tenancy support
 * No painful scale out
-* High availability 
+* High availability
 
 Thanks [TiKV](https://github.com/tikv/tikv/) for supporting the core features. The project is developed and open sourced by the Beijing Infrastructure Team at [Meitu](https://www.meitu.com/) and has been donated to [DistributedIO](https://github.com/distributedio) org.
 
@@ -55,7 +55,7 @@ To setup TiKV and PD, please follow the official [instructions](https://pingcap.
 ```
 go get github.com/distributedio/titan
 cd $GOPATH/src/github.com/distributedio/titan
-make 
+make
 ```
 
 * Edit the configration file
@@ -116,3 +116,6 @@ For more info, please vist here [Titan Benchmarks](docs/benchmark/benchmark.md)
 ## Roadmap
 
 View our [Roadmap](https://github.com/distributedio/titan/projects)
+
+## Release Note
+* 20.4.21: add support for rpop and rpoplpush

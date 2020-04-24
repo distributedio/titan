@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	expireKeyPrefix = []byte("$sys:0:at:")
-	sysExpireLeader = []byte("$sys:0:EXL:EXLeader")
+	expireKeyPrefix     = []byte("$sys:0:at:")
+	hashExpireKeyPrefix = expireKeyPrefix[:len(expireKeyPrefix)-1]
+	sysExpireLeader     = []byte("$sys:0:EXL:EXLeader")
 
 	// $sys:0:at:{ts}:{metaKey}
 	expireTimestampOffset = len(expireKeyPrefix)
@@ -67,7 +68,7 @@ func expireKey(key []byte, ts int64) []byte {
 	hashnum := crc32.ChecksumIEEE(key)
 	hashPrefix := fmt.Sprintf("%04d", hashnum%EXPIRE_HASH_NUM)
 	var buf []byte
-	buf = append(buf, expireKeyPrefix...)
+	buf = append(buf, hashExpireKeyPrefix...)
 	buf = append(buf, []byte(hashPrefix)...)
 	buf = append(buf, ':')
 	buf = append(buf, EncodeInt64(ts)...)
@@ -196,15 +197,16 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 	curExpireTimestampOffset := expireTimestampOffset
 	curExpireMetakeyOffset := expireMetakeyOffset
 	var curExpireKeyPrefix []byte //expireKeyPrefix of current go routine
-	curExpireKeyPrefix = append(curExpireKeyPrefix, expireKeyPrefix...)
 	var expireLogFlag string
 	if expireHash != "" {
+		curExpireKeyPrefix = append(curExpireKeyPrefix, hashExpireKeyPrefix...)
 		curExpireKeyPrefix = append(curExpireKeyPrefix, expireHash...)
 		curExpireKeyPrefix = append(curExpireKeyPrefix, ':')
-		curExpireTimestampOffset += len(expireHash) + len(":")
-		curExpireMetakeyOffset += len(expireHash) + len(":")
+		curExpireTimestampOffset += len(expireHash)
+		curExpireMetakeyOffset += len(expireHash)
 		expireLogFlag = fmt.Sprintf("[Expire-%s]", expireHash)
 	} else {
+		curExpireKeyPrefix = append(curExpireKeyPrefix, expireKeyPrefix...)
 		expireLogFlag = "[Expire]"
 	}
 

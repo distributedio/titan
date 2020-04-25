@@ -78,7 +78,7 @@ func NewLList(txn *Transaction, key []byte) (List, error) {
 // Marshal encodes meta data into byte slice
 func (l *LListMeta) Marshal() []byte {
 	b := EncodeObject(&l.Object)
-	meta := make([]byte, 32)
+	meta := make([]byte, 24)
 	binary.BigEndian.PutUint64(meta[0:8], uint64(l.Len))
 	binary.BigEndian.PutUint64(meta[8:16], math.Float64bits(l.Lindex))
 	binary.BigEndian.PutUint64(meta[16:24], math.Float64bits(l.Rindex))

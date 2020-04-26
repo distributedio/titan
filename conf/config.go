@@ -66,10 +66,11 @@ type GC struct {
 
 // Expire config is the config of Titan expire work
 type Expire struct {
-	Disable        bool          `cfg:"disable; false; boolean; false is used to disable expire"`
-	Interval       time.Duration `cfg:"interval;1s;;expire work tick interval"`
-	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
-	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
+	Disable          bool          `cfg:"disable; false; boolean; false is used to disable expire"`
+	Interval         time.Duration `cfg:"interval;1s;;expire work tick interval"`
+	LeaderLifeTime   time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
+	BatchLimit       int           `cfg:"batch-limit;10;numeric;hashed expire-key count limitation per-transection"`
+	UnhashBatchLimit int           `cfg:"unhash-batch-limit;256;numeric;unhashed expire-key count limitation per-transection"`
 }
 
 // ZT config is the config of zlist

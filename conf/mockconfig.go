@@ -14,10 +14,11 @@ func MockConf() *Titan {
 				BatchLimit:     256,
 			},
 			Expire: Expire{
-				Disable:        false,
-				Interval:       time.Second,
-				LeaderLifeTime: 3 * time.Minute,
-				BatchLimit:     256,
+				Disable:          false,
+				Interval:         time.Second,
+				LeaderLifeTime:   3 * time.Minute,
+				BatchLimit:       10,
+				UnhashBatchLimit: 256,
 			},
 			ZT: ZT{
 				Disable:    false,

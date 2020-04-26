@@ -129,9 +129,15 @@ pd-addrs = "mocktikv://"
 
 #type:        int
 #rules:       numeric
-#description: key count limitation per-transection
+#description: hashed expire-key count limitation per-transection
+#default:     10
+#batch-limit = 10
+
+#type:        int
+#rules:       numeric
+#description: unhashed expire-key count limitation per-transection
 #default:     256
-#batch-limit = 256
+#unhash-batch-limit = 256
 
 
 [tikv.zt]

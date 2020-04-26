@@ -25,8 +25,9 @@ var (
 )
 
 const (
-	expire_worker   = "expire"
-	EXPIRE_HASH_NUM = 256
+	expire_worker        = "expire"
+	expire_unhash_worker = "expire-unhash"
+	EXPIRE_HASH_NUM      = 256
 )
 
 type LeaderStatus struct {
@@ -159,8 +160,14 @@ func startExpire(db *DB, conf *conf.Expire, ls *LeaderStatus, expireHash string)
 		}
 
 		start := time.Now()
-		lastExpireEndTs = runExpire(db, conf.BatchLimit, expireHash, lastExpireEndTs)
-		metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+		if expireHash != "" {
+			lastExpireEndTs = runExpire(db, conf.BatchLimit, expireHash, lastExpireEndTs)
+			metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+		} else {
+			lastExpireEndTs = runExpire(db, conf.UnhashBatchLimit, expireHash, lastExpireEndTs)
+			metrics.GetMetrics().WorkerRoundCostHistogramVec.WithLabelValues(expire_unhash_worker).Observe(time.Since(start).Seconds())
+		}
+
 	}
 }
 
@@ -198,6 +205,7 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 	curExpireMetakeyOffset := expireMetakeyOffset
 	var curExpireKeyPrefix []byte //expireKeyPrefix of current go routine
 	var expireLogFlag string
+	var metricsLabel string
 	if expireHash != "" {
 		curExpireKeyPrefix = append(curExpireKeyPrefix, hashExpireKeyPrefix...)
 		curExpireKeyPrefix = append(curExpireKeyPrefix, expireHash...)
@@ -205,9 +213,11 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 		curExpireTimestampOffset += len(expireHash)
 		curExpireMetakeyOffset += len(expireHash)
 		expireLogFlag = fmt.Sprintf("[Expire-%s]", expireHash)
+		metricsLabel = expire_worker
 	} else {
 		curExpireKeyPrefix = append(curExpireKeyPrefix, expireKeyPrefix...)
 		expireLogFlag = "[Expire]"
+		metricsLabel = expire_unhash_worker
 	}
 
 	txn, err := db.Begin()
@@ -235,7 +245,7 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 
 	start := time.Now()
 	iter, err := txn.t.Iter(startPrefix, endPrefix)
-	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+	metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(metricsLabel).Observe(time.Since(start).Seconds())
 	if logEnv := zap.L().Check(zap.DebugLevel, expireLogFlag+" seek expire keys"); logEnv != nil {
 		logEnv.Write(zap.Int64("[startTs", lastExpireEndTs), zap.Int64("endTs)", now+1))
 	}
@@ -280,7 +290,7 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 		err := iter.Next()
 		cost := time.Since(start)
 		if cost >= time.Millisecond {
-			metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(expire_worker).Observe(cost.Seconds())
+			metrics.GetMetrics().WorkerSeekCostHistogramVec.WithLabelValues(metricsLabel).Observe(cost.Seconds())
 		}
 		if err != nil {
 			zap.L().Error(expireLogFlag+" next failed",
@@ -309,7 +319,7 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 
 	start = time.Now()
 	err = txn.Commit(context.Background())
-	metrics.GetMetrics().WorkerCommitCostHistogramVec.WithLabelValues(expire_worker).Observe(time.Since(start).Seconds())
+	metrics.GetMetrics().WorkerCommitCostHistogramVec.WithLabelValues(metricsLabel).Observe(time.Since(start).Seconds())
 	if err != nil {
 		txn.Rollback()
 		zap.L().Error(expireLogFlag+" commit failed", zap.Error(err))
@@ -319,7 +329,11 @@ func runExpire(db *DB, batchLimit int, expireHash string, lastExpireEndTs int64)
 		logEnv.Write(zap.Int("expired_num", batchLimit-limit))
 	}
 
-	metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
+	if expireHash != "" {
+		metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired").Add(float64(batchLimit - limit))
+	} else {
+		metrics.GetMetrics().ExpireKeysTotal.WithLabelValues("expired-unhash").Add(float64(batchLimit - limit))
+	}
 	return thisExpireEndTs
 }
 

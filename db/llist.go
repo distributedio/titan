@@ -268,7 +268,7 @@ func (l *LList) RPop() ([]byte, error) {
 		return nil, ErrKeyNotFound
 	}
 
-	encode, err := EncodeFloat64(l.LListMeta.Rindex)
+	encode, err := EncodeFloat64(l.LListMeta.Rindex + 1)
 	if err != nil {
 		return nil, err
 	}

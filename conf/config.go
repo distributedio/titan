@@ -23,12 +23,13 @@ type Server struct {
 
 // TiKV config is the config of tikv sdk
 type TiKV struct {
-	PdAddrs string     `cfg:"pd-addrs; mocktikv://; ;pd address in tidb"`
-	GC      GC         `cfg:"gc"`
-	Expire  Expire     `cfg:"expire"`
-	ZT      ZT         `cfg:"zt"`
-	TiKVGC  TiKVGC     `cfg:"tikv-gc"`
-	Logger  TiKVLogger `cfg:"logger"`
+	PdAddrs   string     `cfg:"pd-addrs; mocktikv://; ;pd address in tidb"`
+	EtcdAddrs string     `cfg:"etcd-addrs; mock://; ;etcd address"`
+	GC        GC         `cfg:"gc"`
+	Expire    Expire     `cfg:"expire"`
+	ZT        ZT         `cfg:"zt"`
+	TiKVGC    TiKVGC     `cfg:"tikv-gc"`
+	Logger    TiKVLogger `cfg:"logger"`
 }
 
 // TiKVGC config is the config of implement tikv sdk gcwork

@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/distributedio/titan/db/store"
 	"github.com/distributedio/titan/metrics"
 	"github.com/pingcap/tidb/kv"
+	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -152,24 +154,16 @@ func doGC(db *DB, limit int) error {
 // StartGC start gc
 //1.获取leader许可
 //2.leader 执行清理任务
-func StartGC(db *DB, conf *conf.GC) {
+func StartGC(db *DB, cli *clientv3.Client, conf *conf.GC) {
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
+	e := etcdutil.RegisterElect(context.Background(), cli, sysGCLeader, id, conf.LeaderLifeTime)
 	for range ticker.C {
 		if conf.Disable {
 			continue
 		}
-		isLeader, err := isLeader(db, sysGCLeader, id, conf.LeaderLifeTime)
-		if err != nil {
-			zap.L().Error("[GC] check GC leader failed",
-				zap.ByteString("leader", sysGCLeader),
-				zap.ByteString("uuid", id),
-				zap.Duration("leader-life-time", conf.LeaderLifeTime),
-				zap.Error(err))
-			continue
-		}
-		if !isLeader {
+		if !isLeader(e) {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[GC]  current is not gc leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("leader", sysGCLeader),
 					zap.ByteString("uuid", id),

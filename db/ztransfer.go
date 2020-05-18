@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/distributedio/titan/metrics"
 	"github.com/pingcap/tidb/kv"
+	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -200,29 +202,24 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 }
 
 // StartZT start ZT fill in the queue(channel), and start the worker to consume.
-func StartZT(db *DB, conf *conf.ZT) {
+func StartZT(db *DB, cli *clientv3.Client, conf *conf.ZT) {
 	ztQueue = make(chan []byte, conf.QueueDepth)
 	for i := 0; i < conf.Workers; i++ {
 		go ztWorker(db, conf.BatchCount, conf.Interval)
 	}
 
 	// check leader and fill the channel
+	var err error
 	prefix := toZTKey(nil)
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
+	e := etcdutil.RegisterElect(context.Background(), cli, sysZTLeader, id, sysZTLeaderFlushInterval)
 	for range ticker.C {
 		if conf.Disable {
 			continue
 		}
-		isLeader, err := isLeader(db, sysZTLeader, id, sysZTLeaderFlushInterval)
-		if err != nil {
-			zap.L().Error("[ZT] check ZT leader failed",
-				zap.Int64("dbid", int64(db.ID)),
-				zap.Error(err))
-			continue
-		}
-		if !isLeader {
+		if !isLeader(e) {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] not ZT leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("leader", sysZTLeader),
 					zap.ByteString("uuid", id),

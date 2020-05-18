@@ -6,7 +6,8 @@ import "time"
 func MockConf() *Titan {
 	return &Titan{
 		TiKV: TiKV{
-			PdAddrs: "mocktikv://",
+			PdAddrs:   "mocktikv://",
+			EtcdAddrs: "mock://",
 			GC: GC{
 				Disable:        false,
 				Interval:       time.Second,

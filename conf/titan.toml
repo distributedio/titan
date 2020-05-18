@@ -42,6 +42,9 @@ ssl-key-file = ""
 #type: string, description: pd address in tidb, default: mocktikv://
 #pd-addrs = "mocktikv://"
 
+#type: string, description: etcd address, default: mock://
+#etcd-addrs = "mock://"
+
 
 [tikv.gc]
 

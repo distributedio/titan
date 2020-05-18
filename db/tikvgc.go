@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
+	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/store/tikv/gcworker"
 	"github.com/pingcap/tidb/store/tikv/oracle"
+	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -21,21 +23,17 @@ const (
 )
 
 // StartTiKVGC start tikv gcwork
-func StartTiKVGC(db *DB, tikvCfg *conf.TiKVGC) {
+func StartTiKVGC(db *DB, cli *clientv3.Client, tikvCfg *conf.TiKVGC) {
 	ticker := time.NewTicker(tikvCfg.Interval)
 	defer ticker.Stop()
 	uuid := UUID()
 	ctx := context.Background()
+	e := etcdutil.RegisterElect(ctx, cli, sysTiKVGCLeader, uuid, tikvCfg.LeaderLifeTime)
 	for range ticker.C {
 		if tikvCfg.Disable {
 			continue
 		}
-		isLeader, err := isLeader(db, sysTiKVGCLeader, uuid, tikvCfg.LeaderLifeTime)
-		if err != nil {
-			zap.L().Error("[TiKVGC] check TiKVGC leader failed", zap.Error(err))
-			continue
-		}
-		if !isLeader {
+		if !isLeader(e) {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC]  not TiKVGC leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("leader", sysTiKVGCLeader),
 					zap.ByteString("uuid", uuid),

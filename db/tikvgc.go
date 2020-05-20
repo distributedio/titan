@@ -28,7 +28,7 @@ func StartTiKVGC(db *DB, cli *clientv3.Client, tikvCfg *conf.TiKVGC) {
 	defer ticker.Stop()
 	uuid := UUID()
 	ctx := context.Background()
-	e := etcdutil.RegisterElect(ctx, cli, sysTiKVGCLeader, uuid, tikvCfg.LeaderLifeTime)
+	e := etcdutil.RegisterElect(ctx, cli, sysTiKVGCLeader, uuid, tikvCfg.LeaderTTL)
 	for range ticker.C {
 		if tikvCfg.Disable {
 			continue
@@ -37,7 +37,7 @@ func StartTiKVGC(db *DB, cli *clientv3.Client, tikvCfg *conf.TiKVGC) {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC]  not TiKVGC leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("leader", sysTiKVGCLeader),
 					zap.ByteString("uuid", uuid),
-					zap.Duration("leader-life-time", tikvCfg.LeaderLifeTime),
+					zap.Int("leader-ttl", tikvCfg.LeaderTTL),
 					zap.Duration("safe-point-life-time", tikvCfg.SafePointLifeTime),
 					zap.Int("concurrency", tikvCfg.Concurrency))
 			}

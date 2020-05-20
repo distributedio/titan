@@ -102,7 +102,7 @@ func StartExpire(db *DB, cli *clientv3.Client, conf *conf.Expire) {
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
-	e := etcdutil.RegisterElect(context.Background(), cli, sysExpireLeader, id, conf.LeaderLifeTime)
+	e := etcdutil.RegisterElect(context.Background(), cli, sysExpireLeader, id, conf.LeaderTTL)
 	for range ticker.C {
 		if conf.Disable {
 			continue
@@ -111,7 +111,7 @@ func StartExpire(db *DB, cli *clientv3.Client, conf *conf.Expire) {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not expire leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("leader", sysExpireLeader),
 					zap.ByteString("uuid", id),
-					zap.Duration("leader-life-time", conf.LeaderLifeTime))
+					zap.Int("leader-ttl", conf.LeaderTTL))
 			}
 			continue
 		}

@@ -158,7 +158,7 @@ func StartGC(db *DB, cli *clientv3.Client, conf *conf.GC) {
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
 	id := UUID()
-	e := etcdutil.RegisterElect(context.Background(), cli, sysGCLeader, id, conf.LeaderLifeTime)
+	e := etcdutil.RegisterElect(context.Background(), cli, sysGCLeader, id, conf.LeaderTTL)
 	for range ticker.C {
 		if conf.Disable {
 			continue
@@ -167,7 +167,7 @@ func StartGC(db *DB, cli *clientv3.Client, conf *conf.GC) {
 			if logEnv := zap.L().Check(zap.DebugLevel, "[GC]  current is not gc leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("leader", sysGCLeader),
 					zap.ByteString("uuid", id),
-					zap.Duration("leader-life-time", conf.LeaderLifeTime))
+					zap.Int("leader-ttl", conf.LeaderTTL))
 			}
 			continue
 		}
@@ -175,7 +175,7 @@ func StartGC(db *DB, cli *clientv3.Client, conf *conf.GC) {
 			zap.L().Error("[GC] do GC failed",
 				zap.ByteString("leader", sysGCLeader),
 				zap.ByteString("uuid", id),
-				zap.Duration("leader-life-time", conf.LeaderLifeTime),
+				zap.Int("leader-ttl", conf.LeaderTTL),
 				zap.Error(err))
 			continue
 		}

@@ -116,7 +116,12 @@ func Open(conf *conf.TiKV) (*RedisStore, error) {
 	}
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
-	etcdClient, err := etcdutil.NewClient(conf.EtcdAddrs)
+
+	etcdAddrs := conf.EtcdAddrs
+	if len(etcdAddrs) == 0 {
+		etcdAddrs = etcdutil.PdAddrsToEtcd(conf.PdAddrs)
+	}
+	etcdClient, err := etcdutil.NewClient(etcdAddrs)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +293,7 @@ func isLeader(e *etcdutil.Elect) bool {
 		label = "TGC"
 
 	}
-	if e.CheckLeader() {
+	if e.IsLeader() {
 		metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(1)
 		return true
 	}

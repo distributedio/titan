@@ -3,7 +3,6 @@ package etcdutil
 import (
 	"context"
 	"sync"
-	"time"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
@@ -11,7 +10,7 @@ import (
 )
 
 type Elect struct {
-	rw     *sync.RWMutex
+	rw     sync.RWMutex
 	leader bool
 	c      *clientv3.Client
 	ctx    context.Context
@@ -20,13 +19,13 @@ type Elect struct {
 	ttl    int
 }
 
-func RegisterElect(ctx context.Context, cli *clientv3.Client, key, val []byte, ttl time.Duration) *Elect {
+func RegisterElect(ctx context.Context, cli *clientv3.Client, key, val []byte, ttl int) *Elect {
 	e := &Elect{
 		c:   cli,
 		ctx: ctx,
 		key: key,
 		val: val,
-		ttl: int(ttl / time.Second),
+		ttl: ttl,
 	}
 	go e.Campaign()
 	return e
@@ -39,16 +38,24 @@ func (e *Elect) Campaign() {
 			zap.L().Error("elect create session err", zap.Error(err))
 			continue
 		}
-		elec := concurrency.NewElection(s, string(e.key))
+		key := append(etcdPrefix, e.key...)
+		elec := concurrency.NewElection(s, string(key))
 
 		if err = elec.Campaign(e.ctx, string(e.val)); err != nil {
 			zap.L().Error("elect campaign err", zap.Error(err))
 			continue
 		}
+		if logEnv := zap.L().Check(zap.DebugLevel, "Elect leader success"); logEnv != nil {
+			logEnv.Write(zap.ByteString("key", e.key), zap.Int("ttl", e.ttl))
+		}
+
 		e.setLeader(true)
 		select {
 		case <-s.Done():
 			e.setLeader(false)
+			if logEnv := zap.L().Check(zap.DebugLevel, "Elect session done"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", e.key), zap.Int("ttl", e.ttl))
+			}
 		}
 	}
 }
@@ -59,7 +66,7 @@ func (e *Elect) setLeader(leader bool) {
 	e.leader = leader
 }
 
-func (e *Elect) CheckLeader() bool {
+func (e *Elect) IsLeader() bool {
 	e.rw.RLock()
 	defer e.rw.RUnlock()
 	return e.leader

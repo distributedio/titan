@@ -15,7 +15,7 @@ import (
 var (
 	sysZTLeader              = []byte("$sys:0:ZTL:ZTLeader")
 	sysZTKeyPrefixLength     = len(toZTKey([]byte{}))
-	sysZTLeaderFlushInterval = 10 * time.Second
+	sysZTLeaderFlushInterval = 10
 
 	ztQueue chan []byte
 )

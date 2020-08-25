@@ -62,15 +62,21 @@ func Integer(w io.Writer, v int64) OnCommit {
 func BytesArray(w io.Writer, a [][]byte) OnCommit {
 	return func() {
 		start := time.Now()
-		resp.ReplyArray(w, len(a))
+		if _, err := resp.ReplyArray(w, len(a)); err != nil {
+			return
+		}
 		zap.L().Debug("reply array size", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 		start = time.Now()
 		for i := range a {
 			if a[i] == nil {
-				resp.ReplyNullBulkString(w)
+				if err := resp.ReplyNullBulkString(w); err != nil {
+					return
+				}
 				continue
 			}
-			resp.ReplyBulkString(w, string(a[i]))
+			if err := resp.ReplyBulkString(w, string(a[i])); err != nil {
+				return
+			}
 			if i%10 == 9 {
 				zap.L().Debug("reply 10 bulk string", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 				start = time.Now()

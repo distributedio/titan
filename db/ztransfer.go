@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
-	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/distributedio/titan/metrics"
 	"github.com/pingcap/tidb/kv"
-	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -202,10 +200,11 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 }
 
 // StartZT start ZT fill in the queue(channel), and start the worker to consume.
-func StartZT(db *DB, cli *clientv3.Client, conf *conf.ZT) {
+func StartZT(task *Task) {
+	conf := task.conf.(conf.ZT)
 	ztQueue = make(chan []byte, conf.QueueDepth)
 	for i := 0; i < conf.Workers; i++ {
-		go ztWorker(db, conf.BatchCount, conf.Interval)
+		go ztWorker(task.db, conf.BatchCount, conf.Interval)
 	}
 
 	// check leader and fill the channel
@@ -213,28 +212,22 @@ func StartZT(db *DB, cli *clientv3.Client, conf *conf.ZT) {
 	prefix := toZTKey(nil)
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	id := UUID()
-	e := etcdutil.RegisterElect(context.Background(), cli, sysZTLeader, id, sysZTLeaderFlushInterval)
-	for range ticker.C {
-		if conf.Disable {
-			continue
-		}
-		if !isLeader(e) {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] not ZT leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysZTLeader),
-					zap.ByteString("uuid", id),
-					zap.Int("workers", conf.Workers),
-					zap.Int("batchcount", conf.BatchCount),
-					zap.Int("queue-depth", conf.QueueDepth),
-					zap.Duration("interval", conf.Interval),
-				)
+	for {
+		select {
+		case <-task.Done():
+			if logEnv := zap.L().Check(zap.DebugLevel, "[ZT] current is not ztransfer leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", task.key),
+					zap.ByteString("uuid", task.id),
+					zap.String("lable", task.lable))
 			}
-			continue
+
+			break
+		case <-ticker.C:
 		}
 
-		if prefix, err = runZT(db, prefix, ticker.C); err != nil {
+		if prefix, err = runZT(task.db, prefix, ticker.C); err != nil {
 			zap.L().Error("[ZT] error in run ZT",
-				zap.Int64("dbid", int64(db.ID)),
+				zap.Int64("dbid", int64(task.db.ID)),
 				zap.ByteString("prefix", prefix),
 				zap.Error(err))
 			continue

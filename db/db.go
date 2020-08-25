@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,9 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/distributedio/titan/conf"
-	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/distributedio/titan/db/store"
-	"github.com/distributedio/titan/metrics"
 )
 
 var (
@@ -117,18 +114,9 @@ func Open(conf *conf.TiKV) (*RedisStore, error) {
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
 
-	etcdAddrs := conf.EtcdAddrs
-	if len(etcdAddrs) == 0 {
-		etcdAddrs = etcdutil.PdAddrsToEtcd(conf.PdAddrs)
-	}
-	etcdClient, err := etcdutil.NewClient(etcdAddrs)
-	if err != nil {
+	if err := RegisterTask(sysdb, conf); err != nil {
 		return nil, err
 	}
-	go StartGC(sysdb, etcdClient, &conf.GC)
-	go StartExpire(sysdb, etcdClient, &conf.Expire)
-	go StartZT(sysdb, etcdClient, &conf.ZT)
-	go StartTiKVGC(sysdb, etcdClient, &conf.TiKVGC)
 	return rds, nil
 }
 
@@ -277,26 +265,4 @@ func dbPrefix(ns string, id []byte) []byte {
 		prefix = append(prefix, ':')
 	}
 	return prefix
-}
-
-func isLeader(e *etcdutil.Elect) bool {
-	label := "default"
-	leader := e.Key()
-	switch {
-	case bytes.Equal(leader, sysZTLeader):
-		label = "ZT"
-	case bytes.Equal(leader, sysGCLeader):
-		label = "GC"
-	case bytes.Equal(leader, sysExpireLeader):
-		label = "EX"
-	case bytes.Equal(leader, sysTiKVGCLeader):
-		label = "TGC"
-
-	}
-	if e.IsLeader() {
-		metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(1)
-		return true
-	}
-	metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(0)
-	return false
 }

@@ -5,11 +5,9 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
-	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/store/tikv/gcworker"
 	"github.com/pingcap/tidb/store/tikv/oracle"
-	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -23,27 +21,23 @@ const (
 )
 
 // StartTiKVGC start tikv gcwork
-func StartTiKVGC(db *DB, cli *clientv3.Client, tikvCfg *conf.TiKVGC) {
-	ticker := time.NewTicker(tikvCfg.Interval)
+func StartTiKVGC(task *Task) {
+	conf := task.conf.(conf.TiKVGC)
+	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	uuid := UUID()
 	ctx := context.Background()
-	e := etcdutil.RegisterElect(ctx, cli, sysTiKVGCLeader, uuid, tikvCfg.LeaderTTL)
-	for range ticker.C {
-		if tikvCfg.Disable {
-			continue
-		}
-		if !isLeader(e) {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC]  not TiKVGC leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysTiKVGCLeader),
-					zap.ByteString("uuid", uuid),
-					zap.Int("leader-ttl", tikvCfg.LeaderTTL),
-					zap.Duration("safe-point-life-time", tikvCfg.SafePointLifeTime),
-					zap.Int("concurrency", tikvCfg.Concurrency))
+	for {
+		select {
+		case <-task.Done():
+			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC] current is not tikvgc leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", task.key),
+					zap.ByteString("uuid", task.id),
+					zap.String("lable", task.lable))
 			}
-			continue
+			break
+		case <-ticker.C:
 		}
-		if err := runTiKVGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {
+		if err := runTiKVGC(ctx, task.db, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {
 			zap.L().Error("[TiKVGC] do TiKVGC failed", zap.Error(err))
 			continue
 		}

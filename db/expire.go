@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
-	"github.com/distributedio/titan/db/etcdutil"
 	"github.com/distributedio/titan/db/store"
 	"github.com/distributedio/titan/metrics"
 	"github.com/pingcap/tidb/kv"
-	"go.etcd.io/etcd/clientv3"
 	"go.uber.org/zap"
 )
 
@@ -98,24 +96,22 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 }
 
 // StartExpire get leader from db
-func StartExpire(db *DB, cli *clientv3.Client, conf *conf.Expire) {
+func StartExpire(task *Task) {
+	conf := task.conf.(conf.Expire)
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	id := UUID()
-	e := etcdutil.RegisterElect(context.Background(), cli, sysExpireLeader, id, conf.LeaderTTL)
-	for range ticker.C {
-		if conf.Disable {
-			continue
-		}
-		if !isLeader(e) {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not expire leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysExpireLeader),
-					zap.ByteString("uuid", id),
-					zap.Int("leader-ttl", conf.LeaderTTL))
+	for {
+		select {
+		case <-task.Done():
+			if logEnv := zap.L().Check(zap.DebugLevel, "[EX] current is not expire leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", task.key),
+					zap.ByteString("uuid", task.id),
+					zap.String("lable", task.lable))
 			}
-			continue
+			break
+		case <-ticker.C:
 		}
-		runExpire(db, conf.BatchLimit)
+		runExpire(task.db, conf.BatchLimit)
 	}
 }
 

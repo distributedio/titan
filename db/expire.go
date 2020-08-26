@@ -96,28 +96,22 @@ func unExpireAt(txn store.Transaction, mkey []byte, expireAt int64) error {
 }
 
 // StartExpire get leader from db
-func StartExpire(db *DB, conf *conf.Expire) {
+func StartExpire(task *Task) {
+	conf := task.conf.(conf.Expire)
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	id := UUID()
-	for range ticker.C {
-		if conf.Disable {
-			continue
-		}
-		isLeader, err := isLeader(db, sysExpireLeader, id, conf.LeaderLifeTime)
-		if err != nil {
-			zap.L().Error("[Expire] check expire leader failed", zap.Error(err))
-			continue
-		}
-		if !isLeader {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[Expire] not expire leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysExpireLeader),
-					zap.ByteString("uuid", id),
-					zap.Duration("leader-life-time", conf.LeaderLifeTime))
+	for {
+		select {
+		case <-task.Done():
+			if logEnv := zap.L().Check(zap.DebugLevel, "[EX] current is not expire leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", task.key),
+					zap.ByteString("uuid", task.id),
+					zap.String("lable", task.lable))
 			}
-			continue
+			break
+		case <-ticker.C:
 		}
-		runExpire(db, conf.BatchLimit)
+		runExpire(task.db, conf.BatchLimit)
 	}
 }
 

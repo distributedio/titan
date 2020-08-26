@@ -150,38 +150,27 @@ func doGC(db *DB, limit int) error {
 }
 
 // StartGC start gc
-//1.获取leader许可
-//2.leader 执行清理任务
-func StartGC(db *DB, conf *conf.GC) {
+func StartGC(task *Task) {
+	conf := task.conf.(conf.GC)
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	id := UUID()
-	for range ticker.C {
-		if conf.Disable {
-			continue
-		}
-		isLeader, err := isLeader(db, sysGCLeader, id, conf.LeaderLifeTime)
-		if err != nil {
-			zap.L().Error("[GC] check GC leader failed",
-				zap.ByteString("leader", sysGCLeader),
-				zap.ByteString("uuid", id),
-				zap.Duration("leader-life-time", conf.LeaderLifeTime),
-				zap.Error(err))
-			continue
-		}
-		if !isLeader {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[GC]  current is not gc leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysGCLeader),
-					zap.ByteString("uuid", id),
-					zap.Duration("leader-life-time", conf.LeaderLifeTime))
+	for {
+		select {
+		case <-task.Done():
+			if logEnv := zap.L().Check(zap.DebugLevel, "[GC] current is not gc leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", task.key),
+					zap.ByteString("uuid", task.id),
+					zap.String("lable", task.lable))
 			}
-			continue
+			break
+		case <-ticker.C:
 		}
-		if err := doGC(db, conf.BatchLimit); err != nil {
+
+		if err := doGC(task.db, conf.BatchLimit); err != nil {
 			zap.L().Error("[GC] do GC failed",
-				zap.ByteString("leader", sysGCLeader),
-				zap.ByteString("uuid", id),
-				zap.Duration("leader-life-time", conf.LeaderLifeTime),
+				zap.ByteString("leader", task.key),
+				zap.ByteString("uuid", task.id),
+				zap.Int("leader-ttl", conf.LeaderTTL),
 				zap.Error(err))
 			continue
 		}

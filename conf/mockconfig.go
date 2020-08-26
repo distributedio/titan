@@ -8,16 +8,16 @@ func MockConf() *Titan {
 		TiKV: TiKV{
 			PdAddrs: "mocktikv://",
 			GC: GC{
-				Disable:        false,
-				Interval:       time.Second,
-				LeaderLifeTime: 3 * time.Minute,
-				BatchLimit:     256,
+				Disable:    false,
+				Interval:   time.Second,
+				LeaderTTL:  15,
+				BatchLimit: 256,
 			},
 			Expire: Expire{
-				Disable:        false,
-				Interval:       time.Second,
-				LeaderLifeTime: 3 * time.Minute,
-				BatchLimit:     256,
+				Disable:    false,
+				Interval:   time.Second,
+				LeaderTTL:  15,
+				BatchLimit: 256,
 			},
 			ZT: ZT{
 				Disable:    false,
@@ -29,7 +29,7 @@ func MockConf() *Titan {
 			TiKVGC: TiKVGC{
 				Disable:           false,
 				Interval:          20 * time.Minute,
-				LeaderLifeTime:    30 * time.Minute,
+				LeaderTTL:         15,
 				SafePointLifeTime: 10 * time.Minute,
 				Concurrency:       2,
 			},

@@ -42,6 +42,9 @@ ssl-key-file = ""
 #type: string, description: pd address in tidb, default: mocktikv://
 #pd-addrs = "mocktikv://"
 
+#type: []string, description: etcd address default use pd-addrs, default: []
+#etcd-addrs = []
+
 
 [tikv.gc]
 
@@ -51,8 +54,8 @@ ssl-key-file = ""
 #type: time.Duration, description: gc work tick interval, default: 1s
 #interval = "1s"
 
-#type: time.Duration, description: lease flush leader interval, default: 3m
-#leader-life-time = "3m0s"
+#type: int, description: leader ttl seconds, default: 15
+#leader-ttl = 15
 
 #type: int, rules: numeric, description: key count limitation per-transection, default: 256
 #batch-limit = 256
@@ -67,8 +70,8 @@ ssl-key-file = ""
 #type: time.Duration, description: expire work tick interval, default: 1s
 #interval = "1s"
 
-#type: time.Duration, description: lease flush leader interval, default: 3m
-#leader-life-time = "3m0s"
+#type: int, description: leader ttl seconds, default: 15
+#leader-ttl = 15
 
 #type: int, rules: numeric, description: key count limitation per-transection, default: 256
 #batch-limit = 256
@@ -102,8 +105,8 @@ ssl-key-file = ""
 #type: time.Duration, description: gc work tick interval, default: 20m
 #interval = "20m0s"
 
-#type: time.Duration, description: lease flush leader interval, default: 30m
-#leader-life-time = "30m0s"
+#type: int, description: leader ttl seconds, default: 15
+#leader-ttl = 15
 
 #type: time.Duration, description: safe point life time, default: 10m
 #safe-point-life-time = "10m0s"

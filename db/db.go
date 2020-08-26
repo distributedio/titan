@@ -1,19 +1,15 @@
 package db
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/db/store"
-	"github.com/distributedio/titan/metrics"
 )
 
 var (
@@ -117,10 +113,10 @@ func Open(conf *conf.TiKV) (*RedisStore, error) {
 	}
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
-	go StartGC(sysdb, &conf.GC)
-	go StartExpire(sysdb, &conf.Expire)
-	go StartZT(sysdb, &conf.ZT)
-	go StartTiKVGC(sysdb, &conf.TiKVGC)
+
+	if err := RegisterTask(sysdb, conf); err != nil {
+		return nil, err
+	}
 	return rds, nil
 }
 
@@ -269,139 +265,4 @@ func dbPrefix(ns string, id []byte) []byte {
 		prefix = append(prefix, ':')
 	}
 	return prefix
-}
-
-func flushLease(txn store.Transaction, key, id []byte, interval time.Duration) error {
-	databytes := make([]byte, 24)
-	copy(databytes, id)
-	ts := uint64((time.Now().Add(interval).Unix()))
-	binary.BigEndian.PutUint64(databytes[16:], ts)
-
-	if err := txn.Set(key, databytes); err != nil {
-		return err
-	}
-	return nil
-}
-
-func checkLeader(txn store.Transaction, key, id []byte, interval time.Duration) (bool, error) {
-	val, err := txn.Get(key)
-	if err != nil {
-		if !IsErrNotFound(err) {
-			zap.L().Error("query leader message faild",
-				zap.ByteString("key", key),
-				zap.ByteString("id", id),
-				zap.Error(err))
-			return false, err
-		}
-
-		if env := zap.L().Check(zap.DebugLevel, "no leader now, create new lease"); env != nil {
-			env.Write(zap.ByteString("key", key),
-				zap.ByteString("id", id),
-				zap.Duration("interval", interval))
-		}
-
-		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("create lease failed",
-				zap.ByteString("key", key),
-				zap.ByteString("id", id),
-				zap.Duration("interval", interval),
-				zap.Error(err))
-			return false, err
-		}
-
-		return true, nil
-	}
-
-	curID := val[0:16]
-	ts := int64(binary.BigEndian.Uint64(val[16:]))
-
-	if time.Now().Unix() > ts {
-		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("create lease failed",
-				zap.ByteString("key", key),
-				zap.ByteString("id", id),
-				zap.Int64("last_ts", ts),
-				zap.Error(err))
-			return false, err
-		}
-		return true, nil
-	}
-
-	if bytes.Equal(curID, id) {
-		if err := flushLease(txn, key, id, interval); err != nil {
-			zap.L().Error("flush lease failed",
-				zap.ByteString("key", key),
-				zap.ByteString("curid", curID),
-				zap.ByteString("id", id),
-				zap.Error(err))
-			return false, err
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
-func isLeader(db *DB, leader []byte, id []byte, interval time.Duration) (bool, error) {
-	count := 0
-	label := "default"
-	switch {
-	case bytes.Equal(leader, sysZTLeader):
-		label = "ZT"
-	case bytes.Equal(leader, sysGCLeader):
-		label = "GC"
-	case bytes.Equal(leader, sysExpireLeader):
-		label = "EX"
-	case bytes.Equal(leader, sysTiKVGCLeader):
-		label = "TGC"
-
-	}
-
-	for {
-		txn, err := db.Begin()
-		if err != nil {
-			zap.L().Error("transection begin failed",
-				zap.ByteString("leader", leader),
-				zap.Error(err))
-			continue
-		}
-
-		isLeader, err := checkLeader(txn.t, leader, id, interval)
-		mtFunc := func() {
-			if isLeader {
-				metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(1)
-				return
-			}
-			metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(label).Set(0)
-		}
-
-		if err != nil {
-			if err := txn.Rollback(); err != nil {
-				return isLeader, err
-			}
-			if IsRetryableError(err) {
-				count++
-				if count < 3 {
-					continue
-				}
-			}
-			mtFunc()
-			return isLeader, err
-		}
-
-		if err := txn.Commit(context.Background()); err != nil {
-			if err := txn.Rollback(); err != nil {
-				return isLeader, err
-			}
-			if IsRetryableError(err) {
-				count++
-				if count < 3 {
-					continue
-				}
-			}
-			mtFunc()
-			return isLeader, err
-		}
-		mtFunc()
-		return isLeader, err
-	}
 }

@@ -55,7 +55,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
 	github.com/twinj/uuid v1.0.0
-	go.etcd.io/etcd v0.5.0-alpha.5.0.20191230192607-e6980b1f9fc0 // indirect
+	go.etcd.io/etcd v0.5.0-alpha.5.0.20191230192607-e6980b1f9fc0
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/automaxprocs v1.2.0 // indirect
 	go.uber.org/goleak v0.10.0 // indirect

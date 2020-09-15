@@ -34,7 +34,7 @@ func StartTiKVGC(task *Task) {
 					zap.ByteString("uuid", task.id),
 					zap.String("lable", task.lable))
 			}
-			break
+			return
 		case <-ticker.C:
 		}
 		if err := runTiKVGC(ctx, task.db, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {

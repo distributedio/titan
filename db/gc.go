@@ -162,7 +162,7 @@ func StartGC(task *Task) {
 					zap.ByteString("uuid", task.id),
 					zap.String("lable", task.lable))
 			}
-			break
+			return
 		case <-ticker.C:
 		}
 

@@ -143,6 +143,8 @@ func (db *DB) Begin() (*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
+	store.SetOption(txn, store.Enable1PC, true)
+	store.SetOption(txn, store.EnableAsyncCommit, true)
 	return &Transaction{t: txn, db: db, ctx: context.Background()}, nil
 }
 

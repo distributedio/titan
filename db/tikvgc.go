@@ -25,7 +25,6 @@ func StartTiKVGC(task *Task) {
 	conf := task.conf.(conf.TiKVGC)
 	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	ctx := context.Background()
 	for {
 		select {
 		case <-task.Done():
@@ -37,14 +36,14 @@ func StartTiKVGC(task *Task) {
 			return
 		case <-ticker.C:
 		}
-		if err := runTiKVGC(ctx, task.db, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {
+		if err := runTiKVGC(task.db, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {
 			zap.L().Error("[TiKVGC] do TiKVGC failed", zap.Error(err))
 			continue
 		}
 	}
 }
 
-func runTiKVGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
+func runTiKVGC(db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
 	newPoint, err := getNewSafePoint(db, lifeTime)
 	if err != nil {
 		return err
@@ -67,19 +66,20 @@ func runTiKVGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration,
 		zap.L().Info("[TiKVGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
 	}
 
-	if err := saveLastSafePoint(ctx, db, newPoint); err != nil {
+	if err := saveLastSafePoint(db, newPoint); err != nil {
 		zap.L().Error("[TiKVGC] save last safe point err ", zap.Time("current", *newPoint))
 		return err
 	}
 	safePoint := oracle.ComposeTS(oracle.GetPhysical(*newPoint), 0)
-	if err := gcworker.RunGCJob(ctx, db.kv.Storage.(tikv.Storage), safePoint, UUIDString(uuid), concurrency); err != nil {
+	store := db.kv.Storage.(tikv.Storage)
+	if err := gcworker.RunGCJob(context.Background(), store, store.GetRegionCache().PDClient(), safePoint, UUIDString(uuid), concurrency); err != nil {
 		return err
 	}
 	return nil
 
 }
 
-func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error {
+func saveLastSafePoint(db *DB, safePoint *time.Time) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error 
 	if err := txn.t.Set(sysTiKVGCLastSafePoint, []byte(safePoint.Format(tikvGcTimeFormat))); err != nil {
 		return err
 	}
-	if err := txn.t.Commit(ctx); err != nil {
+	if err := txn.t.Commit(txn.ctx); err != nil {
 		if err := txn.Rollback(); err != nil {
 			zap.L().Error("rollback failed", zap.Error(err))
 		}
@@ -97,7 +97,7 @@ func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error 
 }
 
 func getNewSafePoint(db *DB, lifeTime time.Duration) (*time.Time, error) {
-	currentVer, err := db.kv.CurrentVersion()
+	currentVer, err := db.kv.CurrentVersion(oracle.GlobalTxnScope)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func getLastSafePoint(db *DB) (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
-	val, err := txn.t.Get(sysTiKVGCLastSafePoint)
+	val, err := txn.t.Get(txn.ctx, sysTiKVGCLastSafePoint)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil

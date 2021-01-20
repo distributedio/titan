@@ -119,7 +119,7 @@ func Test_runExpire(t *testing.T) {
 			txn = getTxn(t)
 			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
 
-			_, err := txn.t.Get(gcKey)
+			_, err := txn.t.Get(txn.ctx, gcKey)
 			txn.Commit(context.TODO())
 			if tt.want.gckey {
 				assert.NoError(t, err)
@@ -256,7 +256,7 @@ func Test_doExpire(t *testing.T) {
 			txn = getTxn(t)
 			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, tt.args.id))
 
-			_, err = txn.t.Get(gcKey)
+			_, err = txn.t.Get(txn.ctx, gcKey)
 			txn.Commit(context.TODO())
 			if tt.want.gckey {
 				assert.NoError(t, err)

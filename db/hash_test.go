@@ -93,7 +93,7 @@ func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) err
 
 func getHashMeta(t *testing.T, txn *Transaction, key []byte) *HashMeta {
 	mkey := MetaKey(txn.db, key)
-	rawMeta, err := txn.t.Get(mkey)
+	rawMeta, err := txn.t.Get(txn.ctx, mkey)
 	assert.NoError(t, err)
 	meta, err1 := DecodeHashMeta(rawMeta)
 	assert.NoError(t, err1)
@@ -840,6 +840,12 @@ func TestHashHMSet(t *testing.T) {
 			err = hash.HMSet(tt.args.fields, tt.args.values)
 			assert.NoError(t, err)
 			txn.Commit(context.TODO())
+
+			hash, txn, err = getHash(t, []byte("TestHashHMSet"))
+			assert.NoError(t, err)
+			assert.NotNil(t, txn)
+			assert.NotNil(t, hash)
+
 			got, err := hash.HMGet(fields)
 
 			assert.Equal(t, got, tt.want.value)

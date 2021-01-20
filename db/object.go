@@ -146,7 +146,7 @@ func (txn *Transaction) Destory(obj *Object, key []byte) error {
 }
 
 func getObject(txn *Transaction, metaKey []byte) (*Object, error) {
-	meta, err := txn.t.Get(metaKey)
+	meta, err := txn.t.Get(txn.ctx, metaKey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, ErrKeyNotFound

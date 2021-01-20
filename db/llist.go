@@ -455,7 +455,7 @@ func (l *LList) index(n int64) (realindex float64, value []byte, err error) {
 
 	// case1: only 1 object in list
 	if l.Len == 1 {
-		val, err := l.txn.t.Get(append(l.rawDataKeyPrefix, encode...))
+		val, err := l.txn.t.Get(l.txn.ctx, append(l.rawDataKeyPrefix, encode...))
 		if err != nil {
 			return 0, nil, err
 		}
@@ -473,7 +473,7 @@ func (l *LList) index(n int64) (realindex float64, value []byte, err error) {
 			return 0, nil, err
 		}
 
-		val, err := l.txn.t.Get(append(l.rawDataKeyPrefix, encode...))
+		val, err := l.txn.t.Get(l.txn.ctx, append(l.rawDataKeyPrefix, encode...))
 		if err != nil {
 			return 0, nil, err
 		}

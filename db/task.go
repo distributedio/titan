@@ -136,15 +136,15 @@ func RegisterZT() TaskRegister {
 	}
 }
 
-func RegisterTikvGCTask() TaskRegister {
-	return func(db *DB, cli *clientv3.Client, conf *conf.TiKV) (*Task, error) {
-		return NewTask(db, cli, sysTiKVGCLeader, conf.TiKVGC.LeaderTTL, conf.TiKVGC, StartTiKVGC, "TGC")
-	}
-}
-
 func RegisterExpireTask() TaskRegister {
 	return func(db *DB, cli *clientv3.Client, conf *conf.TiKV) (*Task, error) {
 		return NewTask(db, cli, sysExpireLeader, conf.Expire.LeaderTTL, conf.Expire, StartExpire, "EX")
+	}
+}
+
+func RegisterTikvGCTask() TaskRegister {
+	return func(db *DB, cli *clientv3.Client, conf *conf.TiKV) (*Task, error) {
+		return NewTask(db, cli, sysTiKVGCLeader, conf.TiKVGC.LeaderTTL, conf.TiKVGC, StartTiKVGC, "TGC")
 	}
 }
 

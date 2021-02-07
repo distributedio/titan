@@ -20,7 +20,7 @@ var (
 
 // loadZList is read only, so ZList did not call Destroy()
 func loadZList(txn *Transaction, metaKey []byte) (*ZList, error) {
-	val, err := txn.t.Get(metaKey)
+	val, err := txn.t.Get(txn.ctx, metaKey)
 	if err != nil {
 		return nil, err
 	}

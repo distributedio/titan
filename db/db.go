@@ -81,7 +81,7 @@ func toDBID(v []byte) DBID {
 
 // BatchGetValues issues batch requests to get values
 func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
-	kvs, err := store.BatchGetValues(txn.t, keys)
+	kvs, err := store.BatchGetValues(txn.ctx, txn.t, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +132,9 @@ func (rds *RedisStore) Close() error {
 
 // Transaction supplies transaction for data structures
 type Transaction struct {
-	t  store.Transaction
-	db *DB
+	t   store.Transaction
+	db  *DB
+	ctx context.Context
 }
 
 // Begin a transaction
@@ -142,7 +143,9 @@ func (db *DB) Begin() (*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Transaction{t: txn, db: db}, nil
+	store.SetOption(txn, store.Enable1PC, true)
+	store.SetOption(txn, store.EnableAsyncCommit, true)
+	return &Transaction{t: txn, db: db, ctx: context.Background()}, nil
 }
 
 // Prefix returns the prefix of a DB object
@@ -192,7 +195,7 @@ func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
 	for i, key := range keys {
 		tkeys[i] = MetaKey(txn.db, key)
 	}
-	mdata, err := store.BatchGetValues(txn.t, tkeys)
+	mdata, err := store.BatchGetValues(txn.ctx, txn.t, tkeys)
 	if err != nil {
 		return nil, err
 	}

@@ -33,7 +33,7 @@ func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
 	}
 
 	metaKey := MetaKey(txn.db, key)
-	val, err := txn.t.Get(metaKey)
+	val, err := txn.t.Get(txn.ctx, metaKey)
 	if err != nil {
 		if IsErrNotFound(err) { // error NotFound
 			return list(txn, key)

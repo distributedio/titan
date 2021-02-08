@@ -268,14 +268,14 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // Scan incrementally iterates the key space
 func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
-		start       []byte
-		end                = []byte("0")
-		count       uint64 = defaultScanCount
-		pattern     []byte
-		keyType     []byte
-		prefix      []byte
-		userPattern bool
-		err         error
+		start      []byte
+		end               = []byte("0")
+		count      uint64 = defaultScanCount
+		pattern    []byte
+		keyType    []byte
+		prefix     []byte
+		usePattern bool
+		err        error
 	)
 	if strings.Compare(ctx.Args[0], "0") != 0 {
 		start = []byte(ctx.Args[0])
@@ -301,13 +301,13 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 		case "match":
 			pattern = []byte(next)
-			userPattern = !(pattern[0] == '*' && len(pattern) == 1)
+			usePattern = !(pattern[0] == '*' && len(pattern) == 1)
 		case "type":
 			keyType = []byte(next)
 		}
 	}
 
-	if userPattern {
+	if usePattern {
 		prefix = globMatchPrefix(pattern)
 		if start == nil && prefix != nil {
 			start = prefix
@@ -324,7 +324,7 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if prefix != nil && !bytes.HasPrefix(key, prefix) {
 			return false
 		}
-		if userPattern && !globMatch(pattern, key, false) {
+		if usePattern && !globMatch(pattern, key, false) {
 			goto skip
 		}
 		if len(keyType) > 0 && obj.Type.String() != string(keyType) {

@@ -356,7 +356,7 @@ func TestScan(t *testing.T) {
 	val := "val"
 	InitData(t, keys, val)
 
-	ctx := ContextTest("scan", "0", "count", "4", "match", "keys-scan*")
+	ctx := ContextTest("scan", "0", "count", "4", "match", "keys-scan*", "type", "string")
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
 	assert.Equal(t, "*2", lines[0])

@@ -362,6 +362,12 @@ func TestScan(t *testing.T) {
 	assert.Equal(t, "*2", lines[0])
 	assert.Contains(t, lines, "keys-scan4")
 	assert.Equal(t, "keys-sscan5", lines[2])
+
+	AddList(t, "keys-scanlist", "val")
+	ctx = ContextTest("scan", "0", "count", "1", "type", "list")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Contains(t, lines, "keys-scanlist")
 }
 
 func TestObject(t *testing.T) {

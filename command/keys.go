@@ -301,7 +301,7 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 		case "match":
 			pattern = []byte(next)
-			usePattern = !(pattern[0] == '*' && len(pattern) == 1)
+			usePattern = !(len(pattern) == 1 && pattern[0] == '*')
 		case "type":
 			keyType = []byte(next)
 		}
@@ -317,23 +317,21 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	kv := txn.Kv()
 	list := [][]byte{}
 	f := func(key []byte, obj *db.Object) bool {
-		if count <= 0 {
+		switch {
+		case count <= 0:
 			end = key
 			return false
-		}
-		if prefix != nil && !bytes.HasPrefix(key, prefix) {
+		case prefix != nil && !bytes.HasPrefix(key, prefix):
 			return false
+		case usePattern && !globMatch(pattern, key, false):
+			return true
+		case len(keyType) > 0 && obj.Type.String() != string(keyType):
+			return true
+		default:
+			list = append(list, key)
+			count--
+			return true
 		}
-		if usePattern && !globMatch(pattern, key, false) {
-			goto skip
-		}
-		if len(keyType) > 0 && obj.Type.String() != string(keyType) {
-			goto skip
-		}
-		list = append(list, key)
-		count--
-	skip:
-		return true
 	}
 
 	if err := kv.Keys(start, f); err != nil {

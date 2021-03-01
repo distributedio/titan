@@ -75,7 +75,7 @@ func (kv *Kv) Delete(keys [][]byte) (int64, error) {
 		}
 	}
 
-	values, err := store.BatchGetValues(kv.txn.t, metaKeys)
+	values, err := store.BatchGetValues(kv.txn.ctx, kv.txn.t, metaKeys)
 	if err != nil {
 		return count, err
 	}
@@ -102,7 +102,7 @@ func (kv *Kv) ExpireAt(key []byte, at int64) error {
 	mkey := MetaKey(kv.txn.db, key)
 	now := Now()
 
-	meta, err := kv.txn.t.Get(mkey)
+	meta, err := kv.txn.t.Get(kv.txn.ctx, mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return ErrKeyNotFound
@@ -142,7 +142,7 @@ func (kv *Kv) Exists(keys [][]byte) (int64, error) {
 		mkeys[i] = MetaKey(kv.txn.db, key)
 	}
 
-	values, err := store.BatchGetValues(kv.txn.t, mkeys)
+	values, err := store.BatchGetValues(kv.txn.ctx, kv.txn.t, mkeys)
 	if err != nil {
 		return count, err
 	}
@@ -252,7 +252,7 @@ func (kv *Kv) Touch(keys [][]byte) (int64, error) {
 		mkeys[i] = MetaKey(kv.txn.db, key)
 	}
 
-	values, err := store.BatchGetValues(kv.txn.t, mkeys)
+	values, err := store.BatchGetValues(kv.txn.ctx, kv.txn.t, mkeys)
 	if err != nil {
 		return 0, err
 	}
@@ -314,14 +314,11 @@ func unsafeDeleteRange(ctx context.Context, db *DB, startKey, endKey []byte) err
 		zap.L().Error("delete ranges: got an error while trying to get store list from PD:", zap.Error(err))
 		return err
 	}
+	req := tikvrpc.NewRequest(tikvrpc.CmdUnsafeDestroyRange, &kvrpcpb.UnsafeDestroyRangeRequest{
+		StartKey: startKey,
+		EndKey:   endKey,
+	})
 
-	req := &tikvrpc.Request{
-		Type: tikvrpc.CmdUnsafeDestroyRange,
-		UnsafeDestroyRange: &kvrpcpb.UnsafeDestroyRangeRequest{
-			StartKey: startKey,
-			EndKey:   endKey,
-		},
-	}
 	tikvCli := storage.GetTiKVClient()
 
 	var wg sync.WaitGroup

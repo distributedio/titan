@@ -39,7 +39,7 @@ type Hash struct {
 func GetHash(txn *Transaction, key []byte) (*Hash, error) {
 	hash := newHash(txn, key)
 	mkey := MetaKey(txn.db, key)
-	meta, err := txn.t.Get(mkey)
+	meta, err := txn.t.Get(txn.ctx, mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return hash, nil
@@ -145,7 +145,7 @@ func (hash *Hash) HSet(field []byte, value []byte) (int, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 	newField := false
-	_, err := hash.txn.t.Get(ikey)
+	_, err := hash.txn.t.Get(hash.txn.ctx, ikey)
 	if err != nil {
 		if !IsErrNotFound(err) {
 			return 0, err
@@ -174,7 +174,7 @@ func (hash *Hash) HSetNX(field []byte, value []byte) (int, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 
-	_, err := hash.txn.t.Get(ikey)
+	_, err := hash.txn.t.Get(hash.txn.ctx, ikey)
 	if !IsErrNotFound(err) {
 		return 0, err
 	}
@@ -198,7 +198,7 @@ func (hash *Hash) HGet(field []byte) ([]byte, error) {
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	val, err := hash.txn.t.Get(ikey)
+	val, err := hash.txn.t.Get(hash.txn.ctx, ikey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil
@@ -239,7 +239,7 @@ func (hash *Hash) HExists(field []byte) (bool, error) {
 	}
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
-	if _, err := hash.txn.t.Get(ikey); err != nil {
+	if _, err := hash.txn.t.Get(hash.txn.ctx, ikey); err != nil {
 		if IsErrNotFound(err) {
 			return false, nil
 		}
@@ -255,7 +255,7 @@ func (hash *Hash) HIncrBy(field []byte, v int64) (int64, error) {
 	ikey := hashItemKey(dkey, field)
 
 	if hash.Exists() {
-		val, err := hash.txn.t.Get(ikey)
+		val, err := hash.txn.t.Get(hash.txn.ctx, ikey)
 		if err != nil {
 			if !IsErrNotFound(err) {
 				return 0, err
@@ -291,7 +291,7 @@ func (hash *Hash) HIncrByFloat(field []byte, v float64) (float64, error) {
 	dkey := DataKey(hash.txn.db, hash.meta.ID)
 	ikey := hashItemKey(dkey, field)
 	if hash.Exists() {
-		val, err := hash.txn.t.Get(ikey)
+		val, err := hash.txn.t.Get(hash.txn.ctx, ikey)
 		if err != nil {
 			if !IsErrNotFound(err) {
 				return 0, err

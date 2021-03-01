@@ -28,7 +28,7 @@ type Set struct {
 func GetSet(txn *Transaction, key []byte) (*Set, error) {
 	set := newSet(txn, key)
 	mkey := MetaKey(txn.db, key)
-	meta, err := txn.t.Get(mkey)
+	meta, err := txn.t.Get(txn.ctx, mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return set, nil
@@ -231,7 +231,7 @@ func (set *Set) SIsmember(member []byte) (int64, error) {
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	ikey := setItemKey(dkey, member)
 
-	value, err := set.txn.t.Get(ikey)
+	value, err := set.txn.t.Get(set.txn.ctx, ikey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return 0, nil
@@ -288,7 +288,7 @@ func (set *Set) SRem(members [][]byte) (int64, error) {
 	ikeys := make([][]byte, len(ms))
 	for i := range ms {
 		ikeys[i] = setItemKey(dkey, ms[i])
-		value, err := set.txn.t.Get(ikeys[i])
+		value, err := set.txn.t.Get(set.txn.ctx, ikeys[i])
 		if err != nil {
 			if IsErrNotFound(err) {
 				continue

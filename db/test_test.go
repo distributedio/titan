@@ -8,7 +8,7 @@ import (
 
 func MockDB() *DB {
 	zap.ReplaceGlobals(zap.NewNop())
-	store, err := mockstore.NewMockTikvStore()
+	store, err := mockstore.NewMockStore(mockstore.WithStoreType(mockstore.MockTiKV))
 	if err != nil {
 		panic(err)
 	}

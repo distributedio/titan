@@ -55,7 +55,7 @@ func GetZSet(txn *Transaction, key []byte) (*ZSet, error) {
 
 	mkey := MetaKey(txn.db, key)
 	start := time.Now()
-	meta, err := txn.t.Get(mkey)
+	meta, err := txn.t.Get(txn.ctx, mkey)
 	zap.L().Debug("zset get metaKey", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 	if err != nil {
 		if IsErrNotFound(err) {
@@ -432,7 +432,7 @@ func (zset *ZSet) ZCard() int64 {
 func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
 	memberKey := zsetMemberKey(dkey, member)
-	bytesScore, err := zset.txn.t.Get(memberKey)
+	bytesScore, err := zset.txn.t.Get(zset.txn.ctx, memberKey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil

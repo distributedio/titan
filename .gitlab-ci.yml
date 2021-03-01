@@ -17,7 +17,7 @@ include:
     file: lint-conform.yml
   - project: tooling/pipelines
     ref: master
-    file: docker-build.yml
+    file: container-release.yml
 
 go-lint:
   stage: lint

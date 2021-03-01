@@ -37,6 +37,10 @@ func SetAddr(addr string) {
 	cfg.Listen = addr
 }
 
+func SetEtcdAddrs(addrs []string) {
+	tikvConf.EtcdAddrs = addrs
+}
+
 //Start start server
 //1.open db
 //2.start server fd

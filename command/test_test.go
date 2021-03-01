@@ -4,16 +4,22 @@ import (
 	"bytes"
 	"io"
 	"strings"
+	"testing"
 
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/context"
 	"github.com/distributedio/titan/db"
+
+	"go.etcd.io/etcd/integration"
 )
 
 var Cfg = &conf.MockConf().TiKV
 var mockdb *db.RedisStore
 
 func init() {
+	t := &testing.T{}
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: nil})
+	Cfg.EtcdAddrs = clus.RandClient().Endpoints()
 	mockdb, _ = db.Open(Cfg)
 }
 

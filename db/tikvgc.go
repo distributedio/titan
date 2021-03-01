@@ -21,38 +21,29 @@ const (
 )
 
 // StartTiKVGC start tikv gcwork
-func StartTiKVGC(db *DB, tikvCfg *conf.TiKVGC) {
-	ticker := time.NewTicker(tikvCfg.Interval)
+func StartTiKVGC(task *Task) {
+	conf := task.conf.(conf.TiKVGC)
+	ticker := time.NewTicker(conf.Interval)
 	defer ticker.Stop()
-	uuid := UUID()
-	ctx := context.Background()
-	for range ticker.C {
-		if tikvCfg.Disable {
-			continue
-		}
-		isLeader, err := isLeader(db, sysTiKVGCLeader, uuid, tikvCfg.LeaderLifeTime)
-		if err != nil {
-			zap.L().Error("[TiKVGC] check TiKVGC leader failed", zap.Error(err))
-			continue
-		}
-		if !isLeader {
-			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC]  not TiKVGC leader"); logEnv != nil {
-				logEnv.Write(zap.ByteString("leader", sysTiKVGCLeader),
-					zap.ByteString("uuid", uuid),
-					zap.Duration("leader-life-time", tikvCfg.LeaderLifeTime),
-					zap.Duration("safe-point-life-time", tikvCfg.SafePointLifeTime),
-					zap.Int("concurrency", tikvCfg.Concurrency))
+	for {
+		select {
+		case <-task.Done():
+			if logEnv := zap.L().Check(zap.DebugLevel, "[TiKVGC] current is not tikvgc leader"); logEnv != nil {
+				logEnv.Write(zap.ByteString("key", task.key),
+					zap.ByteString("uuid", task.id),
+					zap.String("lable", task.lable))
 			}
-			continue
+			return
+		case <-ticker.C:
 		}
-		if err := runTiKVGC(ctx, db, uuid, tikvCfg.SafePointLifeTime, tikvCfg.Concurrency); err != nil {
+		if err := runTiKVGC(task.db, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {
 			zap.L().Error("[TiKVGC] do TiKVGC failed", zap.Error(err))
 			continue
 		}
 	}
 }
 
-func runTiKVGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
+func runTiKVGC(db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
 	newPoint, err := getNewSafePoint(db, lifeTime)
 	if err != nil {
 		return err
@@ -75,19 +66,20 @@ func runTiKVGC(ctx context.Context, db *DB, uuid []byte, lifeTime time.Duration,
 		zap.L().Info("[TiKVGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
 	}
 
-	if err := saveLastSafePoint(ctx, db, newPoint); err != nil {
+	if err := saveLastSafePoint(db, newPoint); err != nil {
 		zap.L().Error("[TiKVGC] save last safe point err ", zap.Time("current", *newPoint))
 		return err
 	}
 	safePoint := oracle.ComposeTS(oracle.GetPhysical(*newPoint), 0)
-	if err := gcworker.RunGCJob(ctx, db.kv.Storage.(tikv.Storage), safePoint, UUIDString(uuid), concurrency); err != nil {
+	store := db.kv.Storage.(tikv.Storage)
+	if err := gcworker.RunGCJob(context.Background(), store, store.GetRegionCache().PDClient(), safePoint, UUIDString(uuid), concurrency); err != nil {
 		return err
 	}
 	return nil
 
 }
 
-func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error {
+func saveLastSafePoint(db *DB, safePoint *time.Time) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
@@ -95,7 +87,7 @@ func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error 
 	if err := txn.t.Set(sysTiKVGCLastSafePoint, []byte(safePoint.Format(tikvGcTimeFormat))); err != nil {
 		return err
 	}
-	if err := txn.t.Commit(ctx); err != nil {
+	if err := txn.t.Commit(txn.ctx); err != nil {
 		if err := txn.Rollback(); err != nil {
 			zap.L().Error("rollback failed", zap.Error(err))
 		}
@@ -105,7 +97,7 @@ func saveLastSafePoint(ctx context.Context, db *DB, safePoint *time.Time) error 
 }
 
 func getNewSafePoint(db *DB, lifeTime time.Duration) (*time.Time, error) {
-	currentVer, err := db.kv.CurrentVersion()
+	currentVer, err := db.kv.CurrentVersion(oracle.GlobalTxnScope)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +113,7 @@ func getLastSafePoint(db *DB) (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
-	val, err := txn.t.Get(sysTiKVGCLastSafePoint)
+	val, err := txn.t.Get(txn.ctx, sysTiKVGCLastSafePoint)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil

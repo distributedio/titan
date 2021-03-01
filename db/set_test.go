@@ -536,27 +536,26 @@ func TestRemoveRepByMap(t *testing.T) {
 		want [][]byte
 	}{
 		{
-			name:  "single member",
-			args:  args{
-				members : [][]byte{[]byte("value1")},
+			name: "single member",
+			args: args{
+				members: [][]byte{[]byte("value1")},
 			},
-			want:  [][]byte{[]byte("value1")},
+			want: [][]byte{[]byte("value1")},
 		},
 		{
-			name:  "multi members",
-			args:  args{
-				members : [][]byte{[]byte("value1"),[]byte("value2"),[]byte("value3")},
+			name: "multi members",
+			args: args{
+				members: [][]byte{[]byte("value1"), []byte("value2"), []byte("value3")},
 			},
-			want:  [][]byte{[]byte("value1"),[]byte("value2"),[]byte("value3")},
+			want: [][]byte{[]byte("value1"), []byte("value2"), []byte("value3")},
 		},
 		{
-			name:  "with duplicate members",
-			args:  args{
-				members : [][]byte{[]byte("value1"),[]byte("value2"),[]byte("value1")},
+			name: "with duplicate members",
+			args: args{
+				members: [][]byte{[]byte("value1"), []byte("value2"), []byte("value1")},
 			},
-			want:  [][]byte{[]byte("value1"),[]byte("value2")},
+			want: [][]byte{[]byte("value1"), []byte("value2")},
 		},
-
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -638,6 +637,17 @@ func TestSet_SMove(t *testing.T) {
 				t.Errorf("SMove() txn.Commit error = %v", err)
 				return
 			}
+			txn, err = mockDB.Begin()
+			assert.NotNil(t, txn)
+			assert.NoError(t, err)
+
+			set, err = GetSet(txn, tt.key)
+			assert.NoError(t, err)
+			assert.NotNil(t, set)
+			destset, err = GetSet(txn, tt.args.destination)
+			assert.NoError(t, err)
+			assert.NotNil(t, destset)
+
 			iss, err := set.SIsmember(tt.args.member)
 			assert.NoError(t, err)
 			assert.Equal(t, iss, int64(0))

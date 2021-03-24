@@ -88,8 +88,8 @@
 - [x] lpush
 - [x] lpop
 - [x] lpushx
-- [x] ltrim
-- [x] lrem
+- [ ] ltrim
+- [ ] lrem
 - [x] rpop
 - [x] rpoplpush
 - [x] rpush

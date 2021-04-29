@@ -27,7 +27,7 @@ func init() {
 		"lpush":     Desc{Proc: AutoCommit(LPush), Txn: LPush, Cons: Constraint{-3, flags("wmF"), 1, 1, 1}},
 		"lpushx":    Desc{Proc: AutoCommit(LPushx), Txn: LPushx, Cons: Constraint{3, flags("wmF"), 1, 1, 1}},
 		"lrange":    Desc{Proc: AutoCommit(LRange), Txn: LRange, Cons: Constraint{4, flags("r"), 1, 1, 1}},
-		"ltrim":     Desc{Proc: AutoCommit(LTrim), Txn: LRange, Cons: Constraint{4, flags("w"), 1, 1, 1}},
+		"ltrim":     Desc{Proc: AutoCommit(LTrim), Txn: LTrim, Cons: Constraint{4, flags("w"), 1, 1, 1}},
 		"lrem":      Desc{Proc: AutoCommit(LRem), Txn: LRem, Cons: Constraint{4, flags("w"), 1, 1, 1}},
 		"lset":      Desc{Proc: AutoCommit(LSet), Txn: LSet, Cons: Constraint{4, flags("wm"), 1, 1, 1}},
 		"rpop":      Desc{Proc: AutoCommit(RPop), Txn: RPop, Cons: Constraint{2, flags("wF"), 1, 1, 1}},

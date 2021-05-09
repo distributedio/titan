@@ -145,6 +145,7 @@ func (db *DB) Begin() (*Transaction, error) {
 	}
 	store.SetOption(txn, store.Enable1PC, true)
 	store.SetOption(txn, store.EnableAsyncCommit, true)
+	store.SetOption(txn, store.GuaranteeExternalConsistency, true)
 	return &Transaction{t: txn, db: db, ctx: context.Background()}, nil
 }
 

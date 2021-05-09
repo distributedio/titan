@@ -21,21 +21,23 @@ include:
 
 go-lint:
   stage: lint
-  image: golangci/golangci-lint:v1.24.0
+  image: golangci/golangci-lint:v1.39.0
   script: |
     # This currently fails on upstream code
     make lint || true
 
 go-coverage:
   stage: test
-  image: golang:1.13.5-buster
+  image: golang:1.16.4-buster
   script: |
+    go mod download
     make coverage
 
 go-test:
   stage: test
-  image: golang:1.13.5-buster
+  image: golang:1.16.4-buster
   script: |
+    go mod download
     make test
 
 go-build:
@@ -43,6 +45,7 @@ go-build:
     paths:
       - token
   stage: build
-  image: golang:1.13.5-buster
+  image: golang:1.16.4-buster
   script: |
+    go mod download
     make build token

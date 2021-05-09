@@ -252,7 +252,7 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	prefix := globMatchPrefix(pattern)
 
 	kv := txn.Kv()
-	f := func(key []byte) bool {
+	f := func(key []byte, obj *db.Object) bool {
 		if all || globMatch(pattern, key, false) {
 			list = append(list, key)
 		}
@@ -268,13 +268,14 @@ func Keys(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // Scan incrementally iterates the key space
 func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	var (
-		start   []byte
-		end            = []byte("0")
-		count   uint64 = defaultScanCount
-		pattern []byte
-		prefix  []byte
-		all     bool
-		err     error
+		start      []byte
+		end               = []byte("0")
+		count      uint64 = defaultScanCount
+		pattern    []byte
+		keyType    []byte
+		prefix     []byte
+		usePattern bool
+		err        error
 	)
 	if strings.Compare(ctx.Args[0], "0") != 0 {
 		start = []byte(ctx.Args[0])
@@ -300,13 +301,13 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 		case "match":
 			pattern = []byte(next)
-			all = (pattern[0] == '*' && len(pattern) == 1)
+			usePattern = !(len(pattern) == 1 && pattern[0] == '*')
+		case "type":
+			keyType = []byte(next)
 		}
 	}
 
-	if len(pattern) == 0 {
-		all = true
-	} else {
+	if usePattern {
 		prefix = globMatchPrefix(pattern)
 		if start == nil && prefix != nil {
 			start = prefix
@@ -315,19 +316,22 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	kv := txn.Kv()
 	list := [][]byte{}
-	f := func(key []byte) bool {
-		if count <= 0 {
+	f := func(key []byte, obj *db.Object) bool {
+		switch {
+		case count <= 0:
 			end = key
 			return false
-		}
-		if prefix != nil && !bytes.HasPrefix(key, prefix) {
+		case prefix != nil && !bytes.HasPrefix(key, prefix):
 			return false
-		}
-		if all || globMatch(pattern, key, false) {
+		case usePattern && !globMatch(pattern, key, false):
+			return true
+		case len(keyType) > 0 && obj.Type.String() != string(keyType):
+			return true
+		default:
 			list = append(list, key)
 			count--
+			return true
 		}
-		return true
 	}
 
 	if err := kv.Keys(start, f); err != nil {

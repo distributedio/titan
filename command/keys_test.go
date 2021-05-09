@@ -356,12 +356,18 @@ func TestScan(t *testing.T) {
 	val := "val"
 	InitData(t, keys, val)
 
-	ctx := ContextTest("scan", "0", "count", "4", "match", "keys-scan*")
+	ctx := ContextTest("scan", "0", "count", "4", "match", "keys-scan*", "type", "string")
 	Call(ctx)
 	lines := ctxLines(ctx.Out)
 	assert.Equal(t, "*2", lines[0])
 	assert.Contains(t, lines, "keys-scan4")
 	assert.Equal(t, "keys-sscan5", lines[2])
+
+	AddList(t, "keys-scanlist", "val")
+	ctx = ContextTest("scan", "0", "count", "1", "type", "list")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Contains(t, lines, "keys-scanlist")
 }
 
 func TestObject(t *testing.T) {

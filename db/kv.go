@@ -27,7 +27,7 @@ func GetKv(txn *Transaction) *Kv {
 }
 
 // Keys iterator all keys in db
-func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
+func (kv *Kv) Keys(start []byte, f func(key []byte, obj *Object) bool) error {
 	mkey := MetaKey(kv.txn.db, start)
 	prefix := MetaKey(kv.txn.db, nil)
 	endPrefix := sdk_kv.Key(prefix).PrefixNext()
@@ -48,7 +48,7 @@ func (kv *Kv) Keys(start []byte, f func(key []byte) bool) error {
 		if err != nil {
 			return err
 		}
-		if !IsExpired(obj, now) && !f(key[len(prefix):]) {
+		if !IsExpired(obj, now) && !f(key[len(prefix):], obj) {
 			break
 		}
 		if err := iter.Next(); err != nil {

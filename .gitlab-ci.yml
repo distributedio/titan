@@ -30,12 +30,14 @@ go-coverage:
   stage: test
   image: golang:1.16.4-buster
   script: |
+    go mod download
     make coverage
 
 go-test:
   stage: test
   image: golang:1.16.4-buster
   script: |
+    go mod download
     make test
 
 go-build:
@@ -45,4 +47,5 @@ go-build:
   stage: build
   image: golang:1.16.4-buster
   script: |
+    go mod download
     make build token

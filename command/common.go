@@ -225,6 +225,9 @@ func getFloatAndInclude(strf string) (float64, bool, error) {
 	include := true
 	var err error
 	lowerStrf := strings.ToLower(strf)
+	if lowerStrf == "" {
+		return f, include, nil
+	}
 	if lowerStrf[0] == '(' {
 		include = false
 		lowerStrf = lowerStrf[1:]

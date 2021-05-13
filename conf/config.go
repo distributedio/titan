@@ -23,37 +23,38 @@ type Server struct {
 
 // TiKV config is the config of tikv sdk
 type TiKV struct {
-	PdAddrs string     `cfg:"pd-addrs; mocktikv://; ;pd address in tidb"`
-	GC      GC         `cfg:"gc"`
-	Expire  Expire     `cfg:"expire"`
-	ZT      ZT         `cfg:"zt"`
-	TiKVGC  TiKVGC     `cfg:"tikv-gc"`
-	Logger  TiKVLogger `cfg:"logger"`
+	PdAddrs   string     `cfg:"pd-addrs; mocktikv://; ;pd address in tidb"`
+	EtcdAddrs []string   `cfg:"etcd-addrs; []; ;etcd address default use pd-addrs"`
+	GC        GC         `cfg:"gc"`
+	Expire    Expire     `cfg:"expire"`
+	ZT        ZT         `cfg:"zt"`
+	TiKVGC    TiKVGC     `cfg:"tikv-gc"`
+	Logger    TiKVLogger `cfg:"logger"`
 }
 
 // TiKVGC config is the config of implement tikv sdk gcwork
 type TiKVGC struct {
 	Disable           bool          `cfg:"disable; false; boolean; false is used to disable tikvgc "`
 	Interval          time.Duration `cfg:"interval;20m;;gc work tick interval"`
-	LeaderLifeTime    time.Duration `cfg:"leader-life-time;30m;;lease flush leader interval"`
+	LeaderTTL         int           `cfg:"leader-ttl;15;;leader ttl seconds"`
 	SafePointLifeTime time.Duration `cfg:"safe-point-life-time;10m;;safe point life time "`
 	Concurrency       int           `cfg:"concurrency;2;;gc work concurrency"`
 }
 
 // GC config is the config of Titan GC work
 type GC struct {
-	Disable        bool          `cfg:"disable; false; boolean; false is used to disable gc"`
-	Interval       time.Duration `cfg:"interval;1s;;gc work tick interval"`
-	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
-	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
+	Disable    bool          `cfg:"disable; false; boolean; false is used to disable gc"`
+	Interval   time.Duration `cfg:"interval;1s;;gc work tick interval"`
+	LeaderTTL  int           `cfg:"leader-ttl;15;;leader ttl seconds"`
+	BatchLimit int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
 }
 
 // Expire config is the config of Titan expire work
 type Expire struct {
-	Disable        bool          `cfg:"disable; false; boolean; false is used to disable expire"`
-	Interval       time.Duration `cfg:"interval;1s;;expire work tick interval"`
-	LeaderLifeTime time.Duration `cfg:"leader-life-time;3m;;lease flush leader interval"`
-	BatchLimit     int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
+	Disable    bool          `cfg:"disable; false; boolean; false is used to disable expire"`
+	Interval   time.Duration `cfg:"interval;1s;;expire work tick interval"`
+	LeaderTTL  int           `cfg:"leader-ttl;15;;leader ttl seconds"`
+	BatchLimit int           `cfg:"batch-limit;256;numeric;key count limitation per-transection"`
 }
 
 // ZT config is the config of zlist
@@ -68,7 +69,7 @@ type ZT struct {
 // Logger config is the config of default zap log
 type Logger struct {
 	Name       string `cfg:"name; titan; ; the default logger name"`
-	Path       string `cfg:"path; logs/titan; ; the default log path"`
+	Path       string `cfg:"path; logs/titan; ; the default log path (or stdout/stderr)"`
 	Level      string `cfg:"level; info; ; log level(debug, info, warn, error, panic, fatal)"`
 	Compress   bool   `cfg:"compress; false; boolean; true for enabling log compress"`
 	TimeRotate string `cfg:"time-rotate; 0 0 0 * * *; ; log time rotate pattern(s m h D M W)"`
@@ -76,7 +77,7 @@ type Logger struct {
 
 // TiKVLogger config is the config of tikv log
 type TiKVLogger struct {
-	Path       string `cfg:"path; logs/tikv;nonempty ; the default log path"`
+	Path       string `cfg:"path; logs/tikv;nonempty ; the default log path (or stdout/stderr)"`
 	Level      string `cfg:"level; info; ; log level(debug, info, warn, error, panic, fatal)"`
 	Compress   bool   `cfg:"compress; false; boolean; true for enabling log compress"`
 	TimeRotate string `cfg:"time-rotate; 0 0 0 * * *; ; log time rotate pattern(s m h D M W)"`

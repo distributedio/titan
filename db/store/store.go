@@ -11,16 +11,8 @@ import (
 
 // Transaction options
 const (
-	// PresumeKeyNotExists indicates that when dealing with a Get operation but failing to read data from cache,
-	// we presume that the key does not exist in Store. The actual existence will be checked before the
-	// transaction's commit.
-	// This option is an optimization for frequent checks during a transaction, e.g. batch inserts.
-	PresumeKeyNotExists Option = iota + 1
-	// PresumeKeyNotExistsError is the option key for error.
-	// When PresumeKeyNotExists is set and condition is not match, should throw the error.
-	PresumeKeyNotExistsError
 	// BinlogInfo contains the binlog data and client.
-	BinlogInfo
+	BinlogInfo Option = iota + 1
 	// SchemaChecker is used for checking schema-validity.
 	SchemaChecker
 	// IsolationLevel sets isolation level for current transaction. The default level is SI.
@@ -33,6 +25,32 @@ const (
 	SyncLog
 	// KeyOnly retrieve only keys, it can be used in scan now.
 	KeyOnly
+	// Pessimistic is defined for pessimistic lock
+	Pessimistic
+	// SnapshotTS is defined to set snapshot ts.
+	SnapshotTS
+	// Set replica read
+	ReplicaRead
+	// Set task ID
+	TaskID
+	// InfoSchema is schema version used by txn startTS.
+	InfoSchema
+	// CollectRuntimeStats is used to enable collect runtime stats.
+	CollectRuntimeStats
+	// SchemaAmender is used to amend mutations for pessimistic transactions
+	SchemaAmender
+	// SampleStep skips 'SampleStep - 1' number of keys after each returned key.
+	SampleStep
+	// CommitHook is a callback function called right after the transaction gets committed
+	CommitHook
+	// EnableAsyncCommit indicates whether async commit is enabled
+	EnableAsyncCommit
+	// Enable1PC indicates whether one-phase commit is enabled
+	Enable1PC
+	// GuaranteeExternalConsistency indicates whether to guarantee external consistency at the cost of an extra tso request before prewrite
+	GuaranteeExternalConsistency
+	// TxnScope indicates which @@txn_scope this transaction will work with.
+	TxnScope
 )
 
 // Priority value for transaction priority.
@@ -91,9 +109,9 @@ func LockKeys(txn Transaction, keys [][]byte) error {
 }
 
 // BatchGetValues issue batch requests to get values
-func BatchGetValues(txn Transaction, keys [][]byte) (map[string][]byte, error) {
+func BatchGetValues(ctx context.Context, txn Transaction, keys [][]byte) (map[string][]byte, error) {
 	kvkeys := *(*[]kv.Key)(unsafe.Pointer(&keys))
-	return txn.BatchGet(kvkeys)
+	return txn.BatchGet(ctx, kvkeys)
 }
 
 func SetOption(txn Transaction, opt Option, val interface{}) {

@@ -465,3 +465,79 @@ func TestRPushx(t *testing.T) {
 	clearList(t, key)
 
 }
+
+func TestLTrim(t *testing.T) {
+	key := "list-ltrim-list"
+	initList(t, key, 4)
+	ctx := ContextTest("ltrim", key, "0", "1")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, "OK", lines[1])
+
+	ctx = ContextTest("lrange", key, "0", "-1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "2", lines[4])
+	clearList(t, key)
+
+	initList(t, key, 4)
+	ctx = ContextTest("multi")
+	Call(ctx)
+	ctx.Name = "ltrim"
+	ctx.Args = []string{key, "0", "1"}
+	Call(ctx)
+	ctx.Name = "exec"
+	ctx.Args = []string{}
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "OK", lines[len(lines)-2])
+
+	ctx = ContextTest("lrange", key, "0", "-1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "2", lines[4])
+	clearList(t, key)
+
+}
+
+func TestLRem(t *testing.T) {
+	key := "list-lrem-list"
+	initList(t, key, 4)
+	ctx := ContextTest("lrem", key, "1", "2")
+	Call(ctx)
+	lines := ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[0])
+
+	ctx = ContextTest("lrange", key, "0", "-1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "3", lines[4])
+	assert.Equal(t, "4", lines[6])
+	clearList(t, key)
+
+	initList(t, key, 4)
+	ctx = ContextTest("multi")
+	Call(ctx)
+	ctx.Name = "lrem"
+	ctx.Args = []string{key, "1", "2"}
+	Call(ctx)
+	ctx.Name = "exec"
+	ctx.Args = []string{}
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, ":1", lines[len(lines)-2])
+
+	ctx = ContextTest("lrange", key, "0", "-1")
+	Call(ctx)
+	lines = ctxLines(ctx.Out)
+	assert.Equal(t, "1", lines[2])
+	assert.Equal(t, "3", lines[4])
+	assert.Equal(t, "4", lines[6])
+	clearList(t, key)
+
+}

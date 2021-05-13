@@ -110,7 +110,7 @@ func TestKeys(t *testing.T) {
 	kv := txn.Kv()
 	assert.NoError(t, err)
 	var actualkeys [][]byte
-	call := func(key []byte) bool {
+	call := func(key []byte, obj *Object) bool {
 		actualkeys = append(actualkeys, key)
 		return true
 	}

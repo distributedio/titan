@@ -27,7 +27,7 @@ func GetString(txn *Transaction, key []byte) (*String, error) {
 	str := NewString(txn, key)
 	mkey := MetaKey(txn.db, key)
 	now := Now()
-	Meta, err := txn.t.Get(mkey)
+	Meta, err := txn.t.Get(txn.ctx, mkey)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return str, nil

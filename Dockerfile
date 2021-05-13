@@ -1,25 +1,23 @@
 # Builder image
 FROM golang:1.16.4-buster as builder
 
-#RUN apk add --no-cache \
-#    make \
-#    git
-
 COPY . /go/src/github.com/distributedio/titan
 
 WORKDIR /go/src/github.com/distributedio/titan
 
 RUN \
     go mod download \
- && env GOOS=linux CGO_ENABLED=0 make \
- && env CGO_ENABLED=0 go get -u -v github.com/Agilicus/redis-cli
+ && env GOOS=linux CGO_ENABLED=0 make
+
+FROM alpine as fetch
+RUN apk add redis
 
 # Executable image
 FROM alpine
 
 COPY --from=builder /go/src/github.com/distributedio/titan/titan /titan/bin/titan
 COPY --from=builder /go/src/github.com/distributedio/titan/conf/titan.toml /titan/conf/titan.toml
-COPY --from=builder /go/bin/redis-cli /titan/bin/redis-cli
+COPY --from=fetch /usr/bin/redis-cli /usr/bin/redis-cli
 
 WORKDIR /titan
 

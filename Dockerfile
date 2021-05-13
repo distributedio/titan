@@ -12,7 +12,7 @@ WORKDIR /go/src/github.com/distributedio/titan
 RUN \
     go mod download \
  && env GOOS=linux CGO_ENABLED=0 make \
- && env CGO_ENABLED=0 go get -u -v github.com/holys/redis-cli
+ && env CGO_ENABLED=0 go get -u -v github.com/Agilicus/redis-cli
 
 # Executable image
 FROM alpine

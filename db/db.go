@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"go.uber.org/zap"
 
@@ -114,8 +115,10 @@ func Open(conf *conf.TiKV) (*RedisStore, error) {
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
 
-	if err := RegisterTask(sysdb, conf); err != nil {
-		return nil, err
+	if strings.Contains(conf.PdAddrs, "mocktikv://") == false {
+		if err := RegisterTask(sysdb, conf); err != nil {
+			return nil, err
+		}
 	}
 	return rds, nil
 }

@@ -102,11 +102,11 @@ func StartExpire(task *Task) {
 	defer ticker.Stop()
 	for {
 		select {
-		case <-task.Done():
+		case <-task.session.Done():
 			if logEnv := zap.L().Check(zap.DebugLevel, "[EX] current is not expire leader"); logEnv != nil {
 				logEnv.Write(zap.ByteString("key", task.key),
 					zap.ByteString("uuid", task.id),
-					zap.String("lable", task.lable))
+					zap.String("label", task.label))
 			}
 			return
 		case <-ticker.C:

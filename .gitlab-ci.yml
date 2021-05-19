@@ -1,7 +1,7 @@
 ---
 # Override any variables from /tooling/pipelines/*
 variables:
-  TEST_VAR: value
+  DEFAULT_BRANCH: integration
 
 stages:
   - lint
@@ -17,6 +17,9 @@ include:
     file: lint-conform.yml
   - project: tooling/pipelines
     ref: master
+    file: autorel.yml
+  - project: tooling/pipelines
+    ref: master
     file: container-release.yml
 
 go-lint:
@@ -26,26 +29,14 @@ go-lint:
     # This currently fails on upstream code
     make lint || true
 
-go-coverage:
+go-test:
+  artifacts:
+    paths:
+      - token
   stage: test
   image: golang:1.16.4-buster
   script: |
     go mod download
     make coverage
-
-go-test:
-  stage: test
-  image: golang:1.16.4-buster
-  script: |
-    go mod download
     make test
-
-go-build:
-  artifacts:
-    paths:
-      - token
-  stage: build
-  image: golang:1.16.4-buster
-  script: |
-    go mod download
     make build token

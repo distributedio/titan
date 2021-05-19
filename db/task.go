@@ -116,15 +116,15 @@ func (tp *TaskPool) Regist(registers ...TaskRegister) error {
 }
 
 func (tp *TaskPool) Start() {
-	for i, _ := range tp.list {
+	for i := range tp.list {
 		task := tp.list[i]
 		go func(task *Task) {
 			for {
-				if !task.Campaign() {
+				if err := task.Campaign(); err != nil {
 					continue
 				}
 				task.proc(task)
-				metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(task.lable).Set(0)
+				metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(task.label).Set(0)
 			}
 		}(task)
 	}
@@ -154,49 +154,54 @@ func RegisterGCTask() TaskRegister {
 	}
 }
 
-func NewTask(db *DB, cli *clientv3.Client, key []byte, ttl int, conf interface{}, proc TaskProc, lable string) (*Task, error) {
+func NewTask(db *DB, cli *clientv3.Client, key []byte, ttl int, conf interface{}, proc TaskProc, label string) (*Task, error) {
 	uuid := UUID()
 	t := &Task{
+		etcd:  cli,
+		ttl:   ttl,
 		db:    db,
 		id:    uuid,
 		key:   key,
 		conf:  conf,
 		proc:  proc,
-		lable: lable,
+		label: label,
 	}
-	session, err := concurrency.NewSession(cli, concurrency.WithTTL(ttl))
-	if err != nil {
-		zap.L().Error("create task err", zap.String("lable", lable), zap.Error(err))
-		return nil, err
-	}
-	t.Session = session
 
-	zap.L().Info("create task", zap.String("lable", lable))
+	zap.L().Info("create task", zap.String("label", label))
 	return t, nil
 }
 
 type Task struct {
-	*concurrency.Session
-	db    *DB
-	id    []byte
-	key   []byte
-	conf  interface{}
-	proc  TaskProc
-	lable string
+	session *concurrency.Session
+	etcd    *clientv3.Client
+	ttl     int
+	db      *DB
+	id      []byte
+	key     []byte
+	conf    interface{}
+	proc    TaskProc
+	label   string
 }
 
-func (t *Task) Campaign() bool {
+func (t *Task) Campaign() error {
+	session, err := concurrency.NewSession(t.etcd, concurrency.WithTTL(t.ttl))
+	if err != nil {
+		zap.L().Error("create task err", zap.String("label", t.label), zap.Error(err))
+		return err
+	}
+	t.session = session
+
 	key := append(etcdPrefix, t.key...)
-	elec := concurrency.NewElection(t.Session, string(key))
+	elec := concurrency.NewElection(session, string(key))
 
 	if err := elec.Campaign(context.Background(), string(t.id)); err != nil {
 		zap.L().Error("elect campaign err", zap.Error(err))
-		return false
+		return err
 	}
 
 	if logEnv := zap.L().Check(zap.DebugLevel, "Elect leader success"); logEnv != nil {
-		logEnv.Write(zap.ByteString("key", key), zap.ByteString("id", t.id), zap.String("lable", t.lable))
+		logEnv.Write(zap.ByteString("key", key), zap.ByteString("id", t.id), zap.String("label", t.label))
 	}
-	metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(t.lable).Set(1)
-	return true
+	metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(t.label).Set(1)
+	return nil
 }

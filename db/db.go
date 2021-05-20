@@ -115,7 +115,8 @@ func Open(conf *conf.TiKV) (*RedisStore, error) {
 	rds := &RedisStore{Storage: s, conf: conf}
 	sysdb := rds.DB(sysNamespace, sysDatabaseID)
 
-	if strings.Contains(conf.PdAddrs, "mocktikv://") == false {
+	// omit background task if working on a mock tikv
+	if !strings.HasPrefix(conf.PdAddrs, "mocktikv://") {
 		if err := RegisterTask(sysdb, conf); err != nil {
 			return nil, err
 		}

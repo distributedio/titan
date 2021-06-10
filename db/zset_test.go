@@ -167,9 +167,6 @@ func sortVals(member [][]byte, scores []float64, withScore, positiveOrder, bySco
 		if withScore {
 			data[idx+1] = []byte(strconv.FormatFloat(scores[i], 'f', -1, 64))
 		}
-		if !positiveOrder && withScore && !byScore {
-			data[idx], data[idx+1] = data[idx+1], data[idx]
-		}
 	}
 	return data
 }

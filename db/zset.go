@@ -238,9 +238,6 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 			if withScore {
 				val := []byte(strconv.FormatFloat(DecodeFloat64(score), 'f', -1, 64))
 				items = append(items, val)
-				if !positiveOrder {
-					items[len(items)-1], items[len(items)-2] = items[len(items)-2], items[len(items)-1]
-				}
 			}
 		}
 

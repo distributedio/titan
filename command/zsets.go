@@ -2,19 +2,17 @@ package command
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
 
 	"github.com/distributedio/titan/db"
+	"github.com/distributedio/titan/encoding/resp"
 )
 
 // ZAdd adds the specified members with scores to the sorted set
 func ZAdd(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
-
-	fmt.Println("zadd", ctx.Args)
 
 	kvs := ctx.Args[1:]
 	if len(kvs)%2 != 0 {
@@ -274,4 +272,92 @@ func ZScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	return BulkString(ctx.Out, string(score)), nil
+}
+
+func ZScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	var (
+		key        []byte
+		cursor     []byte
+		lastCursor = []byte("0")
+		count      = uint64(defaultScanCount)
+		kvs        = [][]byte{}
+		pattern    []byte
+		isAll      bool
+		err        error
+	)
+	key = []byte(ctx.Args[0])
+	if strings.Compare(ctx.Args[1], "0") != 0 {
+		cursor = []byte(ctx.Args[1])
+	}
+
+	// define return result
+	result := func() {
+		if _, err := resp.ReplyArray(ctx.Out, 2); err != nil {
+			return
+		}
+		resp.ReplyBulkString(ctx.Out, string(lastCursor))
+		if _, err := resp.ReplyArray(ctx.Out, len(kvs)); err != nil {
+			return
+		}
+		for i := range kvs {
+			resp.ReplyBulkString(ctx.Out, string(kvs[i]))
+		}
+	}
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	if !zset.Exist() {
+		return result, nil
+	}
+
+	if len(ctx.Args)%2 != 0 {
+		return nil, ErrSyntax
+	}
+
+	for i := 2; i < len(ctx.Args); i += 2 {
+		arg := strings.ToLower(ctx.Args[i])
+		next := ctx.Args[i+1]
+		switch arg {
+		case "count":
+			if count, err = strconv.ParseUint(next, 10, 64); err != nil {
+				return nil, ErrInteger
+			}
+			if count > ScanMaxCount {
+				count = ScanMaxCount
+			}
+			if count == 0 {
+				count = uint64(defaultScanCount)
+			}
+		case "match":
+			pattern = []byte(next)
+			isAll = (pattern[0] == '*' && len(pattern) == 1)
+		}
+	}
+
+	if len(pattern) == 0 {
+		isAll = true
+	}
+	f := func(member, score []byte) bool {
+		if count <= 0 {
+			lastCursor = score
+			return false
+		}
+		if isAll || globMatch(pattern, member, false) {
+			kvs = append(kvs, member)
+			kvs = append(kvs, score)
+			count--
+		}
+		return true
+	}
+
+	if err := zset.ZScan(cursor, f); err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	return result, nil
+
 }

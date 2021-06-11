@@ -433,6 +433,44 @@ func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
 	return []byte(sscore), nil
 }
 
+func (zset *ZSet) ZScan(cursor []byte, f func(key, val []byte) bool) error {
+	if !zset.Exist() {
+		return nil
+	}
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	prefix := ZSetScorePrefix(dkey)
+	endPrefix := kv.Key(prefix).PrefixNext()
+	ikey := prefix
+	if len(cursor) != 0 {
+		floatScore, err := strconv.ParseFloat(string(cursor), 64)
+		if err != nil {
+			return err
+		}
+		byteScore, err := EncodeFloat64(floatScore)
+		if err != nil {
+			return err
+		}
+		ikey = append(ikey, byteScore...)
+	}
+	iter, err := zset.txn.t.Iter(ikey, endPrefix)
+	if err != nil {
+		return err
+	}
+	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+		scoreAndMember := iter.Key()[len(prefix):]
+		member := scoreAndMember[byteScoreLen+len(":"):]
+		byteScore := scoreAndMember[0:byteScoreLen]
+		score := []byte(strconv.FormatFloat(DecodeFloat64(byteScore), 'f', -1, 64))
+		if !f(member, score) {
+			break
+		}
+		if err := iter.Next(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func zsetMemberKey(dkey []byte, member []byte) []byte {
 	var memberKey []byte
 	memberKey = append(memberKey, dkey...)

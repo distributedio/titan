@@ -119,15 +119,14 @@ func init() {
 		"smove":     Desc{Proc: AutoCommit(SMove), Txn: SMove, Cons: Constraint{4, flags("wF"), 1, 2, 1}},
 
 		// zsets
-		"zadd":             Desc{Proc: AutoCommit(ZAdd), Txn: ZAdd, Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
-		"zrange":           Desc{Proc: AutoCommit(ZRange), Txn: ZRange, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
-		"zrevrange":        Desc{Proc: AutoCommit(ZRevRange), Txn: ZRevRange, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
-		"zrangebyscore":    Desc{Proc: AutoCommit(ZRangeByScore), Txn: ZRangeByScore, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
-		"zrevrangebyscore": Desc{Proc: AutoCommit(ZRevRangeByScore), Txn: ZRevRangeByScore, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
-		"zrem":             Desc{Proc: AutoCommit(ZRem), Txn: ZRem, Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
-		"zcard":            Desc{Proc: AutoCommit(ZCard), Txn: ZCard, Cons: Constraint{2, flags("rF"), 1, 1, 1}},
-		//"zcount":           Desc{Proc: AutoCommit(ZCount), Txn: ZCount, Cons: Constraint{4, flags("rF"), 1, 1, 1}},
-		"zscore": Desc{Proc: AutoCommit(ZScore), Txn: ZScore, Cons: Constraint{3, flags("rF"), 1, 1, 1}},
+		"zadd":          Desc{Proc: AutoCommit(ZAdd), Txn: ZAdd, Cons: Constraint{-4, flags("wmF"), 1, 1, 1}},
+		"zrange":        Desc{Proc: AutoCommit(ZRange), Txn: ZRange, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrevrange":     Desc{Proc: AutoCommit(ZRevRange), Txn: ZRevRange, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrangebyscore": Desc{Proc: AutoCommit(ZRangeByScore), Txn: ZRangeByScore, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zrem":          Desc{Proc: AutoCommit(ZRem), Txn: ZRem, Cons: Constraint{-3, flags("wF"), 1, 1, 1}},
+		"zcard":         Desc{Proc: AutoCommit(ZCard), Txn: ZCard, Cons: Constraint{2, flags("rF"), 1, 1, 1}},
+		"zcount":        Desc{Proc: AutoCommit(ZCount), Txn: ZCount, Cons: Constraint{-4, flags("rF"), 1, 1, 1}},
+		"zscore":        Desc{Proc: AutoCommit(ZScore), Txn: ZScore, Cons: Constraint{3, flags("rF"), 1, 1, 1}},
 
 		// extension commands
 		"escan": Desc{Proc: AutoCommit(Escan), Txn: Escan, Cons: Constraint{-1, flags("rR"), 0, 0, 0}},

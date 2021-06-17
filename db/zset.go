@@ -205,17 +205,12 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 	var iter Iterator
 	var err error
 	startTime := time.Now()
+
+	upperBoundKey := kv.Key(scorePrefix).PrefixNext()
 	if positiveOrder {
-		iter, err = zset.txn.t.Iter(scorePrefix, nil)
+		iter, err = zset.txn.t.Iter(scorePrefix, upperBoundKey)
 	} else {
-		//tikv sdk didn't implement SeekReverse(), so we just use seek() to implement zrevrange now
-		//because tikv sdk scan 256 keys in next(), for the zset which have <=256 members,
-		// its performance should be similar with seekReverse, for >256 zset, it should be bad
-		//iter, err = zset.txn.t.SeekReverse(scorePrefix)
-		iter, err = zset.txn.t.Iter(scorePrefix, nil)
-		tmp := start
-		start = zset.meta.Len - 1 - stop
-		stop = zset.meta.Len - 1 - tmp
+		iter, err = zset.txn.t.IterReverse(upperBoundKey)
 	}
 	zap.L().Debug("zset seek", zap.Int64("cost(us)", time.Since(startTime).Nanoseconds()/1000))
 
@@ -243,9 +238,6 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 			if withScore {
 				val := []byte(strconv.FormatFloat(DecodeFloat64(score), 'f', -1, 64))
 				items = append(items, val)
-				if !positiveOrder {
-					items[len(items)-1], items[len(items)-2] = items[len(items)-2], items[len(items)-1]
-				}
 			}
 		}
 
@@ -254,12 +246,6 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 		cost += time.Since(startTime).Nanoseconds()
 	}
 	zap.L().Debug("zset all next", zap.Int64("cost(us)", cost/1000))
-
-	if !positiveOrder {
-		for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
-			items[i], items[j] = items[j], items[i]
-		}
-	}
 
 	return items, nil
 }
@@ -303,11 +289,13 @@ func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 	copy(stopPrefix[len(scorePrefix):], byteStopScore)
 
 	var iter Iterator
+
 	if positiveOrder {
 		upperBoundKey := kv.Key(stopPrefix).PrefixNext()
 		iter, err = zset.txn.t.Iter(startPrefix, upperBoundKey)
 	} else {
-		iter, err = zset.txn.t.IterReverse(startPrefix)
+		upperBoundKey := kv.Key(startPrefix).PrefixNext()
+		iter, err = zset.txn.t.IterReverse(upperBoundKey)
 	}
 	if err != nil {
 		return nil, err

@@ -174,6 +174,19 @@ func (ez *ExampleZSet) ZRevRangeEqualErr(t *testing.T, errValue string, args ...
 	assert.EqualError(t, err, errValue)
 }
 
+func (ez *ExampleZSet) ZScanEqual(t *testing.T, key string, cursor string, pattern string, count int, expected string) {
+	cmd := "zscan"
+	req := make([]interface{}, 0)
+	req = append(req, key)
+	req = append(req, cursor)
+	req = append(req, count)
+
+	reply, err := redis.Strings(ez.conn.Do(cmd, req...))
+	assert.Equal(t, expected, reply)
+	//fmt.Println("xxxx", reply, expected)
+	assert.Nil(t, err)
+}
+
 func (ez *ExampleZSet) ZCountEqual(t *testing.T, key string, start string, stop string, expected int64) {
 	cmd := "zcount"
 	req := make([]interface{}, 0)

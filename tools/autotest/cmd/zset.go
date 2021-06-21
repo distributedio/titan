@@ -174,6 +174,23 @@ func (ez *ExampleZSet) ZRevRangeEqualErr(t *testing.T, errValue string, args ...
 	assert.EqualError(t, err, errValue)
 }
 
+func (ez *ExampleZSet) ZCountEqual(t *testing.T, key string, start string, stop string, expected int64) {
+	cmd := "zcount"
+	req := make([]interface{}, 0)
+	req = append(req, key)
+	req = append(req, start)
+	req = append(req, stop)
+
+	reply, err := redis.Int64(ez.conn.Do(cmd, req...))
+	assert.Equal(t, expected, reply)
+	assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZCountEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zcount", args...)
+	assert.EqualError(t, err, errValue)
+}
+
 func (ez *ExampleZSet) ZRangeByScoreEqual(t *testing.T, key string, start string, stop string, withScores bool, limit string, expected string) {
 	ez.ZAnyOrderRangeByScoreEqual(t, key, start, stop, withScores, true, limit, expected)
 }

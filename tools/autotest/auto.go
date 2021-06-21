@@ -161,6 +161,7 @@ func (ac *AutoClient) ZSetCase(t *testing.T) {
 	ac.ez.ZRangeByScoreEqual(t, "key-zset", "(0.0", "2.05", true, "LIMIT 4 2", "")
 	ac.ez.ZRangeByScoreEqual(t, "key-zset", "(2", "3.6", true, "", "member6 2.05 member3 3.6")
 	ac.ez.ZRangeByScoreEqual(t, "key-zset", "0", "(2", true, "", "member5 0 member2 1.5")
+	ac.ez.ZCountEqual(t, "key-zset", "0", "(2", int64(2))
 
 	ac.ez.ZRemEqual(t, "key-zset", "member2", "member1", "member3", "member4", "member1")
 	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)

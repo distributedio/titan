@@ -344,7 +344,7 @@ func ZScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	f := func(member, score []byte) bool {
 		if count <= 0 {
-			lastCursor = score
+			lastCursor = member
 			return false
 		}
 		if isAll || globMatch(pattern, member, false) {

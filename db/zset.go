@@ -418,9 +418,7 @@ func (zset *ZSet) ZCard() int64 {
 }
 
 func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
-	dkey := DataKey(zset.txn.db, zset.meta.ID)
-	memberKey := zsetMemberKey(dkey, member)
-	bytesScore, err := zset.txn.t.Get(zset.txn.ctx, memberKey)
+	bScore, err := zset.zScoreBytes(member)
 	if err != nil {
 		if IsErrNotFound(err) {
 			return nil, nil
@@ -428,9 +426,19 @@ func (zset *ZSet) ZScore(member []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	fscore := DecodeFloat64(bytesScore)
+	fscore := DecodeFloat64(bScore)
 	sscore := strconv.FormatFloat(fscore, 'f', -1, 64)
 	return []byte(sscore), nil
+}
+
+func (zset *ZSet) zScoreBytes(member []byte) ([]byte, error) {
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	memberKey := zsetMemberKey(dkey, member)
+	bScore, err := zset.txn.t.Get(zset.txn.ctx, memberKey)
+	if err != nil {
+		return nil, err
+	}
+	return bScore, nil
 }
 
 func (zset *ZSet) ZScan(cursor []byte, f func(key, val []byte) bool) error {
@@ -441,16 +449,17 @@ func (zset *ZSet) ZScan(cursor []byte, f func(key, val []byte) bool) error {
 	prefix := ZSetScorePrefix(dkey)
 	endPrefix := kv.Key(prefix).PrefixNext()
 	ikey := prefix
-	if len(cursor) != 0 {
-		floatScore, err := strconv.ParseFloat(string(cursor), 64)
+	if len(cursor) > 0 {
+		bScore, err := zset.zScoreBytes(cursor)
 		if err != nil {
+			if IsErrNotFound(err) {
+				return nil
+			}
 			return err
 		}
-		byteScore, err := EncodeFloat64(floatScore)
-		if err != nil {
-			return err
+		if len(bScore) > 0 {
+			ikey = append(ikey, bScore...)
 		}
-		ikey = append(ikey, byteScore...)
 	}
 	iter, err := zset.txn.t.Iter(ikey, endPrefix)
 	if err != nil {

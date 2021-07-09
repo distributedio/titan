@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -179,11 +180,20 @@ func (ez *ExampleZSet) ZScanEqual(t *testing.T, key string, cursor string, patte
 	req := make([]interface{}, 0)
 	req = append(req, key)
 	req = append(req, cursor)
-	req = append(req, count)
+	req = append(req, "match", pattern)
+	req = append(req, "count", count)
 
-	reply, err := redis.Strings(ez.conn.Do(cmd, req...))
-	assert.Equal(t, expected, reply)
-	//fmt.Println("xxxx", reply, expected)
+	reply, err := redis.MultiBulk(ez.conn.Do(cmd, req...))
+	lastCursor, _ := redis.String(reply[0], err)
+	strs, _ := redis.Strings(reply[1], err)
+	fmt.Println(lastCursor, strs)
+	if expected != "" {
+		expectedStrs := strings.Split(expected, " ")
+		assert.Equal(t, expectedStrs[0], lastCursor)
+		assert.Equal(t, expectedStrs[1:], strs)
+	} else {
+		assert.Equal(t, "0", lastCursor)
+	}
 	assert.Nil(t, err)
 }
 

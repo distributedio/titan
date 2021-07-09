@@ -188,7 +188,9 @@ func (ac *AutoClient) ZSetCase(t *testing.T) {
 	ac.ez.ZRevRangeByScoreEqual(t, "key-zset", "(2", "0", true, "", "member2 1.5 member5 0")
 
 	ac.ez.ZCountEqual(t, "key-zset", "0", "(2", int64(2))
-	//ac.ez.ZScanEqual(t, "key-zset", "", "member*", 2, "")
+
+	ac.ez.ZScanEqual(t, "key-zset", "0", "*", 2, "member2 member4 -3.5 member5 0")
+	ac.ez.ZScanEqual(t, "key-zset", "member2", "member*", 2, "member11 member2 1.5 member1 2")
 
 	ac.ez.ZRemEqual(t, "key-zset", "member2", "member1", "member3", "member4", "member1")
 	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)

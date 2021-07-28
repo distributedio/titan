@@ -183,6 +183,67 @@ func (zset *ZSet) Exist() bool {
 	return zset.meta.Len != 0
 }
 
+func (zset *ZSet) ZAnyOrderRangeByLex(start []byte,startInclude bool, stop []byte,stopInclude bool,offset int64,count int64, positiveOrder bool) ([][]byte, error) {
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	memPrefix := zsetMemberKey(dkey,[]byte{})
+	startPrefix := zsetMemberKey(dkey,start)
+	stopPrefix := zsetMemberKey(dkey,stop)
+	if stopInclude || len(stop) == 0 {
+		stopPrefix = kv.Key(stopPrefix).PrefixNext()
+	}
+	
+	var iter Iterator
+	var err error
+
+	if positiveOrder {
+		iter, err = zset.txn.t.Iter(startPrefix, stopPrefix)
+	} else {
+		iter, err = zset.txn.t.IterReverse(stopPrefix)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var items [][]byte
+	var idx int64 = -1
+
+	for  iter.Valid() && iter.Key().HasPrefix(memPrefix){
+		startCmp := iter.Key().Cmp(startPrefix)
+		stopCmp := iter.Key().Cmp(stopPrefix)
+		member := iter.Key()[len(memPrefix):]
+		zap.L().Info("zset lex db item",zap.Int("sr",startCmp),zap.Int("so",stopCmp),zap.String("mem",string(member)),zap.String("stopp",string(stopPrefix)),zap.Bool("stopInclude",stopInclude))
+		if (!positiveOrder && startCmp < 0) || (positiveOrder && stopCmp > 0 ) {
+			break
+		}
+
+		//ignore startPrefix ----> startKey range 
+		if startCmp == 0 && !startInclude {
+			goto next
+		}
+
+		//ignore  stopPrefix ----> stopKey range
+		if  len(stop) > 0 && ( kv.Key(member).Cmp(stop) > 0 || kv.Key(member).Cmp(stop) == 0 && !stopInclude) {
+			goto next
+		}
+
+		idx++
+		if offset > idx {
+			goto next
+		}
+		items = append(items,member)
+		if int64(len(items)) == count{
+			break
+		}
+
+		next: if err := iter.Next(); err != nil {
+			return nil,err
+		}
+	}
+	return items,nil
+}
+
+
 func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positiveOrder bool) ([][]byte, error) {
 	if stop < 0 {
 		if stop = zset.meta.Len + stop; stop < 0 {
@@ -505,3 +566,5 @@ func zsetScoreKey(dkey []byte, score []byte, member []byte) []byte {
 	scoreKey = append(scoreKey, member...)
 	return scoreKey
 }
+
+

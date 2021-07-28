@@ -8,6 +8,7 @@ import (
 
 	"github.com/distributedio/titan/db"
 	"github.com/distributedio/titan/encoding/resp"
+	"go.uber.org/zap"
 )
 
 // ZAdd adds the specified members with scores to the sorted set
@@ -105,9 +106,18 @@ func ZRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByScore(ctx, txn, true)
 }
 
+func ZRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByLex(ctx, txn, true)
+}
+
 func ZRevRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByScore(ctx, txn, false)
 }
+
+func ZRevRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByLex(ctx, txn, false)
+}
+
 
 func ZCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
@@ -143,6 +153,57 @@ func ZCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 	return Integer(ctx.Out, int64(len(items))), nil
 }
+
+func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+
+	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
+	stopKey,stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	if !positiveOrder{
+		startKey, startInclude = getLexKeyAndInclude([]byte(ctx.Args[2]))
+		stopKey,stopInclude = getLexKeyAndInclude([]byte(ctx.Args[1]))
+	}
+
+	zap.L().Info("zset lex start", zap.String("start",string(startKey)),zap.Bool("includestart",startInclude),zap.String("stopkey",string(stopKey)),zap.Bool("stopInclude",stopInclude))
+	var(
+		offset int64 = 0
+		count int64 = math.MaxInt64
+		err error
+	)
+	for i := 3; i < len(ctx.Args); i++ {
+		switch strings.ToUpper(ctx.Args[i]) {
+		case "LIMIT":
+			if offset, count, err = getLimitParameters(ctx.Args[i+1:]); err != nil {
+				return nil, err
+			}
+			i += 2
+		default:
+			return nil, ErrSyntax
+		}
+	}
+
+	zap.L().Info("zset lex start", zap.String("start",string(startKey)),zap.Bool("includestart",startInclude),zap.String("stopkey",string(stopKey)),zap.Bool("stopInclude",stopInclude),zap.Int64("offset",offset),zap.Int64("count",count))
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return BytesArray(ctx.Out, nil), nil
+	}
+
+	items, err := zset.ZAnyOrderRangeByLex(startKey,startInclude, stopKey,stopInclude,offset, count, positiveOrder)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if len(items) == 0 {
+		return BytesArray(ctx.Out, nil), nil
+	}
+	return BytesArray(ctx.Out, items), nil
+}
+
 
 func zAnyOrderRangeByScore(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCommit, error) {
 	key := []byte(ctx.Args[0])

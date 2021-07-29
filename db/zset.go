@@ -191,9 +191,12 @@ func (zset *ZSet) ZAnyOrderRangeByLex(start []byte,startInclude bool, stop []byt
 	if stopInclude || len(stop) == 0 {
 		stopPrefix = kv.Key(stopPrefix).PrefixNext()
 	}
-	
-	var iter Iterator
-	var err error
+	var(
+		iter Iterator
+	    items [][]byte
+	    idx int64 = -1
+		err error
+	)
 
 	if positiveOrder {
 		iter, err = zset.txn.t.Iter(startPrefix, stopPrefix)
@@ -205,14 +208,10 @@ func (zset *ZSet) ZAnyOrderRangeByLex(start []byte,startInclude bool, stop []byt
 		return nil, err
 	}
 
-	var items [][]byte
-	var idx int64 = -1
-
 	for  iter.Valid() && iter.Key().HasPrefix(memPrefix){
 		startCmp := iter.Key().Cmp(startPrefix)
 		stopCmp := iter.Key().Cmp(stopPrefix)
 		member := iter.Key()[len(memPrefix):]
-		zap.L().Info("zset lex db item",zap.Int("sr",startCmp),zap.Int("so",stopCmp),zap.String("mem",string(member)),zap.String("stopp",string(stopPrefix)),zap.Bool("stopInclude",stopInclude))
 		if (!positiveOrder && startCmp < 0) || (positiveOrder && stopCmp > 0 ) {
 			break
 		}
@@ -474,6 +473,67 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 	zap.L().Debug("zrem update meta key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 	return deleted, err
 }
+
+func (zset *ZSet) ZRemRangeByLex(start []byte,startInclude bool, stop []byte,stopInclude bool)(int64,error){
+	deleted := int64(0);
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	memPrefix := zsetMemberKey(dkey,[]byte{})
+	startPrefix := zsetMemberKey(dkey,start)
+	stopPrefix := zsetMemberKey(dkey,stop)
+	if stopInclude || len(stop) == 0 {
+		stopPrefix = kv.Key(stopPrefix).PrefixNext()
+	}
+	var(
+		iter Iterator
+		scoreKey []byte
+		err error
+	)
+
+	if iter, err = zset.txn.t.Iter(startPrefix, stopPrefix);err != nil {
+		return deleted, err
+	}
+
+	for iter.Valid() && iter.Key().HasPrefix(memPrefix){
+		startCmp := iter.Key().Cmp(startPrefix)
+		stopCmp := iter.Key().Cmp(stopPrefix)
+		member := iter.Key()[len(memPrefix):]
+		if ( stopCmp > 0 ) {
+			break
+		}
+
+		if startCmp == 0 && !startInclude {
+			goto next
+		}
+		scoreKey = zsetScoreKey(dkey,iter.Value(),member)
+
+		if err = zset.txn.t.Delete(scoreKey);err != nil {
+			return deleted,err
+		}
+		if err = zset.txn.t.Delete(iter.Key());err != nil {
+			return deleted,err
+		}
+		deleted++
+		next: if err := iter.Next(); err != nil {
+			return deleted,err
+		}
+	}
+	if zset.meta.Len == deleted {
+		mkey := MetaKey(zset.txn.db, zset.key)
+		err = zset.txn.t.Delete(mkey)
+		if err != nil {
+			return deleted, err
+		}
+		if zset.meta.Object.ExpireAt > 0 {
+			if err = unExpireAt(zset.txn.t, mkey, zset.meta.Object.ExpireAt);err != nil {
+				return deleted,err
+			}
+		}
+		return deleted, nil
+	}
+
+	return deleted,nil
+}
+
 func (zset *ZSet) ZCard() int64 {
 	return zset.meta.Len
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/distributedio/titan/db"
 	"github.com/distributedio/titan/encoding/resp"
-	"go.uber.org/zap"
 )
 
 // ZAdd adds the specified members with scores to the sorted set
@@ -106,18 +105,17 @@ func ZRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByScore(ctx, txn, true)
 }
 
-func ZRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	return zAnyOrderRangeByLex(ctx, txn, true)
-}
-
 func ZRevRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByScore(ctx, txn, false)
+}
+
+func ZRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByLex(ctx, txn, true)
 }
 
 func ZRevRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByLex(ctx, txn, false)
 }
-
 
 func ZCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
@@ -164,9 +162,8 @@ func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) 
 		stopKey,stopInclude = getLexKeyAndInclude([]byte(ctx.Args[1]))
 	}
 
-	zap.L().Info("zset lex start", zap.String("start",string(startKey)),zap.Bool("includestart",startInclude),zap.String("stopkey",string(stopKey)),zap.Bool("stopInclude",stopInclude))
 	var(
-		offset int64 = 0
+		offset int64 = int64(0)
 		count int64 = math.MaxInt64
 		err error
 	)
@@ -177,12 +174,12 @@ func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) 
 				return nil, err
 			}
 			i += 2
+			break
 		default:
 			return nil, ErrSyntax
 		}
 	}
 
-	zap.L().Info("zset lex start", zap.String("start",string(startKey)),zap.Bool("includestart",startInclude),zap.String("stopkey",string(stopKey)),zap.Bool("stopInclude",stopInclude),zap.Int64("offset",offset),zap.Int64("count",count))
 	zset, err := txn.ZSet(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -291,6 +288,31 @@ func ZRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 	return Integer(ctx.Out, deleted), nil
 }
+
+func ZRemRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
+	stopKey,stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return Integer(ctx.Out, 0), nil
+	}
+
+	deleted, err := zset.ZRemRangeByLex(startKey,startInclude,stopKey,stopInclude)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	return Integer(ctx.Out, deleted), nil
+}
+
+
 
 func ZCard(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])

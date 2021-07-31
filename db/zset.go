@@ -191,10 +191,8 @@ func (zset *ZSet) ZOrderRangeByLex(start, stop []byte, startInclude, stopInclude
 	)
 	dkey := DataKey(zset.txn.db, zset.meta.ID)
 	memPrefix := zsetMemberKey(dkey, []byte{})
-	zap.L().Info("zorderrange", zap.String("sr", string(start)), zap.String("so", string(stop)), zap.Bool("starin", startInclude), zap.Bool("stopin", stopInclude), zap.Bool("position", positiveOrder))
 	f := func(key, val []byte) bool {
 		member := key[len(memPrefix):]
-		zap.L().Info("iterm", zap.String("K", string(key)), zap.String("v", string(val)))
 		startCmp := kv.Key(member).Cmp(start)
 		stopCmp := kv.Key(member).Cmp(stop)
 		if len(stop) == 0 {

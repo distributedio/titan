@@ -142,7 +142,7 @@
 - [x] zcount
 - [ ] zincrby
 - [ ] zinterstore
-- [ ] zlexcount
+- [x] zlexcount
 - [ ] zpopmax
 - [ ] zpopmin
 - [x] zrange

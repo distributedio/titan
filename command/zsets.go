@@ -117,6 +117,29 @@ func ZRevRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByLex(ctx, txn, false)
 }
 
+func ZLexCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
+	stopKey, stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return Integer(ctx.Out, 0), nil
+	}
+
+	items, err := zset.ZOrderRangeByLex(startKey, stopKey, startInclude, stopInclude, 0, math.MaxInt64, true)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	return Integer(ctx.Out, int64(len(items))), nil
+}
+
 func ZCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	startScore, startInclude, err := getFloatAndInclude(ctx.Args[1])

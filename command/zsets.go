@@ -156,16 +156,16 @@ func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) 
 	key := []byte(ctx.Args[0])
 
 	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
-	stopKey,stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
-	if !positiveOrder{
+	stopKey, stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	if !positiveOrder {
 		startKey, startInclude = getLexKeyAndInclude([]byte(ctx.Args[2]))
-		stopKey,stopInclude = getLexKeyAndInclude([]byte(ctx.Args[1]))
+		stopKey, stopInclude = getLexKeyAndInclude([]byte(ctx.Args[1]))
 	}
 
-	var(
+	var (
 		offset int64 = int64(0)
-		count int64 = math.MaxInt64
-		err error
+		count  int64 = math.MaxInt64
+		err    error
 	)
 	for i := 3; i < len(ctx.Args); i++ {
 		switch strings.ToUpper(ctx.Args[i]) {
@@ -191,7 +191,7 @@ func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) 
 		return BytesArray(ctx.Out, nil), nil
 	}
 
-	items, err := zset.ZAnyOrderRangeByLex(startKey,startInclude, stopKey,stopInclude,offset, count, positiveOrder)
+	items, err := zset.ZOrderRangeByLex(startKey, stopKey, startInclude, stopInclude, offset, count, positiveOrder)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
@@ -200,7 +200,6 @@ func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) 
 	}
 	return BytesArray(ctx.Out, items), nil
 }
-
 
 func zAnyOrderRangeByScore(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
@@ -292,7 +291,7 @@ func ZRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 func ZRemRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
-	stopKey,stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	stopKey, stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
 	zset, err := txn.ZSet(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {
@@ -304,15 +303,13 @@ func ZRemRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return Integer(ctx.Out, 0), nil
 	}
 
-	deleted, err := zset.ZRemRangeByLex(startKey,startInclude,stopKey,stopInclude)
+	deleted, err := zset.ZRemRangeByLex(startKey, stopKey, startInclude, stopInclude)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}
 
 	return Integer(ctx.Out, deleted), nil
 }
-
-
 
 func ZCard(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])

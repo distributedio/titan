@@ -62,6 +62,9 @@ var (
 // Iterator store.Iterator
 type Iterator store.Iterator
 
+// Iterator Callback
+type FnCall func(key, val []byte) bool
+
 // DBID is the redis database ID
 type DBID byte
 

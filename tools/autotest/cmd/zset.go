@@ -78,6 +78,31 @@ func (ez *ExampleZSet) ZAddEqualErr(t *testing.T, errValue string, args ...inter
 	assert.EqualError(t, err, errValue)
 }
 
+func (ez *ExampleZSet) ZRemRangeByLexEqual(t *testing.T, key string, deleted int, members ...string) {
+	req := make([]interface{}, 0, len(members))
+	req = append(req, key)
+	for i := range members {
+		req = append(req, members[i])
+	}
+
+	reply, err := redis.Int(ez.conn.Do("zremrangebylex", req...))
+	assert.Equal(t, deleted, reply)
+	assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZRangeByLexEqual(t *testing.T, key string, start string, stop string, limit string, expected string) {
+	ez.ZAnyOrderRangeByLexEqual(t, key, start, stop, true, limit, expected)
+}
+
+func (ez *ExampleZSet) ZRevRangeByLexEqual(t *testing.T, key string, start string, stop string, limit string, expected string) {
+	ez.ZAnyOrderRangeByLexEqual(t, key, start, stop, false, limit, expected)
+}
+
+func (ez *ExampleZSet) ZRemRangeByLexEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zremrangebylex", args...)
+	assert.EqualError(t, err, errValue)
+}
+
 func (ez *ExampleZSet) ZRemEqual(t *testing.T, key string, members ...string) {
 	req := make([]interface{}, 0, len(members))
 	req = append(req, key)
@@ -197,6 +222,23 @@ func (ez *ExampleZSet) ZScanEqual(t *testing.T, key string, cursor string, patte
 	assert.Nil(t, err)
 }
 
+func (ez *ExampleZSet) ZLexCountEqual(t *testing.T, key string, start string, stop string, expected int64) {
+	cmd := "zlexcount"
+	req := make([]interface{}, 0)
+	req = append(req, key)
+	req = append(req, start)
+	req = append(req, stop)
+
+	reply, err := redis.Int64(ez.conn.Do(cmd, req...))
+	assert.Equal(t, expected, reply)
+	assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZLexCountEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zlexcount", args...)
+	assert.EqualError(t, err, errValue)
+}
+
 func (ez *ExampleZSet) ZCountEqual(t *testing.T, key string, start string, stop string, expected int64) {
 	cmd := "zcount"
 	req := make([]interface{}, 0)
@@ -220,6 +262,46 @@ func (ez *ExampleZSet) ZRangeByScoreEqual(t *testing.T, key string, start string
 
 func (ez *ExampleZSet) ZRevRangeByScoreEqual(t *testing.T, key string, start string, stop string, withScores bool, limit string, expected string) {
 	ez.ZAnyOrderRangeByScoreEqual(t, key, start, stop, withScores, false, limit, expected)
+}
+
+func (ez *ExampleZSet) ZAnyOrderRangeByLexEqual(t *testing.T, key string, start string, stop string, positiveOrder bool, limit string, expected string) {
+	cmd := "zrangebylex"
+	if !positiveOrder {
+		cmd = "zrevrangebylex"
+	}
+
+	var reply []string
+	var err error
+	req := make([]interface{}, 0)
+	req = append(req, key)
+	req = append(req, start)
+	req = append(req, stop)
+	if limit != "" {
+		limitArgs := strings.Split(limit, " ")
+		for _, limitArg := range limitArgs {
+			req = append(req, limitArg)
+		}
+	}
+
+	reply, err = redis.Strings(ez.conn.Do(cmd, req...))
+	if expected != "" {
+		expectedStrs := strings.Split(expected, " ")
+		assert.Equal(t, expectedStrs, reply)
+	} else {
+		assert.Equal(t, []string{}, reply)
+	}
+
+	assert.Nil(t, err)
+}
+
+func (ez *ExampleZSet) ZRangeByLexEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zrangebylex", args...)
+	assert.EqualError(t, err, errValue)
+}
+
+func (ez *ExampleZSet) ZRevRangeByLexEqualErr(t *testing.T, errValue string, args ...interface{}) {
+	_, err := ez.conn.Do("zrevrangebyscore", args...)
+	assert.EqualError(t, err, errValue)
 }
 
 func (ez *ExampleZSet) ZAnyOrderRangeByScoreEqual(t *testing.T, key string, start string, stop string, withScores bool, positiveOrder bool, limit string, expected string) {

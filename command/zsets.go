@@ -109,6 +109,37 @@ func ZRevRangeByScore(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	return zAnyOrderRangeByScore(ctx, txn, false)
 }
 
+func ZRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByLex(ctx, txn, true)
+}
+
+func ZRevRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	return zAnyOrderRangeByLex(ctx, txn, false)
+}
+
+func ZLexCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
+	stopKey, stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return Integer(ctx.Out, 0), nil
+	}
+
+	items, err := zset.ZOrderRangeByLex(startKey, stopKey, startInclude, stopInclude, 0, math.MaxInt64, true)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	return Integer(ctx.Out, int64(len(items))), nil
+}
+
 func ZCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	key := []byte(ctx.Args[0])
 	startScore, startInclude, err := getFloatAndInclude(ctx.Args[1])
@@ -142,6 +173,55 @@ func ZCount(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return Integer(ctx.Out, 0), nil
 	}
 	return Integer(ctx.Out, int64(len(items))), nil
+}
+
+func zAnyOrderRangeByLex(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+
+	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
+	stopKey, stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	if !positiveOrder {
+		startKey, startInclude = getLexKeyAndInclude([]byte(ctx.Args[2]))
+		stopKey, stopInclude = getLexKeyAndInclude([]byte(ctx.Args[1]))
+	}
+
+	var (
+		offset int64 = int64(0)
+		count  int64 = math.MaxInt64
+		err    error
+	)
+	for i := 3; i < len(ctx.Args); i++ {
+		switch strings.ToUpper(ctx.Args[i]) {
+		case "LIMIT":
+			if offset, count, err = getLimitParameters(ctx.Args[i+1:]); err != nil {
+				return nil, err
+			}
+			i += 2
+			break
+		default:
+			return nil, ErrSyntax
+		}
+	}
+
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return BytesArray(ctx.Out, nil), nil
+	}
+
+	items, err := zset.ZOrderRangeByLex(startKey, stopKey, startInclude, stopInclude, offset, count, positiveOrder)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if len(items) == 0 {
+		return BytesArray(ctx.Out, nil), nil
+	}
+	return BytesArray(ctx.Out, items), nil
 }
 
 func zAnyOrderRangeByScore(ctx *Context, txn *db.Transaction, positiveOrder bool) (OnCommit, error) {
@@ -224,6 +304,29 @@ func ZRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	deleted, err := zset.ZRem(members)
+	if err != nil {
+		return nil, errors.New("ERR " + err.Error())
+	}
+
+	return Integer(ctx.Out, deleted), nil
+}
+
+func ZRemRangeByLex(ctx *Context, txn *db.Transaction) (OnCommit, error) {
+	key := []byte(ctx.Args[0])
+	startKey, startInclude := getLexKeyAndInclude([]byte(ctx.Args[1]))
+	stopKey, stopInclude := getLexKeyAndInclude([]byte(ctx.Args[2]))
+	zset, err := txn.ZSet(key)
+	if err != nil {
+		if err == db.ErrTypeMismatch {
+			return nil, ErrTypeMismatch
+		}
+		return nil, errors.New("ERR " + err.Error())
+	}
+	if !zset.Exist() {
+		return Integer(ctx.Out, 0), nil
+	}
+
+	deleted, err := zset.ZRemRangeByLex(startKey, stopKey, startInclude, stopInclude)
 	if err != nil {
 		return nil, errors.New("ERR " + err.Error())
 	}

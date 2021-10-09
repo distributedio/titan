@@ -192,6 +192,13 @@ func (ac *AutoClient) ZSetCase(t *testing.T) {
 	ac.ez.ZScanEqual(t, "key-zset", "0", "*", 2, "member2 member4 -3.5 member5 0")
 	ac.ez.ZScanEqual(t, "key-zset", "member2", "member*", 2, "member11 member2 1.5 member1 2")
 
+	ac.ez.ZAddEqual(t, "key-zset-lex", "0", "a", "0", "aa", "0", "abc", "0", "apple", "0", "b", "0", "c", "0", "d", "0", "d1", "0", "dd", "0", "dobble", "0", "z", "0", "z1")
+	ac.ez.ZLexCountEqual(t, "key-zset-lex", "[a", "(abc", 2)
+	ac.ez.ZRangeByLexEqual(t, "key-zset-lex", "[a", "(abc", "LIMIT 0 2", "a aa")
+	ac.ez.ZRevRangeByLexEqual(t, "key-zset-lex", "(z", "[d1", "LIMIT 0 2", "dobble dd")
+	ac.ez.ZRemRangeByLexEqual(t, "key-zset-lex", 3, "(aa", "[b")
+	ac.ek.DelEqual(t, 1, "key-zset-lex")
+
 	ac.ez.ZRemEqual(t, "key-zset", "member2", "member1", "member3", "member4", "member1")
 	ac.ez.ZRangeEqual(t, "key-zset", 0, -1, true)
 

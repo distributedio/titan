@@ -183,6 +183,50 @@ func (zset *ZSet) Exist() bool {
 	return zset.meta.Len != 0
 }
 
+func (zset *ZSet) ZOrderRangeByLex(start, stop []byte, startInclude, stopInclude bool, offset int64, count int64, positiveOrder bool) ([][]byte, error) {
+	var (
+		items [][]byte
+		idx   int64 = -1
+		err   error
+	)
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	memPrefix := zsetMemberKey(dkey, []byte{})
+	f := func(key, val []byte) bool {
+		member := key[len(memPrefix):]
+		startCmp := kv.Key(member).Cmp(start)
+		stopCmp := kv.Key(member).Cmp(stop)
+		if len(stop) == 0 {
+			stopCmp = -1
+		}
+		if (!positiveOrder && startCmp < 0) || (positiveOrder && stopCmp > 0) {
+			return false
+		}
+		//ignore startPrefix ----> startKey range
+		if startCmp == 0 && !startInclude {
+			return true
+		}
+
+		//ignore  stopPrefix ----> stopKey range
+		if len(stop) > 0 && stopCmp > 0 || stopCmp == 0 && !stopInclude {
+			return true
+		}
+
+		idx++
+		if offset > idx {
+			return true
+		}
+		items = append(items, member)
+		if int64(len(items)) == count {
+			return false
+		}
+		return true
+	}
+	if err = zset.ZAnyOrderRangeByLex(start, stop, stopInclude, positiveOrder, f); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positiveOrder bool) ([][]byte, error) {
 	if stop < 0 {
 		if stop = zset.meta.Len + stop; stop < 0 {
@@ -413,6 +457,90 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 	zap.L().Debug("zrem update meta key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 	return deleted, err
 }
+
+func (zset *ZSet) ZAnyOrderRangeByLex(start, stop []byte, stopInclude, positiveOrder bool, callback FnCall) error {
+	dkey := DataKey(zset.txn.db, zset.meta.ID)
+	memPrefix := zsetMemberKey(dkey, []byte{})
+	startPrefix := zsetMemberKey(dkey, start)
+	stopPrefix := zsetMemberKey(dkey, stop)
+	if stopInclude || len(stop) == 0 {
+		stopPrefix = kv.Key(stopPrefix).PrefixNext()
+	}
+
+	var (
+		iter Iterator
+		err  error
+	)
+
+	if positiveOrder {
+		iter, err = zset.txn.t.Iter(startPrefix, stopPrefix)
+	} else {
+		iter, err = zset.txn.t.IterReverse(stopPrefix)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	for iter.Valid() && iter.Key().HasPrefix(memPrefix) {
+		if !callback(iter.Key(), iter.Value()) {
+			break
+		}
+		if err := iter.Next(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (zset *ZSet) ZRemRangeByLex(start, stop []byte, startInclude, stopInclude bool) (int64, error) {
+	var (
+		deleted   int64  = 0
+		dkey      []byte = DataKey(zset.txn.db, zset.meta.ID)
+		memPrefix []byte = zsetMemberKey(dkey, []byte{})
+		err       error
+	)
+
+	f := func(key, val []byte) bool {
+		member := key[len(memPrefix):]
+		startCmp := kv.Key(member).Cmp(start)
+		stopCmp := kv.Key(member).Cmp(stop)
+		if len(stop) > 0 && stopCmp > 0 {
+			return false
+		}
+		if startCmp == 0 && !startInclude {
+			return true
+		}
+		scoreKey := zsetScoreKey(dkey, val, member)
+		if err = zset.txn.t.Delete(scoreKey); err != nil {
+			return false
+		}
+		if err = zset.txn.t.Delete(key); err != nil {
+			return false
+		}
+		deleted++
+		return true
+	}
+
+	if err = zset.ZAnyOrderRangeByLex(start, stop, stopInclude, true, f); err != nil {
+		return deleted, err
+	}
+	if zset.meta.Len == deleted {
+		mkey := MetaKey(zset.txn.db, zset.key)
+		err = zset.txn.t.Delete(mkey)
+		if err != nil {
+			return deleted, err
+		}
+		if zset.meta.Object.ExpireAt > 0 {
+			if err = unExpireAt(zset.txn.t, mkey, zset.meta.Object.ExpireAt); err != nil {
+				return deleted, err
+			}
+		}
+	}
+
+	return deleted, nil
+}
+
 func (zset *ZSet) ZCard() int64 {
 	return zset.meta.Len
 }

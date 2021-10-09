@@ -245,6 +245,28 @@ func getFloatAndInclude(strf string) (float64, bool, error) {
 
 }
 
+func getLexKeyAndInclude(prefix []byte) ([]byte,bool) {
+	key := []byte{}
+	include := true
+	if string(prefix) == "+" || string(prefix) == "-" {
+		return key,include
+	}
+
+	if len(prefix) > 0 {
+		switch prefix[0]{
+			case byte('('):
+				key = prefix[1:]
+				include = false
+			case byte('['):
+				key = prefix[1:]
+			default:
+				key = prefix
+		}
+	}
+	return key,include
+}
+
+
 func getLimitParameters(offsetCount []string) (int64, int64, error) {
 	if len(offsetCount) < 2 {
 		return 0, 0, ErrSyntax

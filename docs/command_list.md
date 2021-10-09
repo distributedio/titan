@@ -139,27 +139,27 @@
 - [ ] bzpopmax
 - [x] zadd
 - [x] zcard
-- [ ] zcount
+- [x] zcount
 - [ ] zincrby
 - [ ] zinterstore
-- [ ] zlexcount
+- [x] zlexcount
 - [ ] zpopmax
 - [ ] zpopmin
 - [x] zrange
-- [ ] zrangebylex
-- [ ] zrevrangebylex
+- [x] zrangebylex
+- [x] zrevrangebylex
 - [x] zrangebyscore
 - [ ] zrank
 - [x] zrem
-- [ ] zremrangebylex
+- [x] zremrangebylex
 - [ ] zremrangebyrank
 - [ ] zremrangebyscore
 - [x] zrevrange
-- [ ] zrevrangebyscore
+- [x] zrevrangebyscore
 - [ ] zrevrank
 - [x] zscore
 - [ ] zunionstore
-- [ ] zscan
+- [x] zscan
 
 ### Geo
 

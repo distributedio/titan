@@ -6,13 +6,13 @@ require (
 	github.com/distributedio/continuous v0.0.0-20190527021358-1768e41f22b9
 	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9 // indirect
 	github.com/facebookgo/grace v0.0.0-20180706040059-75cf19382434 // indirect
-	github.com/golang/protobuf v1.3.4
+	github.com/golang/protobuf v1.4.3
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/pingcap/kvproto v0.0.0-20201208043834-923c9609272c
 	github.com/pingcap/tidb v1.1.0-beta.0.20201210112752-c33e90a7aef4
-	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/client_golang v1.11.1
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
 	github.com/shafreeck/retry v0.0.0-20180827080527-71c8c3fbf8f8

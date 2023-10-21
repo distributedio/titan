@@ -25,7 +25,7 @@ func main() {
 			fmt.Printf("auth failed :%s\n", err)
 			return
 		}
-		fmt.Println("auth sucess")
+		fmt.Println("auth success")
 		fmt.Println("Namespace:", string(ns))
 	} else {
 		token, err := command.Token([]byte(key), []byte(namespace), time.Now().Unix())

@@ -43,7 +43,7 @@ func (s *Server) Stop() error {
 			return err
 		}
 	}
-	zap.L().Info("status server stop sucess", zap.String("addr", s.addr))
+	zap.L().Info("status server stop success", zap.String("addr", s.addr))
 	return nil
 }
 
@@ -58,7 +58,7 @@ func (s *Server) GracefulStop() error {
 			return err
 		}
 	}
-	zap.L().Info("status serve graceful sucess", zap.String("addr", s.addr))
+	zap.L().Info("status serve graceful success", zap.String("addr", s.addr))
 	return nil
 }
 

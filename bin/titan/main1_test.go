@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -18,12 +17,12 @@ func TestWriter(t *testing.T) {
 	assert.Equal(t, stream, os.Stderr)
 	assert.Nil(t, _err)
 
-	td, td_err := ioutil.TempDir("", "titan-test")
+	td, td_err := os.MkdirTemp("", "titan-test")
 	assert.Nil(t, td_err)
-	stream, _err = Writer(path.Join(td, "titan-test-log"), "* * * * *", true)
+	_, _err = Writer(path.Join(td, "titan-test-log"), "* * * * *", true)
 	assert.Nil(t, _err)
 
-	stream, _err = Writer(path.Join(td, "titan-test-log"), "", true)
+	_, _err = Writer(path.Join(td, "titan-test-log"), "", true)
 	assert.NotNil(t, _err)
 
 }

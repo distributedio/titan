@@ -69,13 +69,17 @@ func Test_newHash(t *testing.T) {
 			assert.NotNil(t, txn)
 			assert.NoError(t, err)
 			got := newHash(tt.args.txn, tt.args.key)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			if err := compareNewHash(tt.want, got); err != nil {
 				t.Errorf("NewHash() = %v, want %v", got, tt.want)
 			}
 		})
 	}
-	txn.Commit(context.TODO())
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 }
 
 func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) error {
@@ -89,15 +93,6 @@ func setHashMeta(t *testing.T, txn *Transaction, key []byte, metaSlot int64) err
 	assert.NoError(t, err)
 	assert.NotNil(t, txn)
 	return nil
-}
-
-func getHashMeta(t *testing.T, txn *Transaction, key []byte) *HashMeta {
-	mkey := MetaKey(txn.db, key)
-	rawMeta, err := txn.t.Get(txn.ctx, mkey)
-	assert.NoError(t, err)
-	meta, err1 := DecodeHashMeta(rawMeta)
-	assert.NoError(t, err1)
-	return meta
 }
 
 //删除设置的meta信息
@@ -119,24 +114,18 @@ func getHash(t *testing.T, key []byte) (*Hash, *Transaction, error) {
 
 	return hash, txn, nil
 }
-func compareKvMap(t *testing.T, get, want map[string][]byte) error {
-	switch {
-	case !bytes.Equal(want["TestHashdelHashFiled1"], get["TestHashdelHashFiled1"]):
-		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want["TestHashdelHashFiled1"]), string(get["TestHashdelHashFiled1"]))
-	case !bytes.Equal(want["TestHashdelHashFiled2"], get["TestHashdelHashFiled2"]):
-		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want["TestHashdelHashFiled2"]), string(get["Tes  tHashdelHashFiled2"]))
-	case !bytes.Equal(want["TestHashdelHashFiled3"], get["TestHashdelHashFiled3"]):
-		return fmt.Errorf("set key not equal, want=%s, get=%s", string(want["TestHashdelHashFiled3"]), string(get["Tes    tHashdelHashFiled3"]))
-	}
-	return nil
-}
+
 func TestGetHash(t *testing.T) {
 	txn, err := mockDB.Begin()
 	assert.NoError(t, err)
 	assert.NotNil(t, txn)
 
-	setHashMeta(t, txn, []byte("TestGetHashExistKey"), 0)
-	setHashMeta(t, txn, []byte("TestGetHashSlotKey"), 100)
+	if err := setHashMeta(t, txn, []byte("TestGetHashExistKey"), 0); err != nil {
+		t.Errorf("setHashMeta error = %v", err)
+	}
+	if err := setHashMeta(t, txn, []byte("TestGetHashSlotKey"), 100); err != nil {
+		t.Errorf("setHashMeta error = %v", err)
+	}
 	type args struct {
 		txn *Transaction
 		key []byte
@@ -222,6 +211,7 @@ func TestGetHash(t *testing.T) {
 				t.Errorf("db.Begin error %s", err)
 			}
 			got, err := GetHash(tt.args.txn, tt.args.key)
+			_ = err
 			if err = txn.Commit(context.TODO()); err != nil {
 				t.Errorf("GetString() txn.Commit error = %v", err)
 				return
@@ -238,9 +228,15 @@ func TestGetHash(t *testing.T) {
 			}
 		})
 	}
-	destoryHashMeta(t, txn, []byte("TestGetHashExistKey"))
-	destoryHashMeta(t, txn, []byte("TestGetHashSlotKey"))
-	txn.Commit(context.TODO())
+	if err := destoryHashMeta(t, txn, []byte("TestGetHashExistKey")); err != nil {
+		t.Errorf("destoryHashMeta error = %v", err)
+	}
+	if err := destoryHashMeta(t, txn, []byte("TestGetHashSlotKey")); err != nil {
+		t.Errorf("destoryHashMeta error = %v", err)
+	}
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 }
 
 func TestHashHSet(t *testing.T) {
@@ -291,7 +287,7 @@ func TestHashHSet(t *testing.T) {
 			got, err := hash.HSet(tt.args.field, tt.args.value)
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
-			txn.Commit(context.TODO())
+			_ = txn.Commit(context.TODO())
 
 			assert.Equal(t, got, tt.want.num)
 		})
@@ -308,10 +304,10 @@ func TestHashHDel(t *testing.T) {
 	fileds = append(fileds, []byte("TestHashDelFiled2"))
 	fileds = append(fileds, []byte("TestHashDelFiled3"))
 
-	hash.HSet([]byte("TestHashDelFiled1"), []byte("TestDelHashValue1"))
-	hash.HSet([]byte("TestHashDelFiled2"), []byte("TestDelHashValue2"))
-	hash.HSet([]byte("TestHashDelFiled3"), []byte("TestDelHashValue3"))
-	txn.Commit(context.TODO())
+	_, _ = hash.HSet([]byte("TestHashDelFiled1"), []byte("TestDelHashValue1"))
+	_, _ = hash.HSet([]byte("TestHashDelFiled2"), []byte("TestDelHashValue2"))
+	_, _ = hash.HSet([]byte("TestHashDelFiled3"), []byte("TestDelHashValue3"))
+	_ = txn.Commit(context.TODO())
 
 	type args struct {
 		fields [][]byte
@@ -360,16 +356,20 @@ func TestHashHDel(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			assert.Equal(t, got, tt.want.num)
 
 			//use hlen check
-			hash, txn, err = getHash(t, []byte("TestHashHDel"))
+			hash, txn, _ = getHash(t, []byte("TestHashHDel"))
 			hlen, err1 := hash.HLen()
 			assert.NoError(t, err1)
 			assert.Equal(t, hlen, tt.want.len)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 		})
 	}
 }
@@ -412,9 +412,11 @@ func TestHashHSetNX(t *testing.T) {
 			assert.NotNil(t, txn)
 			assert.NotNil(t, hash)
 
-			got, err := hash.HSetNX(tt.args.field, tt.args.value)
+			got, _ := hash.HSetNX(tt.args.field, tt.args.value)
 
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got, tt.want)
 		})
 	}
@@ -426,8 +428,12 @@ func TestHash_HGet(t *testing.T) {
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
 
-	hash.HSet([]byte("TestHashHGetFiled"), []byte("TestHashHGetValue"))
-	txn.Commit(context.TODO())
+	if _, err := hash.HSet([]byte("TestHashHGetFiled"), []byte("TestHashHGetValue")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	type args struct {
 		field []byte
 	}
@@ -459,8 +465,10 @@ func TestHash_HGet(t *testing.T) {
 			assert.NotNil(t, txn)
 			assert.NotNil(t, hash)
 
-			got, err := hash.HGet(tt.args.field)
-			txn.Commit(context.TODO())
+			got, _ := hash.HGet(tt.args.field)
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got, tt.want)
 		})
 	}
@@ -473,10 +481,18 @@ func TestHashHGetAll(t *testing.T) {
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
 
-	hash.HSet([]byte("TestHashHGetAllFiled1"), []byte("TestHashHGetAllValue1"))
-	hash.HSet([]byte("TestHashHGetAllFiled2"), []byte("TestHashHGetAllValue2"))
-	hash.HSet([]byte("TestHashHGetAllFiled3"), []byte("TestHashHGetAllValue3"))
-	txn.Commit(context.TODO())
+	if _, err := hash.HSet([]byte("TestHashHGetAllFiled1"), []byte("TestHashHGetAllValue1")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if _, err := hash.HSet([]byte("TestHashHGetAllFiled2"), []byte("TestHashHGetAllValue2")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if _, err := hash.HSet([]byte("TestHashHGetAllFiled3"), []byte("TestHashHGetAllValue3")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	type want struct {
 		fields [][]byte
 		value  [][]byte
@@ -514,7 +530,9 @@ func TestHashHGetAll(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 			assert.NotNil(t, got1)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			assert.Equal(t, got, tt.want.fields)
 			assert.Equal(t, got1, tt.want.value)
@@ -528,9 +546,13 @@ func TestHash_HExists(t *testing.T) {
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
 
-	hash.HSet([]byte("TestHashDestory"), []byte("TestHashDestoryValue1"))
+	if _, err := hash.HSet([]byte("TestHashDestory"), []byte("TestHashDestoryValue1")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
 
-	txn.Commit(context.TODO())
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 
 	type args struct {
 		field []byte
@@ -564,7 +586,9 @@ func TestHash_HExists(t *testing.T) {
 			assert.NotNil(t, hash)
 
 			got, err := hash.HExists(tt.args.field)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got, tt.want)
 			assert.NoError(t, err)
 		})
@@ -577,9 +601,13 @@ func TestHashHIncrByFloat(t *testing.T) {
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
 
-	hash.HSet([]byte("TestHashHIncrByFloat"), []byte("10.50"))
+	if _, err := hash.HSet([]byte("TestHashHIncrByFloat"), []byte("10.50")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
 
-	txn.Commit(context.TODO())
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	type args struct {
 		field []byte
 		v     float64
@@ -613,7 +641,9 @@ func TestHashHIncrByFloat(t *testing.T) {
 			assert.NotNil(t, txn)
 			assert.NotNil(t, hash)
 			got, err := hash.HIncrByFloat(tt.args.field, tt.args.v)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got, tt.want)
 			assert.NoError(t, err)
 		})
@@ -628,11 +658,11 @@ func TestHashHLen(t *testing.T) {
 	//	hashslot, err := getHash(t, []byte("TestHashSlotHLen"))
 	//	hashslot.HMSlot(10)
 
-	hash.HSet([]byte("TestHashHlenField1"), []byte("TestHashHlenValue"))
-	hash.HSet([]byte("TestHashHlenField2"), []byte("TestHashHlenValue"))
-	hash.HSet([]byte("TestHashHlenField3"), []byte("TestHashHlenValue"))
+	_, _ = hash.HSet([]byte("TestHashHlenField1"), []byte("TestHashHlenValue"))
+	_, _ = hash.HSet([]byte("TestHashHlenField2"), []byte("TestHashHlenValue"))
+	_, _ = hash.HSet([]byte("TestHashHlenField3"), []byte("TestHashHlenValue"))
 
-	txn.Commit(context.TODO())
+	_ = txn.Commit(context.TODO())
 	hashslot, txn, err := getHash(t, []byte("TestHashSlotHLen"))
 	assert.NoError(t, err)
 	assert.NotNil(t, txn)
@@ -640,12 +670,12 @@ func TestHashHLen(t *testing.T) {
 	//  hashslot, err := getHash(t, []byte("TestHashSlotHLen"))
 	//  hashslot.HMSlot(10)
 
-	hashslot.HSet([]byte("TestHashHlenField1"), []byte("TestHashHlenValue"))
+	_, _ = hashslot.HSet([]byte("TestHashHlenField1"), []byte("TestHashHlenValue"))
 
-	hashslot.HSet([]byte("TestHashHlenField2"), []byte("TestHashHlenValue"))
-	hashslot.HSet([]byte("TestHashHlenField3"), []byte("TestHashHlenValue"))
+	_, _ = hashslot.HSet([]byte("TestHashHlenField2"), []byte("TestHashHlenValue"))
+	_, _ = hashslot.HSet([]byte("TestHashHlenField3"), []byte("TestHashHlenValue"))
 
-	txn.Commit(context.TODO())
+	_ = txn.Commit(context.TODO())
 	//	hashslot.HSet([]byte("TestHashslotHlenField1"), []byte("TestHashHlenValue"))
 	//	hashslot.HSet([]byte("TestHashslotHlenField2"), []byte("TestHashHlenValue"))
 	//	hashslot.HSet([]byte("TestHashslotHlenField3"), []byte("TestHashHlenValue"))
@@ -668,7 +698,9 @@ func TestHashHLen(t *testing.T) {
 			assert.NotNil(t, hash)
 
 			got, err := hash.HLen()
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got, tt.want)
 			assert.NoError(t, err)
 
@@ -678,7 +710,9 @@ func TestHashHLen(t *testing.T) {
 			assert.NotNil(t, hashslot)
 
 			got1, err := hashslot.HLen()
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got1, tt.want)
 			assert.NoError(t, err)
 		})
@@ -691,11 +725,19 @@ func TestHash_HScan(t *testing.T) {
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
 
-	hash.HSet([]byte("TestHashHScanFiled1"), []byte("TestHashHScanValue1"))
-	hash.HSet([]byte("TestHashHScanFiled2"), []byte("TestHashHScanValue2"))
-	hash.HSet([]byte("TestHashHScanFiled3"), []byte("TestHashHScanValue3"))
+	if _, err := hash.HSet([]byte("TestHashHScanFiled1"), []byte("TestHashHScanValue1")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if _, err := hash.HSet([]byte("TestHashHScanFiled2"), []byte("TestHashHScanValue2")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if _, err := hash.HSet([]byte("TestHashHScanFiled3"), []byte("TestHashHScanValue3")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
 
-	txn.Commit(context.TODO())
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 
 	type args struct {
 		cursor []byte
@@ -734,7 +776,9 @@ func TestHash_HScan(t *testing.T) {
 			assert.NotNil(t, hash)
 
 			err = hash.HScan(tt.args.cursor, tt.args.f)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			assert.Equal(t, value, tt.want)
 			assert.NoError(t, err)
@@ -748,11 +792,19 @@ func TestHash_HMGet(t *testing.T) {
 	assert.NotNil(t, txn)
 	assert.NotNil(t, hash)
 
-	hash.HSet([]byte("TestHashHMGetFiled1"), []byte("TestHashHGetValue1"))
-	hash.HSet([]byte("TestHashHMGetFiled2"), []byte("TestHashHGetValue2"))
-	hash.HSet([]byte("TestHashHMGetFiled3"), []byte("TestHashHGetValue3"))
+	if _, err := hash.HSet([]byte("TestHashHMGetFiled1"), []byte("TestHashHGetValue1")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if _, err := hash.HSet([]byte("TestHashHMGetFiled2"), []byte("TestHashHGetValue2")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
+	if _, err := hash.HSet([]byte("TestHashHMGetFiled3"), []byte("TestHashHGetValue3")); err != nil {
+		t.Errorf("hash.HSet error = %v", err)
+	}
 
-	txn.Commit(context.TODO())
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 
 	var fields [][]byte
 	var value [][]byte
@@ -787,7 +839,9 @@ func TestHash_HMGet(t *testing.T) {
 			assert.NotNil(t, hash)
 			got, err := hash.HMGet(tt.args.fields)
 
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.Equal(t, got, tt.want)
 			assert.NoError(t, err)
 		})
@@ -839,7 +893,9 @@ func TestHashHMSet(t *testing.T) {
 			assert.NotNil(t, hash)
 			err = hash.HMSet(tt.args.fields, tt.args.values)
 			assert.NoError(t, err)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			hash, txn, err = getHash(t, []byte("TestHashHMSet"))
 			assert.NoError(t, err)
@@ -860,10 +916,14 @@ func TestHashExpired(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		id := hash.meta.Object.ID
-		hash.meta.Object.ExpireAt = expireAt
-		hash.HSet([]byte("TestHashExpiredfield"), []byte("TestHashExpiredval"))
-		txn.Commit(context.TODO())
+		id := hash.meta.ID
+		hash.meta.ExpireAt = expireAt
+		if _, err := hash.HSet([]byte("TestHashExpiredfield"), []byte("TestHashExpiredval")); err != nil {
+			t.Errorf("hash.HSet error = %v", err)
+		}
+		if err := txn.Commit(context.TODO()); err != nil {
+			t.Errorf("txn.Commit error = %v", err)
+		}
 		return id
 	}
 
@@ -901,8 +961,10 @@ func TestHashExpired(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, txn)
 			assert.NotNil(t, hash)
-			newID := hash.meta.Object.ID
-			txn.Commit(context.TODO())
+			newID := hash.meta.ID
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			if tt.want {
 				assert.Equal(t, newID, oldID)
 			} else {

@@ -272,7 +272,7 @@ func getAllOutput(msmap map[string]float64, positiveOrder bool, withScore bool) 
 
 	}
 	scores := make([]float64, 0)
-	for score, _ := range scoreMembers {
+	for score := range scoreMembers {
 		scores = append(scores, score)
 	}
 	if positiveOrder {

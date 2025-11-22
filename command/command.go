@@ -33,28 +33,28 @@ type OnCommit func()
 // SimpleString replies a simplestring when commit
 func SimpleString(w io.Writer, s string) OnCommit {
 	return func() {
-		resp.ReplySimpleString(w, s)
+		_ = resp.ReplySimpleString(w, s)
 	}
 }
 
 // BulkString replies a bulkstring when commit
 func BulkString(w io.Writer, s string) OnCommit {
 	return func() {
-		resp.ReplyBulkString(w, s)
+		_ = resp.ReplyBulkString(w, s)
 	}
 }
 
 // NullBulkString replies a null bulkstring when commit
 func NullBulkString(w io.Writer) OnCommit {
 	return func() {
-		resp.ReplyNullBulkString(w)
+		_ = resp.ReplyNullBulkString(w)
 	}
 }
 
 // Integer replies in integer when commit
 func Integer(w io.Writer, v int64) OnCommit {
 	return func() {
-		resp.ReplyInteger(w, v)
+		_ = resp.ReplyInteger(w, v)
 	}
 }
 
@@ -94,19 +94,19 @@ func Call(ctx *Context) {
 
 	if ctx.Name != "auth" &&
 		ctx.Server.RequirePass != "" &&
-		ctx.Client.Authenticated == false {
-		resp.ReplyError(ctx.Out, ErrNoAuth.Error())
+		!ctx.Client.Authenticated {
+		_ = resp.ReplyError(ctx.Out, ErrNoAuth.Error())
 		return
 	}
 	// Exec all queued commands if this is an exec command
 	if ctx.Name == "exec" {
 		if len(ctx.Args) != 0 {
-			resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
+			_ = resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
 			return
 		}
 		// Exec must begin with multi
 		if !ctx.Client.Multi {
-			resp.ReplyError(ctx.Out, ErrExec.Error())
+			_ = resp.ReplyError(ctx.Out, ErrExec.Error())
 			return
 		}
 
@@ -117,7 +117,7 @@ func Call(ctx *Context) {
 	// Discard all queued commands and return
 	if ctx.Name == "discard" {
 		if !ctx.Client.Multi {
-			resp.ReplyError(ctx.Out, ErrDiscard.Error())
+			_ = resp.ReplyError(ctx.Out, ErrDiscard.Error())
 			return
 		}
 
@@ -128,32 +128,32 @@ func Call(ctx *Context) {
 
 	cmdInfoCommand, ok := commands[ctx.Name]
 	if !ok {
-		resp.ReplyError(ctx.Out, ErrUnKnownCommand(ctx.Name).Error())
+		_ = resp.ReplyError(ctx.Out, ErrUnKnownCommand(ctx.Name).Error())
 		return
 	}
 	argc := len(ctx.Args) + 1 // include the command name
 	arity := cmdInfoCommand.Cons.Arity
 
 	if arity > 0 && argc != arity {
-		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
+		_ = resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
 		return
 	}
 
 	if arity < 0 && argc < -arity {
-		resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
+		_ = resp.ReplyError(ctx.Out, ErrWrongArgs(ctx.Name).Error())
 		return
 	}
 
 	// We now in a multi block, queue the command and return
 	if ctx.Client.Multi {
 		if ctx.Name == "multi" {
-			resp.ReplyError(ctx.Out, ErrMultiNested.Error())
+			_ = resp.ReplyError(ctx.Out, ErrMultiNested.Error())
 			return
 		}
 		commands := ctx.Client.Commands
 		commands = append(commands, &context.Command{Name: ctx.Name, Args: ctx.Args})
 		ctx.Client.Commands = commands
-		resp.ReplySimpleString(ctx.Out, "QUEUED")
+		_ = resp.ReplySimpleString(ctx.Out, "QUEUED")
 		return
 	}
 
@@ -181,7 +181,11 @@ func TxnCall(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // AutoCommit commits to database after run a txn command
 func AutoCommit(cmd TxnCommand) Command {
 	return func(ctx *Context) {
-		retry.Ensure(ctx, func() error {
+		r := retry.New(
+			retry.WithBackoff(retry.Exponential(2)),
+			retry.WithBaseDelay(50*time.Millisecond),
+		)
+		_ = r.Ensure(ctx, func() error {
 			mt := metrics.GetMetrics()
 			start := time.Now()
 			txn, err := ctx.Client.DB.Begin()
@@ -197,7 +201,7 @@ func AutoCommit(cmd TxnCommand) Command {
 			mt.TxnBeginHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				_ = resp.ReplyError(ctx.Out, "ERR "+err.Error())
 				zap.L().Error("txn begin failed",
 					zap.Int64("clientid", ctx.Client.ID),
 					zap.String("command", ctx.Name),
@@ -213,8 +217,8 @@ func AutoCommit(cmd TxnCommand) Command {
 			mt.CommandFuncDoneHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			if err != nil {
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				resp.ReplyError(ctx.Out, err.Error())
-				txn.Rollback()
+				_ = resp.ReplyError(ctx.Out, err.Error())
+				_ = txn.Rollback()
 				zap.L().Error("command process failed",
 					zap.Int64("clientid", ctx.Client.ID),
 					zap.String("command", ctx.Name),
@@ -229,20 +233,20 @@ func AutoCommit(cmd TxnCommand) Command {
 				mt.TxnCommitHistogramVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Observe(cost)
 			}
 			if err := txn.Commit(ctx); err != nil {
-				txn.Rollback()
+				_ = txn.Rollback()
 				mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 				if db.IsRetryableError(err) {
 					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 					mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
 					mtFunc()
-					zap.L().Error("txn commit retry",
+					zap.L().WithOptions(zap.AddStacktrace(zap.FatalLevel)).Info("txn commit retry",
 						zap.Int64("clientid", ctx.Client.ID),
 						zap.String("command", ctx.Name),
 						zap.String("traceid", ctx.TraceID),
-						zap.Error(err))
+						zap.String("error", err.Error()))
 					return retry.Retriable(err)
 				}
-				resp.ReplyError(ctx.Out, "ERR "+err.Error())
+				_ = resp.ReplyError(ctx.Out, "ERR "+err.Error())
 				mtFunc()
 				zap.L().Error("txn commit failed",
 					zap.Int64("clientid", ctx.Client.ID),

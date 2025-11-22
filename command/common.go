@@ -65,7 +65,9 @@ func Verify(token, key []byte) ([]byte, error) {
 	}
 
 	sign := make([]byte, tokenSignLen)
-	hex.Decode(sign, token[len(token)-encodedSignLen:])
+	if _, err := hex.Decode(sign, token[len(token)-encodedSignLen:]); err != nil {
+		return nil, err
+	}
 
 	meta := token[:len(token)-encodedSignLen-1] //counting in the ":"
 	mac := hmac.New(sha256.New, key)
@@ -232,12 +234,14 @@ func getFloatAndInclude(strf string) (float64, bool, error) {
 		include = false
 		lowerStrf = lowerStrf[1:]
 	}
-	if lowerStrf == "-inf" {
+	switch lowerStrf {
+	case "-inf":
 		f = -math.MaxFloat64
-	} else if lowerStrf == "+inf" || lowerStrf == "inf" {
+	case "+inf", "inf":
 		f = math.MaxFloat64
-	} else {
-		if f, err = strconv.ParseFloat(lowerStrf, 64); err != nil {
+	default:
+		f, err = strconv.ParseFloat(lowerStrf, 64)
+		if err != nil {
 			return f, include, err
 		}
 	}

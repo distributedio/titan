@@ -24,17 +24,17 @@ include:
 
 go-lint:
   stage: lint
-  image: golangci/golangci-lint:v1.39.0
+  image: golangci/golangci-lint:v2.6.2
   script: |
-    # This currently fails on upstream code
-    make lint || true
+    go mod download
+    make lint
 
 go-test:
   artifacts:
     paths:
       - token
   stage: test
-  image: golang:1.16.4-buster
+  image: golang:1.25.4
   script: |
     go mod download
     make coverage

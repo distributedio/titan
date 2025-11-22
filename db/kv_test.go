@@ -15,14 +15,18 @@ func SetVal(t *testing.T, db *DB, key, val []byte) {
 	assert.NoError(t, err)
 	err = str.Set(val)
 	assert.NoError(t, err)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 }
 
 func CheckNotFoundKey(t *testing.T, db *DB, key []byte) (bool, error) {
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	obj, err := txn.Object(key)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	if obj != nil {
 		return false, err
 	}
@@ -33,7 +37,9 @@ func EqualExpireAt(t *testing.T, db *DB, key []byte, expected int64) {
 	txn, err := db.Begin()
 	assert.NoError(t, err)
 	obj, err := txn.Object(key)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	assert.NoError(t, err)
 	assert.NotNil(t, obj)
 	assert.Equal(t, expected, obj.ExpireAt)
@@ -51,7 +57,9 @@ func TestDelete(t *testing.T) {
 	keys := [][]byte{key}
 	_, err = kv.Delete(keys)
 	assert.NoError(t, err)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	notFound, _ := CheckNotFoundKey(t, db, key)
 	assert.Equal(t, true, notFound)
 }
@@ -67,7 +75,9 @@ func TestExists(t *testing.T) {
 	assert.NoError(t, err)
 	keys := [][]byte{key}
 	_, err = kv.Exists(keys)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	assert.NoError(t, err)
 }
 
@@ -84,7 +94,9 @@ func TestExpireAt(t *testing.T) {
 	kv := txn.Kv()
 	assert.NoError(t, err)
 	err = kv.ExpireAt(key, time1)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	assert.NoError(t, err)
 	EqualExpireAt(t, db, key, time1)
 
@@ -116,7 +128,9 @@ func TestKeys(t *testing.T) {
 	}
 	err = kv.Keys([]byte("keys"), call)
 	assert.NoError(t, err)
-	txn.Commit(context.Background())
+	if err := txn.Commit(context.Background()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 	assert.Equal(t, list, actualkeys)
 
 }
@@ -146,7 +160,9 @@ func TestRandomKey(t *testing.T) {
 		tmp1, err := kv.RandomKey()
 		assert.NoError(t, err)
 		mapkey[string(tmp1)]++
-		txn.Commit(context.Background())
+		if err := txn.Commit(context.Background()); err != nil {
+			t.Errorf("txn.Commit error = %v", err)
+		}
 
 	}
 	// assert.NotEqual(t, 1, len(mapkey))

@@ -1,12 +1,12 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"time"
 
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/metrics"
-	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -104,7 +104,7 @@ func doZListTransfer(txn *Transaction, metakey []byte) (int, error) {
 	return int(llist.Len), nil
 }
 
-func ztWorker(db *DB, batch int, interval time.Duration) {
+func ztWorker(db *DB, ctx context.Context, batch int, interval time.Duration) {
 	var txn *Transaction
 	var err error
 	var n int
@@ -112,12 +112,9 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 	txnstart := false
 	batchCount := 0
 	sum := 0
-	commit := func(t *Transaction) {
-		if err = t.Commit(context.Background()); err != nil {
+	commit := func(currentTxn *Transaction) {
+		if err = retryBackgroundCommit(ctx, currentTxn, "ZT", 5); err != nil {
 			zap.L().Error("[ZT] error in commit transfer", zap.Error(err))
-			if err := txn.Rollback(); err != nil {
-				zap.L().Error("[ZT] rollback failed", zap.Error(err))
-			}
 		} else {
 			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("zlist").Add(float64(batchCount))
 			metrics.GetMetrics().ZTInfoCounterVec.WithLabelValues("key").Add(float64(sum))
@@ -134,6 +131,8 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 	// create zlist and transfer to llist, after that, delete zt key
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case metakey := <-ztQueue:
 			if !txnstart {
 				if txn, err = db.Begin(); err != nil {
@@ -166,20 +165,20 @@ func ztWorker(db *DB, batch int, interval time.Duration) {
 	}
 }
 
-func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
+func runZT(db *DB, ctx context.Context, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 	txn, err := db.Begin()
 	if err != nil {
 		zap.L().Error("[ZT] error in kv begin", zap.Error(err))
 		return toZTKey(nil), nil
 	}
-	endPrefix := kv.Key(prefix).PrefixNext()
+	endPrefix := prefixNext(prefix)
 	iter, err := txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[ZT] error in seek", zap.ByteString("prefix", prefix), zap.Error(err))
 		return toZTKey(nil), err
 	}
 
-	for ; iter.Valid() && iter.Key().HasPrefix(prefix); err = iter.Next() {
+	for ; iter.Valid() && bytes.HasPrefix(iter.Key(), prefix); err = iter.Next() {
 		if err != nil {
 			zap.L().Error("[ZT] error in iter next", zap.Error(err))
 			return toZTKey(nil), err
@@ -196,15 +195,19 @@ func runZT(db *DB, prefix []byte, tick <-chan time.Time) ([]byte, error) {
 		logEnv.Write(zap.ByteString("prefix", prefix))
 	}
 
-	return toZTKey(nil), txn.Commit(context.Background())
+	return toZTKey(nil), txn.Commit(ctx)
 }
 
 // StartZT start ZT fill in the queue(channel), and start the worker to consume.
 func StartZT(task *Task) {
 	conf := task.conf.(conf.ZT)
 	ztQueue = make(chan []byte, conf.QueueDepth)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for i := 0; i < conf.Workers; i++ {
-		go ztWorker(task.db, conf.BatchCount, conf.Interval)
+		go ztWorker(task.db, ctx, conf.BatchCount, conf.Interval)
 	}
 
 	// check leader and fill the channel
@@ -224,7 +227,7 @@ func StartZT(task *Task) {
 		case <-ticker.C:
 		}
 
-		if prefix, err = runZT(task.db, prefix, ticker.C); err != nil {
+		if prefix, err = runZT(task.db, ctx, prefix, ticker.C); err != nil {
 			zap.L().Error("[ZT] error in run ZT",
 				zap.Int64("dbid", int64(task.db.ID)),
 				zap.ByteString("prefix", prefix),

@@ -104,7 +104,7 @@ func Set(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if err != db.ErrKeyNotFound {
-		txn.Destory(obj, key)
+		_ = txn.Destory(obj, key)
 	}
 
 	s := db.NewString(txn, key)
@@ -300,7 +300,7 @@ func SetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 	if err != db.ErrKeyNotFound {
-		txn.Destory(obj, key)
+		_ = txn.Destory(obj, key)
 	}
 
 	s := db.NewString(txn, key)
@@ -329,7 +329,7 @@ func PSetEx(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	if err != db.ErrKeyNotFound {
-		txn.Destory(obj, key)
+		_ = txn.Destory(obj, key)
 	}
 
 	s := db.NewString(txn, key)

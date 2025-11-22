@@ -344,12 +344,16 @@ func HScan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		if _, err := resp.ReplyArray(ctx.Out, 2); err != nil {
 			return
 		}
-		resp.ReplyBulkString(ctx.Out, string(lastCursor))
+		if err := resp.ReplyBulkString(ctx.Out, string(lastCursor)); err != nil {
+			return
+		}
 		if _, err := resp.ReplyArray(ctx.Out, len(kvs)); err != nil {
 			return
 		}
 		for i := range kvs {
-			resp.ReplyBulkString(ctx.Out, string(kvs[i]))
+			if err := resp.ReplyBulkString(ctx.Out, string(kvs[i])); err != nil {
+				return
+			}
 		}
 	}
 	hash, err := txn.Hash(key)

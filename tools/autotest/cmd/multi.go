@@ -35,7 +35,7 @@ func (ms *ExampleMulti) MultiEqualErr(t *testing.T, errValue string, args ...int
 
 //ExecEqual verify that the return err value of the exec operation is correct
 func (ms *ExampleMulti) ExecEqual(t *testing.T) {
-	reply, err := redis.MultiBulk(ms.conn.Do("exec"))
+	reply, err := redis.Values(ms.conn.Do("exec"))
 	assert.NoError(t, err)
 	assert.Equal(t, ms.value, reply)
 }

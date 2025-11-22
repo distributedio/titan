@@ -301,7 +301,7 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 			}
 		case "match":
 			pattern = []byte(next)
-			usePattern = !(len(pattern) == 1 && pattern[0] == '*')
+			usePattern = len(pattern) != 1 || pattern[0] != '*'
 		case "type":
 			keyType = []byte(next)
 		}
@@ -338,11 +338,11 @@ func Scan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 		return nil, errors.New("ERR " + err.Error())
 	}
 	return func() {
-		resp.ReplyArray(ctx.Out, 2)
-		resp.ReplyBulkString(ctx.Out, string(end))
-		resp.ReplyArray(ctx.Out, len(list))
+		_, _ = resp.ReplyArray(ctx.Out, 2)
+		_ = resp.ReplyBulkString(ctx.Out, string(end))
+		_, _ = resp.ReplyArray(ctx.Out, len(list))
 		for i := range list {
-			resp.ReplyBulkString(ctx.Out, string(list[i]))
+			_ = resp.ReplyBulkString(ctx.Out, string(list[i]))
 		}
 	}, nil
 

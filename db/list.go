@@ -54,9 +54,10 @@ func GetList(txn *Transaction, key []byte, opts ...ListOption) (List, error) {
 		return nil, ErrTypeMismatch
 	}
 
-	if obj.Encoding == ObjectEncodingLinkedlist {
+	switch obj.Encoding {
+	case ObjectEncodingLinkedlist:
 		return GetLList(txn, metaKey, obj, val)
-	} else if obj.Encoding == ObjectEncodingZiplist {
+	case ObjectEncodingZiplist:
 		return GetZList(txn, metaKey, obj, val)
 	}
 	return nil, ErrEncodingMismatch

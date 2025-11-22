@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/tools/integration"
-	etcd_int "go.etcd.io/etcd/integration"
 )
 
 var (
@@ -15,11 +14,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	t := &testing.T{}
-	clus := etcd_int.NewClusterV3(t, &etcd_int.ClusterConfig{Size: 1, ClientTLS: nil})
-	etcdAddrs := clus.RandClient().Endpoints()
 	integration.SetAuth("titan")
-	integration.SetEtcdAddrs(etcdAddrs)
 
 	go integration.Start()
 	time.Sleep(time.Second)

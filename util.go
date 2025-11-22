@@ -6,19 +6,7 @@ import (
 
 	"github.com/distributedio/titan/context"
 	"github.com/twinj/uuid"
-
-	"go.uber.org/zap"
 )
-
-func logVersionInfo() {
-	zap.L().Info("Welcome to Titan.")
-	zap.L().Info("Server info", zap.String("Release Version", context.ReleaseVersion))
-	zap.L().Info("Server info", zap.String("Git Commit Hash", context.GitHash))
-	zap.L().Info("Server info", zap.String("Git Commit Log", context.GitLog))
-	zap.L().Info("Server info", zap.String("Git Branch", context.GitBranch))
-	zap.L().Info("Server info", zap.String("UTC Build Time", context.BuildTS))
-	zap.L().Info("Server info", zap.String("Golang compiler Version", context.GolangVersion))
-}
 
 // PrintVersionInfo prints the server version info
 func PrintVersionInfo() {

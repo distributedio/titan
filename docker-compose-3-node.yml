@@ -1,0 +1,161 @@
+#titan-pd-0.titan-pd-peer.titan.svc
+services:
+  pd0:
+    image: pingcap/pd:latest
+    ports:
+      - "2379"
+    volumes:
+      - ./data/pd0:/var/lib/pd
+      - ./logs/pd0:/logs
+    command:
+      - --name=pd0
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd0:2379
+      - --advertise-peer-urls=http://pd0:2380
+      - --initial-cluster=pd0=http://pd0:2380,pd1=http://pd1:2380,pd2=http://pd2:2380
+      - --data-dir=/var/lib/pd
+#      - --log-file=/logs/pd0.log
+#      - --log-level debug
+    restart: on-failure
+    networks:
+      default:
+        aliases:
+          - titan-pd-0.titan-pd-peer.titan.svc
+
+  pd1:
+    image: pingcap/pd:latest
+    ports:
+      - "2379"
+    volumes:
+      - ./data/pd1:/var/lib/pd
+      - ./logs/pd1:/logs
+    command:
+      - --name=pd1
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd1:2379
+      - --advertise-peer-urls=http://pd1:2380
+      - --initial-cluster=pd0=http://pd0:2380,pd1=http://pd1:2380,pd2=http://pd2:2380
+      - --data-dir=/var/lib/pd
+#      - --log-file=/logs/pd1.log
+#      - --log-level debug
+    restart: on-failure
+    networks:
+      default:
+        aliases:
+          - titan-pd-1.titan-pd-peer.titan.svc
+
+  pd2:
+    image: pingcap/pd:latest
+    ports:
+      - "2379"
+    volumes:
+      - ./data/pd2:/var/lib/pd
+      - ./logs/pd2:/logs
+    command:
+      - --name=pd2
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd2:2379
+      - --advertise-peer-urls=http://pd2:2380
+      - --initial-cluster=pd0=http://pd0:2380,pd1=http://pd1:2380,pd2=http://pd2:2380
+      - --data-dir=/var/lib/pd
+#      - --log-file=/logs/pd2.log
+#      - --log-level debug
+    restart: on-failure
+    networks:
+      default:
+        aliases:
+          - titan-pd-2.titan-pd-peer.titan.svc
+
+  tikv0:
+    image: pingcap/tikv:latest
+    volumes:
+      - ./data/tikv0:/var/lib/tikv
+      - ./logs/tikv0:/logs
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv0:20160
+      - --data-dir=/var/lib/tikv
+      - --pd=pd0:2379,pd1:2379,pd2:2379
+#      - --log-file=/logs/tikv0.log
+#      - --log-level debug
+    depends_on:
+      - "pd0"
+      - "pd1"
+      - "pd2"
+    restart: on-failure
+
+  tikv1:
+    image: pingcap/tikv:latest
+    volumes:
+      - ./data/tikv1:/var/lib/tikv
+      - ./logs/tikv1:/logs
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv1:20160
+      - --data-dir=/var/lib/tikv
+      - --pd=pd0:2379,pd1:2379,pd2:2379
+#      - --log-file=/logs/tikv1.log
+#      - --log-level debug
+    depends_on:
+      - "pd0"
+      - "pd1"
+      - "pd2"
+    restart: on-failure
+
+  tikv2:
+    image: pingcap/tikv:latest
+    volumes:
+      - ./data/tikv2:/var/lib/tikv
+      - ./logs/tikv2:/logs
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv2:20160
+      - --data-dir=/var/lib/tikv
+      - --pd=pd0:2379,pd1:2379,pd2:2379
+#      - --log-file=/logs/tikv2.log
+#      - --log-level debug
+    depends_on:
+      - "pd0"
+      - "pd1"
+      - "pd2"
+    restart: on-failure
+
+  titan0:
+    build: .
+    image: cr.agilicus.com/open-source/titan:feature-tikv-client-upgrade 
+    #image: cr.agilicus.com/open-source/titan:v0.8.6
+    volumes:
+      - ./logs:/titan/logs
+      - ./data/titan:/etc/conf
+    ports:
+      - "7369:7369"
+      - "7345:7345"
+    command:
+      - -c=/etc/conf/titan.conf
+      - --pd-addrs=tikv://pd0:2379,pd1:2379,pd2:2379
+    depends_on:
+      - "tikv0"
+      - "tikv1"
+      - "tikv2"
+    restart: on-failure
+
+  titan1:
+    image: cr.agilicus.com/open-source/titan:feature-tikv-client-upgrade
+    #image: cr.agilicus.com/open-source/titan:v0.8.6
+    volumes:
+      - ./logs:/titan/logs
+      - ./data/titan:/etc/conf
+    ports:
+      - "8369:7369"
+      - "8345:7345"
+    command:
+      - -c=/etc/conf/titan.conf
+      - --pd-addrs=tikv://pd0:2379,pd1:2379,pd2:2379
+    depends_on:
+      - "tikv0"
+      - "tikv1"
+      - "tikv2"
+    restart: on-failure

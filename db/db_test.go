@@ -6,22 +6,23 @@ import (
 	"testing"
 
 	"github.com/distributedio/titan/conf"
-	"github.com/pingcap/tidb/store/mockstore"
+	"github.com/distributedio/titan/db/store"
 	"github.com/stretchr/testify/assert"
 )
 
 var mockDB *DB
 
 func TestMain(m *testing.M) {
-	store, err := mockstore.NewMockStore(mockstore.WithStoreType(mockstore.MockTiKV))
+	s, err := store.MockOpen("mocktikv://")
 	if err != nil {
 		panic(err)
 	}
 	mockConf := conf.MockConf()
+	// RedisStore expects store.Storage which is what MockOpen returns
 	mockDB = &DB{
 		Namespace: "mockdb-ns",
 		ID:        1,
-		kv:        &RedisStore{Storage: store, conf: &mockConf.TiKV},
+		kv:        &RedisStore{Storage: s, conf: &mockConf.TiKV},
 	}
 
 	os.Exit(m.Run())

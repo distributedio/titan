@@ -17,7 +17,9 @@ var (
 func TestListenAndServer(t *testing.T) {
 	server := NewServer(cstatus)
 	assert.NotNil(t, server)
-	go server.ListenAndServe(cstatus.Listen)
+	go func() {
+		_ = server.ListenAndServe(cstatus.Listen)
+	}()
 	err := server.Stop()
 	assert.NoError(t, err)
 }

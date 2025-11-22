@@ -3,7 +3,6 @@ package integration
 import (
 	"fmt"
 	"log"
-	"net"
 
 	"go.uber.org/zap"
 
@@ -23,7 +22,6 @@ var (
 	tikvConf = conf.MockConf().TiKV
 	//ServerAddr default server addr
 	ServerAddr = "127.0.0.1:17369"
-	lis        net.Listener
 )
 
 //SetAuth default no verify

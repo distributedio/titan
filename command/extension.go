@@ -58,11 +58,11 @@ func Escan(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 	}
 
 	return func() {
-		resp.ReplyArray(ctx.Out, 2)
-		resp.ReplyBulkString(ctx.Out, cursor)
-		resp.ReplyArray(ctx.Out, n)
+		_, _ = resp.ReplyArray(ctx.Out, 2)
+		_ = resp.ReplyBulkString(ctx.Out, cursor)
+		_, _ = resp.ReplyArray(ctx.Out, n)
 		for i := 0; i < n; i++ {
-			resp.ReplyBulkString(ctx.Out, fmt.Sprintf("%d %s", at[i], keys[i]))
+			_ = resp.ReplyBulkString(ctx.Out, fmt.Sprintf("%d %s", at[i], keys[i]))
 		}
 	}, nil
 }

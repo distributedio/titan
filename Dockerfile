@@ -1,5 +1,5 @@
 # Builder image
-FROM golang:1.16.4-buster as builder
+FROM golang:1.25.4 as builder
 
 COPY . /go/src/github.com/distributedio/titan
 
@@ -9,15 +9,12 @@ RUN \
     go mod download \
  && env GOOS=linux CGO_ENABLED=0 make
 
-FROM alpine as fetch
-RUN apk add redis
-
 # Executable image
-FROM alpine
+FROM alpine:3.22.2
+RUN apk add redis
 
 COPY --from=builder /go/src/github.com/distributedio/titan/titan /titan/bin/titan
 COPY --from=builder /go/src/github.com/distributedio/titan/conf/titan.toml /titan/conf/titan.toml
-COPY --from=fetch /usr/bin/redis-cli /usr/bin/redis-cli
 
 WORKDIR /titan
 

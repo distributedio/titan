@@ -20,7 +20,9 @@ func setValue(t *testing.T, TestKey []byte, value []byte) {
 	callFunc := func(txn *Transaction) {
 		s, err := GetString(txn, TestKey)
 		assert.NoError(t, err)
-		err = s.Set(value)
+		if err := s.Set(value); err != nil {
+			t.Errorf("s.Set error = %v", err)
+		}
 	}
 	MockTest(t, callFunc)
 }
@@ -131,7 +133,7 @@ func TestStringGet(t *testing.T) {
 			callFunc := func(txn *Transaction) {
 				s, err := GetString(txn, tt.key)
 				assert.NoError(t, err)
-				got, err := s.Get()
+				got, _ := s.Get()
 				assert.Equal(t, got, tt.want)
 			}
 			MockTest(t, callFunc)
@@ -236,7 +238,7 @@ func TestStringLen(t *testing.T) {
 			callFunc := func(txn *Transaction) {
 				s, err := GetString(txn, tt.key)
 				assert.NoError(t, err)
-				got, err := s.Len()
+				got, _ := s.Len()
 				assert.Equal(t, tt.want, got)
 			}
 			MockTest(t, callFunc)
@@ -310,7 +312,7 @@ func TestStringAppend(t *testing.T) {
 			callFunc := func(txn *Transaction) {
 				s, err := GetString(txn, tt.key)
 				assert.NoError(t, err)
-				got, err := s.Append(tt.args.value)
+				got, _ := s.Append(tt.args.value)
 				assert.Equal(t, tt.want, got)
 			}
 			MockTest(t, callFunc)
@@ -644,7 +646,9 @@ func TestStringGetBit(t *testing.T) {
 	callFunc := func(txn *Transaction) {
 		s, err := GetString(txn, key)
 		assert.NoError(t, err)
-		s.SetBit(4, 1)
+		if _, err := s.SetBit(4, 1); err != nil {
+			t.Errorf("s.SetBit error = %v", err)
+		}
 	}
 	MockTest(t, callFunc)
 
@@ -707,7 +711,7 @@ func TestStringCountBit(t *testing.T) {
 	callFunc := func(txn *Transaction) {
 		s, err := GetString(txn, key)
 		assert.NoError(t, err)
-		s.SetBit(4, 1)
+		_, _ = s.SetBit(4, 1)
 	}
 	MockTest(t, callFunc)
 
@@ -754,7 +758,7 @@ func TestStringBitPos(t *testing.T) {
 	callFunc := func(txn *Transaction) {
 		s, err := GetString(txn, key)
 		assert.NoError(t, err)
-		s.Set([]byte("1"))
+		_ = s.Set([]byte("1"))
 	}
 	MockTest(t, callFunc)
 

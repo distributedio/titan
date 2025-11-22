@@ -8,7 +8,6 @@ import (
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/db/store"
 	"github.com/distributedio/titan/metrics"
-	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -111,7 +110,16 @@ func StartExpire(task *Task) {
 			return
 		case <-ticker.C:
 		}
-		runExpire(task.db, conf.BatchLimit)
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			select {
+			case <-task.session.Done():
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+		runExpire(task.db, ctx, conf.BatchLimit)
+		cancel()
 	}
 }
 
@@ -134,7 +142,7 @@ func toTiKVDataKey(namespace []byte, id DBID, key []byte) []byte {
 	return b
 }
 
-func runExpire(db *DB, batchLimit int) {
+func runExpire(db *DB, ctx context.Context, batchLimit int) {
 	txn, err := db.Begin()
 	if err != nil {
 		zap.L().Error("[Expire] txn begin failed", zap.Error(err))
@@ -142,7 +150,7 @@ func runExpire(db *DB, batchLimit int) {
 	}
 	store.SetOption(txn.t, store.Priority, store.PriorityLow)
 
-	endPrefix := kv.Key(expireKeyPrefix).PrefixNext()
+	endPrefix := prefixNext(expireKeyPrefix)
 	iter, err := txn.t.Iter(expireKeyPrefix, endPrefix)
 	if err != nil {
 		zap.L().Error("[Expire] seek failed", zap.ByteString("prefix", expireKeyPrefix), zap.Error(err))
@@ -154,7 +162,7 @@ func runExpire(db *DB, batchLimit int) {
 	limit := batchLimit
 	now := time.Now().UnixNano()
 
-	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && limit > 0 {
+	for iter.Valid() && bytes.HasPrefix(iter.Key(), expireKeyPrefix) && limit > 0 {
 		rawKey := iter.Key()
 		ts := DecodeInt64(rawKey[expireTimestampOffset : expireTimestampOffset+8])
 		if ts > now {
@@ -198,10 +206,7 @@ func runExpire(db *DB, batchLimit int) {
 		limit--
 	}
 
-	if err := txn.Commit(context.Background()); err != nil {
-		if err := txn.Rollback(); err != nil {
-			zap.L().Error("[Expire] seek rollback failed", zap.Error(err))
-		}
+	if err := retryBackgroundCommit(ctx, txn, "Expire", 5); err != nil {
 		zap.L().Error("[Expire] commit failed", zap.Error(err))
 	}
 
@@ -231,7 +236,7 @@ func gcDataKey(txn *Transaction, namespace []byte, dbid DBID, key, id []byte) er
 func doExpire(txn *Transaction, mkey, id []byte) error {
 	namespace, dbid, key := splitMetaKey(mkey)
 	obj, err := getObject(txn, mkey)
-	// Check for dirty data due to copying or flushdb/flushall
+	// Check for dirty data due to copying
 	if err == ErrKeyNotFound {
 		return gcDataKey(txn, namespace, dbid, key, id)
 	}
@@ -275,14 +280,16 @@ func ScanExpiration(txn *Transaction, from, to, count int64) ([]int64, [][]byte,
 	defer iter.Close()
 	var at []int64
 	var keys [][]byte
-	for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) && count > 0 {
+	for iter.Valid() && bytes.HasPrefix(iter.Key(), expireKeyPrefix) && count > 0 {
 		rawKey := iter.Key()
 		ts := rawKey[expireTimestampOffset : expireMetakeyOffset-1]
 		at = append(at, DecodeInt64(ts))
 		metaKey := rawKey[expireMetakeyOffset:]
 		keys = append(keys, metaKey)
 		count--
-		iter.Next()
+		if err := iter.Next(); err != nil {
+			return nil, nil, err
+		}
 	}
 	return at, keys, nil
 }

@@ -201,9 +201,10 @@ func ConfigureLogrus(path, level, pattern string, compress bool) error {
 
 //Writer generate the rollingWriter
 func Writer(path, pattern string, compress bool) (io.Writer, error) {
-	if path == "stdout" {
+	switch path {
+	case "stdout":
 		return os.Stdout, nil
-	} else if path == "stderr" {
+	case "stderr":
 		return os.Stderr, nil
 	}
 	var opts []rolling.Option

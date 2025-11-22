@@ -100,7 +100,7 @@ func (ek *ExampleKey) ScanEqual(t *testing.T, match string, expectCount int) {
 	} else {
 		reply, err = ek.conn.Do("Scan", 0, "match", match, "count", 10000)
 	}
-	r, _ := redis.MultiBulk(reply, err)
+	r, _ := redis.Values(reply, err)
 	strs, _ := redis.Strings(r[1], err)
 	assert.Equal(t, expectCount, len(strs))
 	assert.NoError(t, err)

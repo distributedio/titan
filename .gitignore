@@ -1,4 +1,4 @@
-./titan
+titan
 .idea
 *.iml
 *.swp
@@ -7,4 +7,6 @@ cover.cov
 logs
 vendor
 .DS_Store
-go.sum
+data
+titan.pid
+token

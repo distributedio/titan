@@ -1,0 +1,42 @@
+---
+# Override any variables from /tooling/pipelines/*
+variables:
+  DEFAULT_BRANCH: integration
+
+stages:
+  - lint
+  - test
+  - build
+  - autorel
+
+# Consider also nested, e.g.:
+
+include:
+  - project: tooling/pipelines
+    ref: master
+    file: lint-conform.yml
+  - project: tooling/pipelines
+    ref: master
+    file: autorel.yml
+  - project: tooling/pipelines
+    ref: master
+    file: container-release.yml
+
+go-lint:
+  stage: lint
+  image: golangci/golangci-lint:v2.6.2
+  script: |
+    go mod download
+    make lint
+
+go-test:
+  artifacts:
+    paths:
+      - token
+  stage: test
+  image: golang:1.25.4
+  script: |
+    go mod download
+    make coverage
+    make test
+    make build token

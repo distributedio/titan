@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	pb "github.com/distributedio/titan/db/zlistproto"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // GetZList generate List objectm with auto reation, if zip is true, zipped list will be choose
@@ -19,7 +19,7 @@ func GetZList(txn *Transaction, metaKey []byte, obj *Object, val []byte) (*ZList
 	return l, nil
 }
 
-//NewZList create new list object ,the key is not checked for presence
+// NewZList create new list object ,the key is not checked for presence
 func NewZList(txn *Transaction, key []byte) (List, error) {
 	metaKey := MetaKey(txn.db, key)
 	ts := Now()
@@ -51,7 +51,7 @@ type ZList struct {
 	txn        *Transaction
 }
 
-//Exist if zlist is  effective return true ,otherwise return false
+// Exist if zlist is  effective return true ,otherwise return false
 func (l *ZList) Exist() bool {
 	return l.value.V != nil
 }
@@ -87,7 +87,7 @@ func (l *ZList) Unmarshal(obj *Object, b []byte) (err error) {
 // Length return z list length
 func (l *ZList) Length() int64 { return int64(len(l.value.V)) }
 
-//LPush append new elements to the object values
+// LPush append new elements to the object values
 func (l *ZList) LPush(data ...[]byte) (err error) {
 	cv := make([][]byte, len(data), len(data)+len(l.value.V))
 
@@ -145,7 +145,7 @@ func (l *ZList) Insert(pivot, v []byte, before bool) error {
 	return l.zlistCommit()
 }
 
-//Index return the value at index
+// Index return the value at index
 func (l *ZList) Index(n int64) (data []byte, err error) {
 	if n < 0 {
 		n += int64(len(l.value.V))
@@ -295,7 +295,7 @@ func (l *ZList) TransferToLList(dbns []byte, dbid DBID, key []byte) (*LList, err
 	dataKeyPrefix = append(dataKeyPrefix, ':')
 	dataKeyPrefix = append(dataKeyPrefix, dbid.Bytes()...)
 	dataKeyPrefix = append(dataKeyPrefix, ':', 'D', ':')
-	dataKeyPrefix = append(dataKeyPrefix, ll.Object.ID...)
+	dataKeyPrefix = append(dataKeyPrefix, ll.ID...)
 	ll.rawDataKeyPrefix = append(dataKeyPrefix, ':')
 	return ll, ll.RPush(l.value.V...)
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -64,17 +63,17 @@ DeywM6K4S9YeP4E9wj0f6Ux5pgqZEZjoaMzz5LM4CH/HDvGtCEzjutWk8lpOeqKn
 
 func TestTLSConfig(t *testing.T) {
 	// setup test files
-	cert, _ := ioutil.TempFile("", t.Name()+"_cert")
+	cert, _ := os.CreateTemp("", t.Name()+"_cert")
 	_, _ = cert.WriteString(tlsCert)
-	defer os.Remove(cert.Name())
+	defer func() { _ = os.Remove(cert.Name()) }()
 
-	key, _ := ioutil.TempFile("", t.Name()+"_key")
+	key, _ := os.CreateTemp("", t.Name()+"_key")
 	_, _ = key.WriteString(tlsKey)
-	defer os.Remove(key.Name())
+	defer func() { _ = os.Remove(key.Name()) }()
 
-	broken, _ := ioutil.TempFile("", t.Name()+"_broken")
+	broken, _ := os.CreateTemp("", t.Name()+"_broken")
 	_, _ = broken.WriteString("not a valid cert/key")
-	defer os.Remove(broken.Name())
+	defer func() { _ = os.Remove(broken.Name()) }()
 
 	// not found file #1
 	_, err := TLSConfig("/not/found", key.Name())

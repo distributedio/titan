@@ -1,13 +1,13 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"time"
 
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/db/store"
 	"github.com/distributedio/titan/metrics"
-	"github.com/pingcap/tidb/kv"
 	"go.uber.org/zap"
 )
 
@@ -44,34 +44,35 @@ func gcDeleteRange(txn store.Transaction, prefix []byte, limit int) (int, error)
 		resultErr error
 		count     int
 	)
-	endPrefix := kv.Key(prefix).PrefixNext()
+	endPrefix := prefixNext(prefix)
 	itr, err := txn.Iter(prefix, endPrefix)
 	if err != nil {
 		return count, err
 	}
 	defer itr.Close()
-	callback := func(k kv.Key) bool {
+
+	for itr.Valid() {
 		if resultErr = txn.Delete(itr.Key()); resultErr != nil {
-			return true
+			break
 		}
 		count++
 		if limit > 0 && count >= limit {
-			return true
+			break
 		}
-		return false
+		if err := itr.Next(); err != nil {
+			return 0, err
+		}
 	}
-	if err := kv.NextUntil(itr, callback); err != nil {
-		return 0, err
-	}
+
 	if resultErr != nil {
 		return 0, resultErr
 	}
 	return count, nil
 }
 
-func doGC(db *DB, limit int) error {
+func doGC(db *DB, ctx context.Context, limit int) error {
 	gcPrefix := toTiKVGCKey(nil)
-	endGCPrefix := kv.Key(gcPrefix).PrefixNext()
+	endGCPrefix := prefixNext(gcPrefix)
 	dbTxn, err := db.Begin()
 	if err != nil {
 		zap.L().Error("[GC] transection begin failed",
@@ -89,7 +90,7 @@ func doGC(db *DB, limit int) error {
 		return err
 	}
 	defer itr.Close()
-	if !itr.Valid() || !itr.Key().HasPrefix(gcPrefix) {
+	if !itr.Valid() || !bytes.HasPrefix(itr.Key(), gcPrefix) {
 		if logEnv := zap.L().Check(zap.DebugLevel, "[GC] not need to gc item"); logEnv != nil {
 			logEnv.Write(zap.ByteString("gcprefix", gcPrefix), zap.Int("limit", limit))
 		}
@@ -98,14 +99,15 @@ func doGC(db *DB, limit int) error {
 	gcKeyCount := 0
 	dataKeyCount := 0
 	var resultErr error
-	callback := func(k kv.Key) bool {
+	for itr.Valid() {
+		k := itr.Key()
 		dataPrefix := k[len(gcPrefix):]
 		count := 0
 		if logEnv := zap.L().Check(zap.DebugLevel, "[GC] start to delete prefix"); logEnv != nil {
 			logEnv.Write(zap.ByteString("data-prefix", dataPrefix), zap.Int("limit", limit))
 		}
 		if count, resultErr = gcDeleteRange(txn, dataPrefix, limit); resultErr != nil {
-			return true
+			break
 		}
 
 		//check and delete gc key
@@ -115,17 +117,19 @@ func doGC(db *DB, limit int) error {
 			}
 
 			if resultErr = txn.Delete(k); resultErr != nil {
-				return true
+				break
 			}
 			gcKeyCount++
 		}
 
 		dataKeyCount += count
-		return limit-(gcKeyCount+dataKeyCount) <= 0
-	}
-	if err := kv.NextUntil(itr, callback); err != nil {
-		zap.L().Error("[GC] iter prefix err", zap.ByteString("gc-prefix", gcPrefix), zap.Error(err))
-		return err
+		if limit-(gcKeyCount+dataKeyCount) <= 0 {
+			break
+		}
+		if err := itr.Next(); err != nil {
+			zap.L().Error("[GC] iter prefix err", zap.ByteString("gc-prefix", gcPrefix), zap.Error(err))
+			return err
+		}
 	}
 	if resultErr != nil {
 		if err := txn.Rollback(); err != nil {
@@ -133,10 +137,7 @@ func doGC(db *DB, limit int) error {
 		}
 		return resultErr
 	}
-	if err := txn.Commit(context.Background()); err != nil {
-		if err := txn.Rollback(); err != nil {
-			zap.L().Error("[GC] rollback err", zap.Error(err))
-		}
+	if err := retryBackgroundCommit(ctx, txn, "GC", 5); err != nil {
 		return err
 	}
 	if logEnv := zap.L().Check(zap.DebugLevel, "[GC]  txn commit success"); logEnv != nil {
@@ -166,13 +167,22 @@ func StartGC(task *Task) {
 		case <-ticker.C:
 		}
 
-		if err := doGC(task.db, conf.BatchLimit); err != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			select {
+			case <-task.session.Done():
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+
+		if err := doGC(task.db, ctx, conf.BatchLimit); err != nil {
 			zap.L().Error("[GC] do GC failed",
 				zap.ByteString("leader", task.key),
 				zap.ByteString("uuid", task.id),
 				zap.Int("leader-ttl", conf.LeaderTTL),
 				zap.Error(err))
-			continue
 		}
+		cancel()
 	}
 }

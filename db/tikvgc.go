@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/distributedio/titan/conf"
-	"github.com/pingcap/tidb/store/tikv"
-	"github.com/pingcap/tidb/store/tikv/gcworker"
-	"github.com/pingcap/tidb/store/tikv/oracle"
+	"github.com/tikv/client-go/v2/oracle"
 	"go.uber.org/zap"
 )
 
@@ -36,14 +34,24 @@ func StartTiKVGC(task *Task) {
 			return
 		case <-ticker.C:
 		}
-		if err := runTiKVGC(task.db, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			select {
+			case <-task.session.Done():
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+
+		if err := runTiKVGC(task.db, ctx, task.id, conf.SafePointLifeTime, conf.Concurrency); err != nil {
 			zap.L().Error("[TiKVGC] do TiKVGC failed", zap.Error(err))
-			continue
 		}
+		cancel()
 	}
 }
 
-func runTiKVGC(db *DB, uuid []byte, lifeTime time.Duration, concurrency int) error {
+func runTiKVGC(db *DB, ctx context.Context, uuid []byte, lifeTime time.Duration, concurrency int) error {
 	newPoint, err := getNewSafePoint(db, lifeTime)
 	if err != nil {
 		return err
@@ -66,20 +74,21 @@ func runTiKVGC(db *DB, uuid []byte, lifeTime time.Duration, concurrency int) err
 		zap.L().Info("[TiKVGC] current safe point ", zap.Time("current", *newPoint), zap.Time("last", *lastPoint))
 	}
 
-	if err := saveLastSafePoint(db, newPoint); err != nil {
+	if err := saveLastSafePoint(db, ctx, newPoint); err != nil {
 		zap.L().Error("[TiKVGC] save last safe point err ", zap.Time("current", *newPoint))
 		return err
 	}
-	safePoint := oracle.ComposeTS(oracle.GetPhysical(*newPoint), 0)
-	store := db.kv.Storage.(tikv.Storage)
-	if err := gcworker.RunGCJob(context.Background(), store, store.GetRegionCache().PDClient(), safePoint, UUIDString(uuid), concurrency); err != nil {
-		return err
-	}
+	// safePoint := oracle.ComposeTS(oracle.GetPhysical(*newPoint), 0)
+	// store := db.kv.Storage.(tikv.Storage)
+	// if err := gcworker.RunGCJob(context.Background(), store, store.GetRegionCache().PDClient(), safePoint, UUIDString(uuid), concurrency); err != nil {
+	// 	return err
+	// }
+	// GC worker implementation in client-go v2 is different or internal.
+	// Disabling manual GC trigger from Titan for now.
 	return nil
-
 }
 
-func saveLastSafePoint(db *DB, safePoint *time.Time) error {
+func saveLastSafePoint(db *DB, ctx context.Context, safePoint *time.Time) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
@@ -87,21 +96,20 @@ func saveLastSafePoint(db *DB, safePoint *time.Time) error {
 	if err := txn.t.Set(sysTiKVGCLastSafePoint, []byte(safePoint.Format(tikvGcTimeFormat))); err != nil {
 		return err
 	}
-	if err := txn.t.Commit(txn.ctx); err != nil {
-		if err := txn.Rollback(); err != nil {
-			zap.L().Error("rollback failed", zap.Error(err))
-		}
+	if err := retryBackgroundCommit(ctx, txn, "TiKVGC", 5); err != nil {
 		return err
 	}
 	return nil
 }
 
 func getNewSafePoint(db *DB, lifeTime time.Duration) (*time.Time, error) {
-	currentVer, err := db.kv.CurrentVersion(oracle.GlobalTxnScope)
+	// We need to get current timestamp from PD
+	// db.kv is *RedisStore, which has Storage field which is *storageWrapper.
+	currentVer, err := db.kv.CurrentTimestamp(oracle.GlobalTxnScope)
 	if err != nil {
 		return nil, err
 	}
-	physical := oracle.ExtractPhysical(currentVer.Ver)
+	physical := oracle.ExtractPhysical(currentVer)
 	sec, nsec := physical/1e3, (physical%1e3)*1e6
 	now := time.Unix(sec, nsec)
 	safePoint := now.Add(-lifeTime)

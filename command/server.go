@@ -19,7 +19,9 @@ const sysAdminNamespace = "$sys.admin"
 // Monitor streams back every command processed by the Titan server
 func Monitor(ctx *Context) {
 	ctx.Server.Monitors.Store(ctx.Client.RemoteAddr, ctx)
-	resp.ReplySimpleString(ctx.Out, "OK")
+	if err := resp.ReplySimpleString(ctx.Out, "OK"); err != nil {
+		return
+	}
 }
 
 // Client manages client connections
@@ -49,53 +51,59 @@ func Client(ctx *Context) {
 			lines = append(lines, line)
 			return true
 		})
-		resp.ReplyBulkString(ctx.Out, strings.Join(lines, ""))
+		if err := resp.ReplyBulkString(ctx.Out, strings.Join(lines, "")); err != nil {
+			return
+		}
 	}
 	getname := func(ctx *Context) {
 		name := ctx.Client.Name
 		if len(name) != 0 {
-			resp.ReplyBulkString(ctx.Out, name)
+			_ = resp.ReplyBulkString(ctx.Out, name)
 			return
 		}
-		resp.ReplyNullBulkString(ctx.Out)
+		_ = resp.ReplyNullBulkString(ctx.Out)
 	}
 	setname := func(ctx *Context) {
 		args := ctx.Args[1:]
 		if len(args) != 1 {
-			resp.ReplyError(ctx.Out, syntaxErr)
+			_ = resp.ReplyError(ctx.Out, syntaxErr)
 			return
 		}
 		ctx.Client.Name = args[0]
-		resp.ReplySimpleString(ctx.Out, "OK")
+		_ = resp.ReplySimpleString(ctx.Out, "OK")
 	}
 	pause := func(ctx *Context) {
 		if ctx.Client.Namespace != sysAdminNamespace {
-			resp.ReplyError(ctx.Out, "ERR client pause can be used by $sys.admin only")
+			_ = resp.ReplyError(ctx.Out, "ERR client pause can be used by $sys.admin only")
 			return
 		}
 		args := ctx.Args[1:]
 		if len(args) != 1 {
-			resp.ReplyError(ctx.Out, syntaxErr)
+			_ = resp.ReplyError(ctx.Out, syntaxErr)
 			return
 		}
 		msec, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			resp.ReplyError(ctx.Out, "ERR timeout is not an integer or out of range")
+			_ = resp.ReplyError(ctx.Out, "ERR timeout is not an integer or out of range")
 			return
 		}
 		ctx.Server.Pause = time.Duration(msec) * time.Millisecond
-		resp.ReplySimpleString(ctx.Out, "OK")
+		_ = resp.ReplySimpleString(ctx.Out, "OK")
 	}
 	reply := func(ctx *Context) {
 		args := ctx.Args[1:]
 		if len(args) != 1 {
-			resp.ReplyError(ctx.Out, syntaxErr)
+			if err := resp.ReplyError(ctx.Out, syntaxErr); err != nil {
+				return
+			}
 			return
 		}
 		switch strings.ToLower(args[0]) {
 		case "on":
 			ctx.Client.SkipN = 0
-			resp.ReplySimpleString(ctx.Out, "OK")
+			if err := resp.ReplySimpleString(ctx.Out, "OK"); err != nil {
+				return
+			}
 		case "off":
 			ctx.Client.SkipN = -1
 		case "skip":
@@ -105,7 +113,9 @@ func Client(ctx *Context) {
 	kill := func(ctx *Context) {
 		args := ctx.Args[1:]
 		if len(args) < 1 {
-			resp.ReplyError(ctx.Out, syntaxErr)
+			if err := resp.ReplyError(ctx.Out, syntaxErr); err != nil {
+				return
+			}
 			return
 		}
 		var addr string
@@ -117,7 +127,9 @@ func Client(ctx *Context) {
 			addr = args[0]
 			skipSelf = false // you can kill yourself in old fashion
 		} else if len(args)%2 != 0 {
-			resp.ReplyError(ctx.Out, syntaxErr)
+			if err := resp.ReplyError(ctx.Out, syntaxErr); err != nil {
+				return
+			}
 			return
 		}
 		for i := 0; i < len(args)-1; i += 2 {
@@ -129,7 +141,9 @@ func Client(ctx *Context) {
 			case "id":
 				id, err = strconv.ParseInt(string(args[i+1]), 10, 64)
 				if err != nil {
-					resp.ReplyError(ctx.Out, syntaxErr)
+					if err := resp.ReplyError(ctx.Out, syntaxErr); err != nil {
+						return
+					}
 					return
 				}
 			case "skipme":
@@ -170,19 +184,19 @@ func Client(ctx *Context) {
 				return true
 			}
 
-			cli.Close()
+			_ = cli.Close()
 			killed++
 			return true
 		})
 
 		if len(args) == 1 {
 			if killed == 0 {
-				resp.ReplyError(ctx.Out, "ERR No such client")
+				_ = resp.ReplyError(ctx.Out, "ERR No such client")
 			} else {
-				resp.ReplySimpleString(ctx.Out, "OK")
+				_ = resp.ReplySimpleString(ctx.Out, "OK")
 			}
 		} else {
-			resp.ReplyInteger(ctx.Out, int64(killed))
+			_ = resp.ReplyInteger(ctx.Out, int64(killed))
 		}
 		if closeSelf {
 			close(ctx.Client.Done)
@@ -204,7 +218,9 @@ func Client(ctx *Context) {
 	case "pause":
 		pause(ctx)
 	default:
-		resp.ReplyError(ctx.Out, syntaxErr)
+		if err := resp.ReplyError(ctx.Out, syntaxErr); err != nil {
+			return
+		}
 	}
 
 }
@@ -230,27 +246,37 @@ func debugObject(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 // RedisCommand returns Array reply of details about all Redis commands
 func RedisCommand(ctx *Context) {
 	count := func(ctx *Context) {
-		resp.ReplyInteger(ctx.Out, int64(len(commands)))
+		if err := resp.ReplyInteger(ctx.Out, int64(len(commands))); err != nil {
+			return
+		}
 	}
 	getkeys := func(ctx *Context) {
 		args := ctx.Args[1:]
 		if len(args) == 0 {
-			resp.ReplyError(ctx.Out, "ERR Unknown subcommand or wrong number of arguments.")
+			if err := resp.ReplyError(ctx.Out, "ERR Unknown subcommand or wrong number of arguments."); err != nil {
+				return
+			}
 			return
 		}
 		name := args[0]
 		cmdInfo, ok := commands[name]
 		if !ok {
-			resp.ReplyError(ctx.Out, "ERR Invalid command specified")
+			if err := resp.ReplyError(ctx.Out, "ERR Invalid command specified"); err != nil {
+				return
+			}
 			return
 		}
 
 		if cmdInfo.Cons.Arity > 0 && len(args) != cmdInfo.Cons.Arity {
-			resp.ReplyError(ctx.Out, "ERR Invalid number of arguments specified for command")
+			if err := resp.ReplyError(ctx.Out, "ERR Invalid number of arguments specified for command"); err != nil {
+				return
+			}
 			return
 		}
 		if cmdInfo.Cons.Arity < 0 && len(args) < -cmdInfo.Cons.Arity {
-			resp.ReplyError(ctx.Out, "ERR Invalid number of arguments specified for command")
+			if err := resp.ReplyError(ctx.Out, "ERR Invalid number of arguments specified for command"); err != nil {
+				return
+			}
 			return
 		}
 		var keys []string
@@ -261,50 +287,90 @@ func RedisCommand(ctx *Context) {
 		for i := cmdInfo.Cons.FirstKey; i <= last; i += cmdInfo.Cons.KeyStep {
 			keys = append(keys, args[i])
 		}
-		resp.ReplyArray(ctx.Out, len(keys))
+		if _, err := resp.ReplyArray(ctx.Out, len(keys)); err != nil {
+			return
+		}
 		for _, key := range keys {
-			resp.ReplyBulkString(ctx.Out, key)
+			if err := resp.ReplyBulkString(ctx.Out, key); err != nil {
+				return
+			}
 		}
 	}
 	info := func(ctx *Context) {
 		names := ctx.Args[1:]
-		resp.ReplyArray(ctx.Out, len(names))
+		if _, err := resp.ReplyArray(ctx.Out, len(names)); err != nil {
+			return
+		}
 		for _, name := range names {
 			if cmd, ok := commands[name]; ok {
-				resp.ReplyArray(ctx.Out, 6)
-				resp.ReplyBulkString(ctx.Out, name)
-				resp.ReplyInteger(ctx.Out, int64(cmd.Cons.Arity))
-
-				flags := parseFlags(cmd.Cons.Flags)
-				resp.ReplyArray(ctx.Out, len(flags))
-				for i := range flags {
-					resp.ReplyBulkString(ctx.Out, flags[i])
+				if _, err := resp.ReplyArray(ctx.Out, 6); err != nil {
+					return
+				}
+				if err := resp.ReplyBulkString(ctx.Out, name); err != nil {
+					return
+				}
+				if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.Arity)); err != nil {
+					return
 				}
 
-				resp.ReplyInteger(ctx.Out, int64(cmd.Cons.FirstKey))
-				resp.ReplyInteger(ctx.Out, int64(cmd.Cons.LastKey))
-				resp.ReplyInteger(ctx.Out, int64(cmd.Cons.KeyStep))
+				flags := parseFlags(cmd.Cons.Flags)
+				if _, err := resp.ReplyArray(ctx.Out, len(flags)); err != nil {
+					return
+				}
+				for i := range flags {
+					if err := resp.ReplyBulkString(ctx.Out, flags[i]); err != nil {
+						return
+					}
+				}
+
+				if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.FirstKey)); err != nil {
+					return
+				}
+				if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.LastKey)); err != nil {
+					return
+				}
+				if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.KeyStep)); err != nil {
+					return
+				}
 			} else {
-				resp.ReplyNullBulkString(ctx.Out)
+				_ = resp.ReplyNullBulkString(ctx.Out)
 			}
 		}
 	}
 	list := func(ctx *Context) {
-		resp.ReplyArray(ctx.Out, len(commands))
+		if _, err := resp.ReplyArray(ctx.Out, len(commands)); err != nil {
+			return
+		}
 		for name, cmd := range commands {
-			resp.ReplyArray(ctx.Out, 6)
-			resp.ReplyBulkString(ctx.Out, name)
-			resp.ReplyInteger(ctx.Out, int64(cmd.Cons.Arity))
-
-			flags := parseFlags(cmd.Cons.Flags)
-			resp.ReplyArray(ctx.Out, len(flags))
-			for i := range flags {
-				resp.ReplyBulkString(ctx.Out, flags[i])
+			if _, err := resp.ReplyArray(ctx.Out, 6); err != nil {
+				return
+			}
+			if err := resp.ReplyBulkString(ctx.Out, name); err != nil {
+				return
+			}
+			if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.Arity)); err != nil {
+				return
 			}
 
-			resp.ReplyInteger(ctx.Out, int64(cmd.Cons.FirstKey))
-			resp.ReplyInteger(ctx.Out, int64(cmd.Cons.LastKey))
-			resp.ReplyInteger(ctx.Out, int64(cmd.Cons.KeyStep))
+			flags := parseFlags(cmd.Cons.Flags)
+			if _, err := resp.ReplyArray(ctx.Out, len(flags)); err != nil {
+				return
+			}
+			for i := range flags {
+				if err := resp.ReplyBulkString(ctx.Out, flags[i]); err != nil {
+					return
+				}
+			}
+
+			if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.FirstKey)); err != nil {
+				return
+			}
+			if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.LastKey)); err != nil {
+				return
+			}
+			if err := resp.ReplyInteger(ctx.Out, int64(cmd.Cons.KeyStep)); err != nil {
+				return
+			}
 		}
 
 	}
@@ -321,30 +387,10 @@ func RedisCommand(ctx *Context) {
 	case "info":
 		info(ctx)
 	default:
-		resp.ReplyError(ctx.Out, "ERR Unknown subcommand or wrong number of arguments.")
+		if err := resp.ReplyError(ctx.Out, "ERR Unknown subcommand or wrong number of arguments."); err != nil {
+			return
+		}
 	}
-}
-
-// FlushDB clears current db
-// This function is **VERY DANGEROUS**. It's not only running on one single region, but it can
-// delete a large range that spans over many regions, bypassing the Raft layer.
-func FlushDB(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	kv := txn.Kv()
-	if err := kv.FlushDB(ctx); err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	return SimpleString(ctx.Out, "OK"), nil
-}
-
-// FlushAll cleans up all databases
-// This function is **VERY DANGEROUS**. It's not only running on one single region, but it can
-// delete a large range that spans over many regions, bypassing the Raft layer.
-func FlushAll(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	kv := txn.Kv()
-	if err := kv.FlushAll(ctx); err != nil {
-		return nil, errors.New("ERR " + err.Error())
-	}
-	return SimpleString(ctx.Out, "OK"), nil
 }
 
 // Time returns the server time
@@ -352,16 +398,24 @@ func Time(ctx *Context) {
 	now := time.Now().UnixNano() / int64(time.Microsecond)
 	sec := now / 1000000
 	msec := now % sec
-	resp.ReplyArray(ctx.Out, 2)
-	resp.ReplyBulkString(ctx.Out, strconv.Itoa(int(sec)))
-	resp.ReplyBulkString(ctx.Out, strconv.Itoa(int(msec)))
+	if _, err := resp.ReplyArray(ctx.Out, 2); err != nil {
+		return
+	}
+	if err := resp.ReplyBulkString(ctx.Out, strconv.Itoa(int(sec))); err != nil {
+		return
+	}
+	if err := resp.ReplyBulkString(ctx.Out, strconv.Itoa(int(msec))); err != nil {
+		return
+	}
 }
 
 // Info returns information and statistics about the server in a format that is simple to parse by computers and easy to read by humans
 func Info(ctx *Context) {
 	exe, err := os.Executable()
 	if err != nil {
-		resp.ReplyError(ctx.Out, "ERR "+err.Error())
+		if err := resp.ReplyError(ctx.Out, "ERR "+err.Error()); err != nil {
+			return
+		}
 	}
 
 	// count the number of clients
@@ -391,6 +445,5 @@ func Info(ctx *Context) {
 	lines = append(lines, "blocked_clients:0")
 	lines = append(lines, "client_namespace:"+ctx.Client.Namespace)
 
-	resp.ReplyBulkString(ctx.Out, strings.Join(lines, "\n")+"\n")
-	return
+	_ = resp.ReplyBulkString(ctx.Out, strings.Join(lines, "\n")+"\n")
 }

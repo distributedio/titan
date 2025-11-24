@@ -101,10 +101,7 @@ func redisBitpos(val []byte, bit int) int {
 	one = ^one          /* All bitval set to 0 but the MSB. */
 	word := bitval[pos]
 	pos = pos * 8
-	bbit := false
-	if bit == 1 {
-		bbit = true
-	}
+	bbit := bit == 1
 	for one != 0 {
 		// fmt.Println(one, word, (one & word), pos, uint8(bit))
 		if ((one & word) != 0) == bbit {

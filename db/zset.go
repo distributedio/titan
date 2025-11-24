@@ -1,11 +1,10 @@
 package db
 
 import (
+	"bytes"
 	"encoding/binary"
 	"strconv"
 	"time"
-
-	"github.com/pingcap/tidb/kv"
 
 	"go.uber.org/zap"
 )
@@ -264,7 +263,7 @@ func (zset *ZSet) ZAnyOrderRange(start int64, stop int64, withScore bool, positi
 
 	var items [][]byte
 	cost := int64(0)
-	for i := int64(0); err == nil && i <= stop && iter.Valid() && iter.Key().HasPrefix(scorePrefix); i++ {
+	for i := int64(0); err == nil && i <= stop && iter.Valid() && bytes.HasPrefix(iter.Key(), scorePrefix); i++ {
 		if i >= start {
 			if len(iter.Key()) <= len(scorePrefix)+byteScoreLen+len(":") {
 				zap.L().Error("score&member's length isn't enough to be decoded",
@@ -335,7 +334,7 @@ func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 	var iter Iterator
 
 	if positiveOrder {
-		upperBoundKey := kv.Key(stopPrefix).PrefixNext()
+		upperBoundKey := prefixNext(stopPrefix)
 		iter, err = zset.txn.t.Iter(startPrefix, upperBoundKey)
 	} else {
 		upperBoundKey := kv.Key(startPrefix).PrefixNext()
@@ -348,7 +347,7 @@ func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 	var items [][]byte
 	countN := int64(0)
 	startComFinished := false
-	for i := int64(0); err == nil && iter.Valid() && iter.Key().HasPrefix(scorePrefix); i, err = i+1, iter.Next() {
+	for i := int64(0); err == nil && iter.Valid() && bytes.HasPrefix(iter.Key(), scorePrefix); i, err = i+1, iter.Next() {
 		key := iter.Key()
 		if len(key) <= len(scorePrefix)+byteScoreLen+len(":") {
 			zap.L().Error("score&member's length isn't enough to be decoded",
@@ -358,7 +357,7 @@ func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 
 		curPrefix := key[:len(scorePrefix)+byteScoreLen]
 		if !startInclude && !startComFinished {
-			if curPrefix.Cmp(startPrefix) == 0 {
+			if bytes.Equal(curPrefix, startPrefix) {
 				offset += 1
 				continue
 			} else {
@@ -366,7 +365,7 @@ func (zset *ZSet) ZAnyOrderRangeByScore(startScore float64, startInclude bool,
 			}
 		}
 
-		comWithStop := curPrefix.Cmp(stopPrefix)
+		comWithStop := bytes.Compare(curPrefix, stopPrefix)
 		if (!stopInclude && comWithStop == 0) ||
 			(positiveOrder && comWithStop > 0) ||
 			(!positiveOrder && comWithStop < 0) {
@@ -441,9 +440,9 @@ func (zset *ZSet) ZRem(members [][]byte) (int64, error) {
 		if err != nil {
 			return deleted, err
 		}
-		if zset.meta.Object.ExpireAt > 0 {
+		if zset.meta.ExpireAt > 0 {
 			start = time.Now()
-			err := unExpireAt(zset.txn.t, mkey, zset.meta.Object.ExpireAt)
+			err := unExpireAt(zset.txn.t, mkey, zset.meta.ExpireAt)
 			zap.L().Debug("zrem delete expire key", zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 			if err != nil {
 				return deleted, err

@@ -1,6 +1,8 @@
 syntax = "proto3";
 package zlistproto;
 
+option go_package = "github.com/distributedio/titan/db/zlistproto";
+
 message zlistvalue{
     repeated bytes v = 1;
 }

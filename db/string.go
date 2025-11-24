@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//StringMeta string meta msg
+// StringMeta string meta msg
 type StringMeta struct {
 	Object
 	Value []byte

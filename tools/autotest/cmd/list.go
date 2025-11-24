@@ -51,7 +51,7 @@ func (el *ExampleList) LpushEqual(t *testing.T, key string, values ...string) {
 	req := make([]interface{}, 0, len(values))
 	tmp := make([]string, 0, len(values))
 	if _, ok := el.mapList[key]; !ok {
-		el.mapList[key] = make([]string, 0, 0)
+		el.mapList[key] = make([]string, 0)
 	}
 	req = append(req, key)
 	for _, value := range values {
@@ -159,7 +159,7 @@ func (el *ExampleList) RpushEqual(t *testing.T, key string, values []string) {
 	req := make([]interface{}, 0, len(values))
 	req = append(req, key)
 	if _, ok := el.mapList[key]; !ok {
-		el.mapList[key] = make([]string, 0, 0)
+		el.mapList[key] = make([]string, 0)
 	}
 	for _, value := range values {
 		el.mapList[key] = append(el.mapList[key], value)

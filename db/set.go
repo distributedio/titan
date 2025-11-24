@@ -3,8 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-
-	"github.com/pingcap/tidb/kv"
 )
 
 // SetNilValue is the value set to a tikv key for tikv do not support a real empty value
@@ -68,7 +66,7 @@ func (set *Set) Iter() (*SetIter, error) {
 	var siter SetIter
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-	endPrefix := kv.Key(prefix).PrefixNext()
+	endPrefix := prefixNext(prefix)
 	iter, err := set.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return nil, err
@@ -86,10 +84,10 @@ func (siter *SetIter) Value() []byte {
 
 // Valid judgies whether the key directed by iter has the same prifix
 func (siter *SetIter) Valid() bool {
-	return siter.Iter.Key().HasPrefix(siter.Prefix)
+	return bytes.HasPrefix(siter.Iter.Key(), siter.Prefix)
 }
 
-//newSet create new Set object
+// newSet create new Set object
 func newSet(txn *Transaction, key []byte) *Set {
 	now := Now()
 	return &Set{
@@ -109,7 +107,7 @@ func newSet(txn *Transaction, key []byte) *Set {
 	}
 }
 
-//encodeSetMeta encodes meta data into byte slice
+// encodeSetMeta encodes meta data into byte slice
 func encodeSetMeta(meta *SetMeta) []byte {
 	b := EncodeObject(&meta.Object)
 	m := make([]byte, 8)
@@ -198,14 +196,14 @@ func (set *Set) SMembers() ([][]byte, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-	endPrefix := kv.Key(prefix).PrefixNext()
+	endPrefix := prefixNext(prefix)
 	count := set.meta.Len
 	members := make([][]byte, 0, count)
 	iter, err := set.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return nil, err
 	}
-	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
+	for iter.Valid() && bytes.HasPrefix(iter.Key(), prefix) && count != 0 {
 		members = append(members, iter.Key()[len(prefix):])
 		if err := iter.Next(); err != nil {
 			return nil, err
@@ -251,7 +249,7 @@ func (set *Set) SPop(count int64) ([][]byte, error) {
 	}
 	dkey := DataKey(set.txn.db, set.meta.ID)
 	prefix := append(dkey, ':')
-	endPrefix := kv.Key(prefix).PrefixNext()
+	endPrefix := prefixNext(prefix)
 	iter, err := set.txn.t.Iter(prefix, endPrefix)
 	if err != nil {
 		return nil, err
@@ -259,7 +257,7 @@ func (set *Set) SPop(count int64) ([][]byte, error) {
 	defer iter.Close()
 	var deleted int64
 	var members [][]byte
-	for iter.Valid() && iter.Key().HasPrefix(prefix) && count != 0 {
+	for iter.Valid() && bytes.HasPrefix(iter.Key(), prefix) && count != 0 {
 		members = append(members, iter.Key()[len(prefix):])
 		if err := set.txn.t.Delete([]byte(iter.Key())); err != nil {
 			return nil, err

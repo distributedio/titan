@@ -2,14 +2,16 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/distributedio/titan/conf"
 	"github.com/distributedio/titan/db/store"
 	"github.com/distributedio/titan/metrics"
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.uber.org/zap"
 )
 
@@ -204,4 +206,42 @@ func (t *Task) Campaign() error {
 	}
 	metrics.GetMetrics().IsLeaderGaugeVec.WithLabelValues(t.label).Set(1)
 	return nil
+}
+
+type committer interface {
+	Commit(ctx context.Context) error
+	Rollback() error
+}
+
+func retryBackgroundCommit(ctx context.Context, txn committer, taskName string, maxRetries int) error {
+	baseDelay := 50 * time.Millisecond
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := txn.Commit(ctx)
+		if err == nil {
+			return nil
+		}
+
+		if IsRetryableError(err) {
+			if attempt < maxRetries-1 {
+				delay := baseDelay * time.Duration(1<<uint(attempt))
+				zap.L().WithOptions(zap.AddStacktrace(zap.FatalLevel)).Info(fmt.Sprintf("[%s] commit retry", taskName),
+					zap.Int("attempt", attempt+1),
+					zap.Duration("delay", delay),
+					zap.String("error", err.Error()))
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(delay):
+					continue
+				}
+			}
+		}
+
+		// Non-retryable or max retries reached
+		if rbErr := txn.Rollback(); rbErr != nil {
+			zap.L().Error(fmt.Sprintf("[%s] rollback failed", taskName), zap.Error(rbErr))
+		}
+		return err
+	}
+	return fmt.Errorf("retry limit exceeded")
 }

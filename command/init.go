@@ -80,14 +80,12 @@ func init() {
 		"touch":     Desc{Proc: AutoCommit(Touch), Txn: Touch, Cons: Constraint{-2, flags("rF"), 1, -1, 1}},
 
 		// server
-		"monitor":  Desc{Proc: Monitor, Cons: Constraint{1, flags("as"), 0, 0, 0}},
-		"client":   Desc{Proc: Client, Cons: Constraint{-2, flags("as"), 0, 0, 0}},
-		"debug":    Desc{Proc: AutoCommit(Debug), Cons: Constraint{-2, flags("as"), 0, 0, 0}},
-		"command":  Desc{Proc: RedisCommand, Cons: Constraint{0, flags("lt"), 0, 0, 0}},
-		"flushdb":  Desc{Proc: AutoCommit(FlushDB), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
-		"flushall": Desc{Proc: AutoCommit(FlushAll), Cons: Constraint{-1, flags("w"), 0, 0, 0}},
-		"time":     Desc{Proc: Time, Cons: Constraint{1, flags("RF"), 0, 0, 0}},
-		"info":     Desc{Proc: Info, Cons: Constraint{-1, flags("lt"), 0, 0, 0}},
+		"monitor": Desc{Proc: Monitor, Cons: Constraint{1, flags("as"), 0, 0, 0}},
+		"client":  Desc{Proc: Client, Cons: Constraint{-2, flags("as"), 0, 0, 0}},
+		"debug":   Desc{Proc: AutoCommit(Debug), Cons: Constraint{-2, flags("as"), 0, 0, 0}},
+		"command": Desc{Proc: RedisCommand, Cons: Constraint{0, flags("lt"), 0, 0, 0}},
+		"time":    Desc{Proc: Time, Cons: Constraint{1, flags("RF"), 0, 0, 0}},
+		"info":    Desc{Proc: Info, Cons: Constraint{-1, flags("lt"), 0, 0, 0}},
 
 		// hashes
 		"hdel":         Desc{Proc: AutoCommit(HDel), Txn: HDel, Cons: Constraint{-3, flags("wF"), 1, 1, 1}},

@@ -74,7 +74,7 @@ func (es *ExampleString) SetExEqual(t *testing.T, key string, value string, delt
 	assert.Equal(t, value, string(data))
 	assert.NoError(t, err)
 	time.Sleep(time.Second * time.Duration(delta))
-	data, err = redis.Bytes(es.conn.Do("GET", key))
+	data, _ = redis.Bytes(es.conn.Do("GET", key))
 	assert.Equal(t, "", string(data))
 }
 
@@ -88,7 +88,7 @@ func (es *ExampleString) PSetexEqual(t *testing.T, key string, value string, del
 	assert.Equal(t, value, string(data))
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * time.Duration(delta))
-	data, err = redis.Bytes(es.conn.Do("GET", key))
+	data, _ = redis.Bytes(es.conn.Do("GET", key))
 	assert.Equal(t, "", string(data))
 }
 

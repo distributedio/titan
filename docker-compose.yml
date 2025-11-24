@@ -1,5 +1,3 @@
-version: '2.1'
-
 services:
   pd0:
     image: pingcap/pd:latest
@@ -35,6 +33,7 @@ services:
     restart: on-failure
 
   titan:
+    build: .
     image: distributedio/titan
     volumes:
       - ./logs:/titan/logs
@@ -45,4 +44,4 @@ services:
       - --pd-addrs=tikv://pd0:2379
     depends_on:
       - "tikv0"
-    restart: on-failure    
+    restart: on-failure

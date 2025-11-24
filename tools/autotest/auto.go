@@ -19,7 +19,7 @@ type AutoClient struct {
 	*cmd.ExampleSystem
 	em *cmd.ExampleMulti
 	// addr string
-	pool *redis.Pool
+	// pool *redis.Pool
 	conn redis.Conn
 }
 
@@ -51,7 +51,7 @@ func (ac *AutoClient) Start(addr string) {
 //Close shut client
 func (ac *AutoClient) Close() {
 	// ac.pool.Close()
-	ac.conn.Close()
+	_ = ac.conn.Close()
 }
 
 //StringCase check string case

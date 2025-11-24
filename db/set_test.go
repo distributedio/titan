@@ -109,13 +109,17 @@ func Test_newSet(t *testing.T) {
 			assert.NotNil(t, txn)
 			assert.NoError(t, err)
 			got := newSet(tt.args.txn, tt.args.key)
-			txn.Commit(context.TODO())
-			if compareSet(tt.want, got); err != nil {
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
+			if err := compareSet(tt.want, got); err != nil {
 				t.Errorf("newSet() = %v, want %v", got, tt.want)
 			}
 		})
 	}
-	txn.Commit(context.TODO())
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 }
 
 func TestGetSet(t *testing.T) {
@@ -125,7 +129,9 @@ func TestGetSet(t *testing.T) {
 	txn, err := mockDB.Begin()
 	assert.NotNil(t, txn)
 	assert.NoError(t, err)
-	setSetMeta(t, txn, testExistSetKey)
+	if err := setSetMeta(t, txn, testExistSetKey); err != nil {
+		t.Errorf("setSetMeta error = %v", err)
+	}
 	type args struct {
 		txn *Transaction
 		key []byte
@@ -191,7 +197,7 @@ func TestGetSet(t *testing.T) {
 			txn, err := mockDB.Begin()
 			assert.NotNil(t, txn)
 			assert.NoError(t, err)
-			got, err := GetSet(tt.args.txn, tt.args.key)
+			got, _ := GetSet(tt.args.txn, tt.args.key)
 			if err = txn.Commit(context.TODO()); err != nil {
 				t.Errorf("GetString() txn.Commit error = %v", err)
 				return
@@ -201,8 +207,12 @@ func TestGetSet(t *testing.T) {
 			}
 		})
 	}
-	destorySetMeta(t, txn, testExistSetKey)
-	txn.Commit(context.TODO())
+	if err := destorySetMeta(t, txn, testExistSetKey); err != nil {
+		t.Errorf("destorySetMeta error = %v", err)
+	}
+	if err := txn.Commit(context.TODO()); err != nil {
+		t.Errorf("txn.Commit error = %v", err)
+	}
 }
 
 func TestSet_SAdd(t *testing.T) {
@@ -264,7 +274,9 @@ func TestSet_SAdd(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, got)
 
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			assert.Equal(t, got, tt.want)
 		})
@@ -311,7 +323,9 @@ func TestSet_SMembers(t *testing.T) {
 			got, err := set.SMembers()
 			assert.NoError(t, err)
 
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			assert.Equal(t, len(got), len(tt.want))
 

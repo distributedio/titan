@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/zap/zapcore"
 
-	sdk_metrics "github.com/pingcap/tidb/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -27,7 +26,7 @@ const (
 
 var (
 	//Label value slice when creating prometheus object
-	commandLabel = []string{command}
+	//commandLabel = []string{command}
 	bizLabel     = []string{biz}
 	leaderLabel  = []string{leader}
 	multiLabel   = []string{biz, command}
@@ -230,11 +229,6 @@ func init() {
 		[]string{labelName},
 	)
 	prometheus.MustRegister(gm.LogMetricsCounterVec)
-	RegisterSDKMetrics()
-}
-
-func RegisterSDKMetrics() {
-	sdk_metrics.RegisterMetrics()
 }
 
 // GetMetrics return metrics object

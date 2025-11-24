@@ -44,7 +44,7 @@ func (an *Abnormal) Start(addr string) {
 
 //Close close annormal client
 func (an *Abnormal) Close() {
-	an.conn.Close()
+	_ = an.conn.Close()
 }
 
 //StringCase check string case

@@ -2,7 +2,7 @@ package command
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -59,7 +59,7 @@ func TestMonitor(t *testing.T) {
 		Name:    "ping",
 		Args:    nil,
 		In:      nil,
-		Out:     ioutil.Discard,
+		Out:     io.Discard,
 		Context: ctx.Context,
 	}
 	feedMonitors(ctx)

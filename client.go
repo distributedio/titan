@@ -3,10 +3,8 @@ package titan
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/distributedio/titan/command"
@@ -21,9 +19,6 @@ type client struct {
 	conn   net.Conn
 	exec   *command.Executor
 	r      *bufio.Reader
-
-	eofLock sync.Mutex //the lock of reading_writing 'eof'
-	eof     bool       //is over when read data from socket
 }
 
 func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor) *client {
@@ -31,22 +26,7 @@ func newClient(cliCtx *context.ClientContext, s *Server, exec *command.Executor)
 		cliCtx: cliCtx,
 		server: s,
 		exec:   exec,
-		eof:    false,
 	}
-}
-
-func (c *client) readEof() {
-	c.eofLock.Lock()
-	defer c.eofLock.Unlock()
-
-	c.eof = true
-}
-
-func (c *client) isEof() bool {
-	c.eofLock.Lock()
-	defer c.eofLock.Unlock()
-
-	return c.eof
 }
 
 // Write to conn and log error if needed
@@ -54,7 +34,7 @@ func (c *client) Write(p []byte) (int, error) {
 	zap.L().Debug("write to client", zap.Int64("clientid", c.cliCtx.ID), zap.String("msg", string(p)))
 	n, err := c.conn.Write(p)
 	if err != nil {
-		c.conn.Close()
+		_ = c.conn.Close()
 		if err == io.EOF {
 			zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
 				zap.Int64("clientid", c.cliCtx.ID))
@@ -85,7 +65,7 @@ func (c *client) serve(conn net.Conn) error {
 		default:
 			cmd, err = c.readCommand()
 			if err != nil {
-				c.conn.Close()
+				_ = c.conn.Close()
 				if err == io.EOF {
 					zap.L().Info("close connection", zap.String("addr", c.cliCtx.RemoteAddr),
 						zap.Int64("clientid", c.cliCtx.ID))
@@ -121,7 +101,7 @@ func (c *client) serve(conn net.Conn) error {
 
 		// Skip reply if necessary
 		if c.cliCtx.SkipN != 0 {
-			ctx.Out = ioutil.Discard
+			ctx.Out = io.Discard
 			if c.cliCtx.SkipN > 0 {
 				c.cliCtx.SkipN--
 			}

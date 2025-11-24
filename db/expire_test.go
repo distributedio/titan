@@ -29,11 +29,11 @@ func Test_runExpire(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		hash.HSet([]byte("field1"), []byte("val"))
+		_, _ = hash.HSet([]byte("field1"), []byte("val"))
 		kv := GetKv(txn)
 		err = kv.ExpireAt([]byte(key), expireAt)
 		assert.NoError(t, err)
-		txn.Commit(context.TODO())
+		_ = txn.Commit(context.TODO())
 
 		hash, txn, err = getHash(t, []byte(key))
 		newID := hash.meta.ID
@@ -44,8 +44,8 @@ func Test_runExpire(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		hash.HSet([]byte("field1"), []byte("val"))
-		txn.Commit(context.TODO())
+		_, _ = hash.HSet([]byte("field1"), []byte("val"))
+		_ = txn.Commit(context.TODO())
 		return oldID
 	}
 
@@ -55,11 +55,11 @@ func Test_runExpire(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		hash.HSet([]byte("field1"), []byte("val"))
+		_, _ = hash.HSet([]byte("field1"), []byte("val"))
 		kv := GetKv(txn)
 		err = kv.ExpireAt([]byte(key), expireAt)
 		assert.NoError(t, err)
-		txn.Commit(context.TODO())
+		_ = txn.Commit(context.TODO())
 
 		txn = getTxn(t)
 		s, err := GetString(txn, key)
@@ -71,7 +71,7 @@ func Test_runExpire(t *testing.T) {
 		}
 		err = s.Set([]byte("val"))
 		assert.NoError(t, err)
-		txn.Commit(context.TODO())
+		_ = txn.Commit(context.TODO())
 		return oldID
 	}
 
@@ -113,14 +113,18 @@ func Test_runExpire(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			id := tt.args.call(t, tt.args.key)
 			txn := getTxn(t)
-			runExpire(txn.db, 1)
-			txn.Commit(context.TODO())
+			runExpire(txn.db, context.TODO(), 1)
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 
 			txn = getTxn(t)
 			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, id))
 
 			_, err := txn.t.Get(txn.ctx, gcKey)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			if tt.want.gckey {
 				assert.NoError(t, err)
 			} else {
@@ -137,8 +141,8 @@ func Test_doExpire(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		hash.HSet([]byte("field1"), []byte("val"))
-		txn.Commit(context.TODO())
+		_, _ = hash.HSet([]byte("field1"), []byte("val"))
+		_ = txn.Commit(context.TODO())
 		return hash.meta.ID
 	}
 
@@ -149,11 +153,11 @@ func Test_doExpire(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		hash.HSet([]byte("field1"), []byte("val"))
+		_, _ = hash.HSet([]byte("field1"), []byte("val"))
 		kv := GetKv(txn)
 		err = kv.ExpireAt([]byte(key), expireAt)
 		assert.NoError(t, err)
-		txn.Commit(context.TODO())
+		_ = txn.Commit(context.TODO())
 
 		hash, txn, err = getHash(t, []byte(key))
 		newID := hash.meta.ID
@@ -164,8 +168,8 @@ func Test_doExpire(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, txn)
 		assert.NotNil(t, hash)
-		hash.HSet([]byte("field1"), []byte("val"))
-		txn.Commit(context.TODO())
+		_, _ = hash.HSet([]byte("field1"), []byte("val"))
+		_ = txn.Commit(context.TODO())
 		return oldID, newID
 	}
 
@@ -250,14 +254,18 @@ func Test_doExpire(t *testing.T) {
 				id = append(id, tt.args.tp)
 			}
 			err := doExpire(txn, tt.args.mkey, id)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			assert.NoError(t, err)
 
 			txn = getTxn(t)
 			gcKey := toTiKVGCKey(toTiKVDataKey([]byte(txn.db.Namespace), txn.db.ID, tt.args.id))
 
 			_, err = txn.t.Get(txn.ctx, gcKey)
-			txn.Commit(context.TODO())
+			if err := txn.Commit(context.TODO()); err != nil {
+				t.Errorf("txn.Commit error = %v", err)
+			}
 			if tt.want.gckey {
 				assert.NoError(t, err)
 			} else {
@@ -282,9 +290,9 @@ func TestScanExpiration(t *testing.T) {
 		iter, err := txn.t.Iter(expireKeyPrefix, nil)
 		assert.NoError(t, err)
 		defer iter.Close()
-		for iter.Valid() && iter.Key().HasPrefix(expireKeyPrefix) {
-			txn.t.Delete(iter.Key())
-			iter.Next()
+		for iter.Valid() && bytes.HasPrefix(iter.Key(), expireKeyPrefix) {
+			_ = txn.t.Delete(iter.Key())
+			_ = iter.Next()
 		}
 
 		for i := 0; i < 10; i++ {

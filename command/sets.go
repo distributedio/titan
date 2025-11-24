@@ -136,10 +136,10 @@ func SRem(ctx *Context, txn *db.Transaction) (OnCommit, error) {
 
 // SMove movies member from the set at source to the set at destination
 func SMove(ctx *Context, txn *db.Transaction) (OnCommit, error) {
-	member := make([]byte, 0, len(ctx.Args[2]))
+	// member := make([]byte, 0, len(ctx.Args[2]))
 	key := []byte(ctx.Args[0])
 	destkey := []byte(ctx.Args[1])
-	member = []byte(ctx.Args[2])
+	member := []byte(ctx.Args[2])
 	set, err := txn.Set(key)
 	if err != nil {
 		if err == db.ErrTypeMismatch {

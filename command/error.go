@@ -59,7 +59,7 @@ var (
 	ErrBitOffset = errors.New("ERR bit offset is not an integer or out of range")
 
 	//ErrBitOp not must be called with a single source key.
-	ErrBitOp = errors.New("BITOP NOT must be called with a single source key.")
+	ErrBitOp = errors.New("BITOP NOT must be called with a single source key")
 
 	// ErrOffset offset is out of range
 	ErrOffset = errors.New("ERR offset is out of range")

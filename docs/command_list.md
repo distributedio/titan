@@ -24,8 +24,6 @@
 - [x] client setname
 - [x] monitor
 - [x] debug object
-- [x] flushdb
-- [x] flushall
 - [x] time
 - [x] command
 - [x] command count

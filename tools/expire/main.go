@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"time"
 
 	"github.com/distributedio/titan/db"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/tikv"
+	"github.com/distributedio/titan/db/store"
 	"go.uber.org/zap"
 )
 
@@ -21,13 +21,29 @@ type option struct {
 	toleration time.Duration
 }
 
-func deletePrefix(txn kv.Transaction, prefix kv.Key) error {
-	end := prefix.PrefixNext()
+func prefixNext(prefix []byte) []byte {
+	if len(prefix) == 0 {
+		return nil
+	}
+	next := make([]byte, len(prefix))
+	copy(next, prefix)
+	for i := len(next) - 1; i >= 0; i-- {
+		next[i]++
+		if next[i] != 0 {
+			return next
+		}
+	}
+	return nil
+}
+
+func deletePrefix(txn store.Transaction, prefix []byte) error {
+	end := prefixNext(prefix)
 	iter, err := txn.Iter(prefix, end)
 	if err != nil {
 		return err
 	}
-	for iter.Valid() && iter.Key().HasPrefix(prefix) {
+	defer iter.Close()
+	for iter.Valid() && bytes.HasPrefix(iter.Key(), prefix) {
 		log.Debug("delete", zap.String("key", string(iter.Key())))
 		if err := txn.Delete(iter.Key()); err != nil {
 			return err
@@ -38,7 +54,8 @@ func deletePrefix(txn kv.Transaction, prefix kv.Key) error {
 	}
 	return nil
 }
-func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
+
+func cleanUp(txn store.Transaction, mkey []byte, database *db.DB,
 	obj *db.Object) error {
 	if err := txn.Delete(mkey); err != nil {
 		return err
@@ -52,8 +69,8 @@ func cleanUp(txn kv.Transaction, mkey kv.Key, database *db.DB,
 	}
 }
 
-func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
-	start kv.Key, opt *option) (kv.Key, error) {
+func doExpire(s store.Storage, database *db.DB, prefix []byte,
+	start []byte, opt *option) ([]byte, error) {
 	txn, err := s.Begin()
 	if err != nil {
 		return nil, err
@@ -62,12 +79,13 @@ func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
 	if err != nil {
 		return nil, err
 	}
+	defer iter.Close()
 	// tolerate certain times
 	now := db.Now() - int64(opt.toleration)
 	// scan the whole database
-	var end kv.Key
+	var end []byte
 	limit := opt.batch
-	for iter.Valid() && iter.Key().HasPrefix(prefix) && limit != 0 {
+	for iter.Valid() && bytes.HasPrefix(iter.Key(), prefix) && limit != 0 {
 		obj, err := db.DecodeObject(iter.Value())
 		if err != nil {
 			return nil, err
@@ -80,7 +98,9 @@ func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
 		}
 		limit--
 		end = iter.Key()
-		iter.Next()
+		if err := iter.Next(); err != nil {
+			return nil, err
+		}
 	}
 	if opt.dry {
 		log.Debug("rollback by dry option")
@@ -96,23 +116,19 @@ func doExpire(s kv.Storage, database *db.DB, prefix kv.Key,
 	if limit > 0 {
 		return nil, nil
 	}
-	return end.Next(), nil
+	return append(end, 0), nil
 }
-func expire(opt *option, addr string) error {
+
+func runExpire(s store.Storage, opt *option) error {
 	log.Info("start to expire", zap.Int("db", opt.db),
 		zap.String("namespace", opt.namespace))
 
 	database := &db.DB{Namespace: opt.namespace, ID: db.DBID(opt.db)}
 
-	store, err := tikv.Driver{}.Open(addr)
-	if err != nil {
-		return err
-	}
-
 	start := db.MetaKey(database, nil)
 	prefix := start
 	for {
-		next, err := doExpire(store, database, prefix, start, opt)
+		next, err := doExpire(s, database, prefix, start, opt)
 		if err != nil {
 			return err
 		}
@@ -124,6 +140,16 @@ func expire(opt *option, addr string) error {
 	log.Info("finish to expire", zap.Int("db", opt.db),
 		zap.String("namespace", opt.namespace))
 	return nil
+}
+
+func expire(opt *option, addr string) error {
+	s, err := store.Open(addr)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = s.Close() }()
+
+	return runExpire(s, opt)
 }
 
 func main() {

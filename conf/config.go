@@ -30,6 +30,13 @@ type TiKV struct {
 	ZT        ZT         `cfg:"zt"`
 	TiKVGC    TiKVGC     `cfg:"tikv-gc"`
 	Logger    TiKVLogger `cfg:"logger"`
+	Txn       Txn        `cfg:"txn"`
+}
+
+// Txn config is the config of transaction
+type Txn struct {
+	Timeout time.Duration `cfg:"timeout;30s;;transaction timeout"`
+	Limit   int           `cfg:"limit;5000;numeric;max keys per transaction"`
 }
 
 // TiKVGC config is the config of implement tikv sdk gcwork

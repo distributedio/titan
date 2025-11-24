@@ -13,7 +13,7 @@ const (
 func TestMetrics(t *testing.T) {
 
 	go func() {
-		http.ListenAndServe(":8888", nil)
+		_ = http.ListenAndServe(":8888", nil)
 	}()
 
 	gm.IsLeaderGaugeVec.WithLabelValues(defaultlabel).Inc()

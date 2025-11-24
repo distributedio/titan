@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -36,10 +37,10 @@ var (
 	ErrEncodingMismatch = errors.New("error object encoding type")
 
 	// ErrStorageRetry storage err and try again later
-	ErrStorageRetry = errors.New("Storage err and try again later")
+	ErrStorageRetry = errors.New("storage err and try again later")
 
 	//ErrSetNilValue means the value corresponding to key is a non-zero value
-	ErrSetNilValue = errors.New("The value corresponding to key is a non-zero value")
+	ErrSetNilValue = errors.New("the value corresponding to key is a non-zero value")
 
 	// IsErrNotFound returns true if the key is not found, otherwise return false
 	IsErrNotFound = store.IsErrNotFound
@@ -85,6 +86,9 @@ func toDBID(v []byte) DBID {
 
 // BatchGetValues issues batch requests to get values
 func BatchGetValues(txn *Transaction, keys [][]byte) ([][]byte, error) {
+	if txn.t == nil {
+		return nil, fmt.Errorf("transaction is nil")
+	}
 	kvs, err := store.BatchGetValues(txn.ctx, txn.t, keys)
 	if err != nil {
 		return nil, err
@@ -139,9 +143,10 @@ func (rds *RedisStore) Close() error {
 
 // Transaction supplies transaction for data structures
 type Transaction struct {
-	t   store.Transaction
-	db  *DB
-	ctx context.Context
+	t      store.Transaction
+	db     *DB
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // Begin a transaction
@@ -150,10 +155,18 @@ func (db *DB) Begin() (*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	store.SetOption(txn, store.Enable1PC, true)
-	store.SetOption(txn, store.EnableAsyncCommit, true)
-	store.SetOption(txn, store.GuaranteeExternalConsistency, true)
-	return &Transaction{t: txn, db: db, ctx: context.Background()}, nil
+
+	txn.SetEnable1PC(true)
+	txn.SetEnableAsyncCommit(true)
+	txn.SetCausalConsistency(true)
+
+	timeout := db.kv.conf.Txn.Timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	return &Transaction{t: txn, db: db, ctx: ctx, cancel: cancel}, nil
 }
 
 // Prefix returns the prefix of a DB object
@@ -163,11 +176,23 @@ func (db *DB) Prefix() []byte {
 
 // Commit a transaction
 func (txn *Transaction) Commit(ctx context.Context) error {
+	if txn.cancel != nil {
+		defer txn.cancel()
+	}
+	if txn.t == nil {
+		return fmt.Errorf("transaction is nil")
+	}
 	return txn.t.Commit(ctx)
 }
 
 // Rollback a transaction
 func (txn *Transaction) Rollback() error {
+	if txn.cancel != nil {
+		defer txn.cancel()
+	}
+	if txn.t == nil {
+		return fmt.Errorf("transaction is nil")
+	}
 	return txn.t.Rollback()
 }
 
@@ -198,6 +223,9 @@ func (txn *Transaction) String(key []byte) (*String, error) {
 
 // Strings returns a slice of String
 func (txn *Transaction) Strings(keys [][]byte) ([]*String, error) {
+	if txn.t == nil {
+		return nil, fmt.Errorf("transaction is nil")
+	}
 	sobjs := make([]*String, len(keys))
 	tkeys := make([][]byte, len(keys))
 	for i, key := range keys {
@@ -243,6 +271,9 @@ func (txn *Transaction) ZSet(key []byte) (*ZSet, error) {
 
 // LockKeys tries to lock the entries with the keys in KV store.
 func (txn *Transaction) LockKeys(keys ...[]byte) error {
+	if txn.t == nil {
+		return fmt.Errorf("transaction is nil")
+	}
 	return store.LockKeys(txn.t, keys)
 }
 

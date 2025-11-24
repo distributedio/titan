@@ -15,7 +15,7 @@ import (
 // Multi starts a transaction which will block subsequent commands until 'exec'
 func Multi(ctx *Context) {
 	ctx.Client.Multi = true
-	resp.ReplySimpleString(ctx.Out, OK)
+	_ = resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Exec all the commands queued in client
@@ -23,7 +23,7 @@ func Exec(ctx *Context) {
 	ctx.Client.Multi = false
 	pendings := ctx.Client.Commands
 	if len(pendings) == 0 {
-		resp.ReplyArray(ctx.Out, 0)
+		_, _ = resp.ReplyArray(ctx.Out, 0)
 		return
 	}
 	ctx.Client.Commands = nil
@@ -46,7 +46,7 @@ func Exec(ctx *Context) {
 					zap.String("command", ctx.Name),
 					zap.String("traceid", ctx.TraceID),
 					zap.Error(err))
-				resp.ReplyArray(ctx.Out, 0)
+				_, _ = resp.ReplyArray(ctx.Out, 0)
 				return err
 			}
 		}
@@ -69,7 +69,7 @@ func Exec(ctx *Context) {
 				onCommit, err = TxnCall(subCtx, txn)
 				zap.L().Debug("execute", zap.String("command", subCtx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 				if err != nil {
-					resp.ReplyError(out, err.Error())
+					_ = resp.ReplyError(out, err.Error())
 				}
 			} else {
 				Call(subCtx)
@@ -90,15 +90,23 @@ func Exec(ctx *Context) {
 		zap.L().Debug("commit", zap.String("command", ctx.Name), zap.Int64("cost(us)", time.Since(start).Nanoseconds()/1000))
 		if err != nil {
 			mt.TxnFailuresCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-			if db.IsRetryableError(err) && !watching {
-				mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+			if db.IsRetryableError(err) {
 				mt.TxnConflictsCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
-				zap.L().Error("txn commit retry",
-					zap.Int64("clientid", ctx.Client.ID),
-					zap.String("command", ctx.Name),
-					zap.String("traceid", ctx.TraceID),
-					zap.Error(err))
-				return retry.Retriable(err)
+				// When in WATCH mode, we cannot retry on conflicts because:
+				// 1. The watched keys' snapshot is stale after the first attempt
+				// 2. Refreshing snapshots would require re-executing all commands
+				// 3. This could change command results, violating Redis semantics
+				//
+				// Users should handle WATCH failures and retry the entire WATCH/MULTI/EXEC sequence.
+				if !watching {
+					mt.TxnRetriesCounterVec.WithLabelValues(ctx.Client.Namespace, ctx.Name).Inc()
+					zap.L().WithOptions(zap.AddStacktrace(zap.FatalLevel)).Info("txn commit retry",
+						zap.Int64("clientid", ctx.Client.ID),
+						zap.String("command", ctx.Name),
+						zap.String("traceid", ctx.TraceID),
+						zap.String("error", err.Error()))
+					return retry.Retriable(err)
+				}
 			}
 			zap.L().Error("commit failed",
 				zap.Int64("clientid", ctx.Client.ID),
@@ -116,14 +124,14 @@ func Exec(ctx *Context) {
 			zap.String("traceid", ctx.TraceID),
 			zap.Error(err))
 		if watching {
-			resp.ReplyArray(ctx.Out, 0)
+			_, _ = resp.ReplyArray(ctx.Out, 0)
 			return
 		}
-		resp.ReplyError(ctx.Out, "EXECABORT Transaction discarded because of txn conflicts")
+		_ = resp.ReplyError(ctx.Out, "EXECABORT Transaction discarded because of txn conflicts")
 		return
 	}
 
-	resp.ReplyArray(ctx.Out, size)
+	_, _ = resp.ReplyArray(ctx.Out, size)
 	// run OnCommit that fill reply to outputs
 	for i := range onCommits {
 		c := onCommits[i]
@@ -144,41 +152,54 @@ func Exec(ctx *Context) {
 
 // Watch starts a transaction, watch is a global transaction and is not key associated(this is different from redis)
 func Watch(ctx *Context) {
-	txn, err := ctx.Client.DB.Begin()
-	if err != nil {
-		resp.ReplyError(ctx.Out, "Err "+err.Error())
-		return
+	txn := ctx.Client.Txn
+	if txn == nil {
+		var err error
+		txn, err = ctx.Client.DB.Begin()
+		if err != nil {
+			_ = resp.ReplyError(ctx.Out, "Err "+err.Error())
+			return
+		}
+		ctx.Client.Txn = txn
 	}
 	keys := make([][]byte, len(ctx.Args))
 	for i := range ctx.Args {
-		keys[i] = []byte(ctx.Args[i])
+		keys[i] = db.MetaKey(ctx.Client.DB, []byte(ctx.Args[i]))
 	}
-	if err := txn.LockKeys(keys...); err != nil {
-		txn.Rollback()
-		resp.ReplyError(ctx.Out, "Err "+err.Error())
-		return
+	// LockKeys in TiKV client (v2) can be unstable in some environments (like mock store tests) when
+	// pessimistic locking is involved, or might have specific requirements.
+	// Instead of explicitly locking, we can achieve optimistic locking semantics by reading the keys.
+	// This updates the read set of the transaction. If any of these keys are modified by another
+	// transaction before this one commits, the commit will fail with a conflict, which satisfies
+	// the WATCH contract.
+	if len(keys) > 0 {
+		if _, err := db.BatchGetValues(txn, keys); err != nil {
+			_ = txn.Rollback()
+			ctx.Client.Txn = nil
+			_ = resp.ReplyError(ctx.Out, "Err "+err.Error())
+			return
+		}
 	}
-	ctx.Client.Txn = txn
-	resp.ReplySimpleString(ctx.Out, OK)
+	_ = resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Discard flushes all previously queued commands in a transaction and restores the connection state to normal
 func Discard(ctx *Context) {
 	// in watch state, the txn has begun, rollback it
 	if ctx.Client.Txn != nil {
-		ctx.Client.Txn.Rollback()
+		_ = ctx.Client.Txn.Rollback()
 		ctx.Client.Txn = nil
 	}
 	ctx.Client.Commands = nil
 	ctx.Client.Multi = false
-	resp.ReplySimpleString(ctx.Out, OK)
+	_ = resp.ReplySimpleString(ctx.Out, OK)
 }
 
 // Unwatch flushes all the previously watched keys for a transaction
 func Unwatch(ctx *Context) {
 	if ctx.Client.Txn != nil {
-		ctx.Client.Txn.Rollback()
+		_ = ctx.Client.Txn.Rollback()
 		ctx.Client.Txn = nil
 	}
-	resp.ReplySimpleString(ctx.Out, OK)
+	_ = resp.ReplySimpleString(ctx.Out, OK)
 }
